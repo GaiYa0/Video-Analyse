@@ -2,7 +2,7 @@
 
 同学 C 合稿。流媒体端口与实测细节见 [architecture-streaming.md](./architecture-streaming.md)、[deploy-notes.md](./deploy-notes.md)。阶段禁令见 [当前阶段.md](./当前阶段.md)。
 
-五层与课件一致：**监控设备 → ZLMediaKit → SVA-server（C++）→ SVA-backend → Vue**。紫色为原系统（P1 必须跑通），蓝色为学生增量（按 phase 点亮，不是已经做完）。
+五层与课件一致：**监控设备 → ZLMediaKit → SVA-server（C++）→ SVA-backend → Vue**。紫色为原系统（P1 已跑通），蓝色为学生增量（按 phase 点亮）。
 
 课件算法是 **睡岗**（YOLO-Pose + 多帧时序），不是跌倒。国标设备进业务库是 **backend 调 ZLM REST/Hook**，不是 Analyzer 去同步。
 
@@ -98,7 +98,7 @@ P2 只动布控选项和告警类型，**不要改国标设备字段**。
 
 ## 验收走查
 
-截图在 `docs/photo/`（同学 A 已提交）。
+截图在 [docs/photo/](./photo/)。
 
 1. 演示机启动服务，打开后台。
 2. 新增直连设备，启动监控，预览有画面。

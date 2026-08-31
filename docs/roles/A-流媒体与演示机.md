@@ -8,15 +8,15 @@
 
 ## 机器
 
-- 宿主机：Windows
-- 演示机：VMware / VirtualBox 上的 **Ubuntu 22.04 x86_64**（不要 ARM）
-- 虚拟机：内存 8GB+，磁盘 40GB+
-- 网络：桥接或端口转发，保证同学 B、C 浏览器能打开 `http://<虚拟机IP>/`
-- 默认账号（部署成功后）：`admin` / `admin123`
-- 数据库（脚本默认）：`root` / `easySVA.EZ`
-- clone 目录：`/opt/SVA-dev`（若不同，必须写进 `docs/deploy-notes.md`）
+- 宿主机：Windows；演示环境是 **WSL2 + Ubuntu 22.04 x86_64**（不要 ARM，不要在 Mac 上跑官方安装脚本）
+- 本组已装 **GPU** 版（RTX 4060，安装时选 G）；无 580+ 驱动则选 CPU
+- 安装产物：`/opt/SVA/`（backend / mediaServer / Analyzer）
+- 小组 Git 工作副本在 Windows：`D:\video-analysis\Video-Analyse-main\`（WSL 下 `/mnt/d/video-analysis/Video-Analyse-main`）
+- 网页：`http://localhost/` 或 WSL IP；账号 `admin` / `admin123`
+- MariaDB 端口 **3307**（宿主机 3306 已被占用）
+- 路径、启动脚本、日志一律以 [deploy-notes.md](../deploy-notes.md) 为准，不要另写一套
 
-不要让用户在 Mac 上跑 [install_source.sh](https://gitee.com/andersonwu/easySVA)。没有 NVIDIA 驱动 580+ 就选脚本里的 **C（CPU）**。
+不要让用户在 Mac 上跑 [install_source.sh](https://gitee.com/andersonwu/easySVA)。
 
 ## 可以改
 
