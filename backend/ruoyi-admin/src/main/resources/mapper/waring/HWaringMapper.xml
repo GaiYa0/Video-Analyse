@@ -1,0 +1,1086 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.waring.mapper.HWaringMapper">
+
+    <resultMap type="com.ruoyi.waring.domain.HWaring" id="HWaringResult">
+        <result property="w_id" column="w_id"/>
+        <result property="id" column="id"/>
+        <result property="alarm_type" column="alarm_type"/>
+        <result property="alarm_type_name" column="alarm_type_name"/>
+        <result property="alarm_level" column="alarm_level"/>
+        <result property="alarm_level_name" column="alarm_level_name"/>
+        <result property="alarm_time" column="alarm_time"/>
+        <result property="device_id" column="device_id"/>
+        <result property="device_name" column="device_name"/>
+        <result property="org_index" column="org_index"/>
+        <result property="org_name" column="org_name"/>
+        <result property="longitude" column="longitude"/>
+        <result property="latitude" column="latitude"/>
+        <result property="picture_url" column="picture_url"/>
+        <result property="picture_absolute_url" column="picture_absolute_url"/>
+        <result property="video_url" column="video_url"/>
+        <result property="video_absolute_url" column="video_absolute_url"/>
+        <result property="is_handle" column="is_handle"/>
+        <result property="is_enable" column="is_enable"/>
+        <result property="team" column="team"/>
+        <result property="ip" column="ip"/>
+        <result property="control_code" column="control_code"/>
+        <result property="sva_event_key" column="sva_event_key"/>
+        <result property="sva_event_state" column="sva_event_state"/>
+        <result property="sva_behavior_type" column="sva_behavior_type"/>
+        <result property="sva_rule_id" column="sva_rule_id"/>
+        <result property="sva_business_event_id" column="sva_business_event_id"/>
+        <result property="sva_business_event_name" column="sva_business_event_name"/>
+        <result property="sva_business_template_id" column="sva_business_template_id"/>
+        <result property="sva_business_template_version" column="sva_business_template_version"/>
+        <result property="sva_region_id" column="sva_region_id"/>
+        <result property="sva_region_name" column="sva_region_name"/>
+        <result property="sva_line_id" column="sva_line_id"/>
+        <result property="sva_line_name" column="sva_line_name"/>
+        <result property="sva_crossing_direction" column="sva_crossing_direction"/>
+        <result property="sva_track_id" column="sva_track_id"/>
+        <result property="end_time" column="end_time"/>
+        <result property="duration_ms" column="duration_ms"/>
+        <result property="sva_media_status" column="sva_media_status"/>
+        <result property="sva_media_error" column="sva_media_error"/>
+        <result property="ai_review_status" column="ai_review_status"/>
+        <result property="ai_review_decision" column="ai_review_decision"/>
+        <result property="ai_review_summary" column="ai_review_summary"/>
+        <result property="ai_false_positive_score" column="ai_false_positive_score"/>
+        <result property="ai_review_time" column="ai_review_time"/>
+    </resultMap>
+
+    <sql id="selectWaringVo">
+        SELECT hw.w_id AS w_id,
+               hw.id AS id,
+               hw.alarm_type AS alarm_type,
+               hw.alarm_type_name AS alarm_type_name,
+               hw.alarm_level AS alarm_level,
+               hw.alarm_level_name AS alarm_level_name,
+               hw.alarm_time AS alarm_time,
+               hw.device_id AS device_id,
+               hw.device_name AS device_name,
+               hw.org_index AS org_index,
+               hw.org_name AS org_name,
+               hw.longitude AS longitude,
+               hw.latitude AS latitude,
+               hw.picture_url AS picture_url,
+                             hw.picture_absolute_url AS picture_absolute_url,
+                             hw.video_url AS video_url,
+                             hw.video_absolute_url AS video_absolute_url,
+               hw.is_handle AS is_handle,
+               hw.is_enable AS is_enable,
+               hw.team AS team,
+               hw.ip AS ip,
+                             hw.control_code AS control_code,
+                             hw.sva_event_key AS sva_event_key,
+                             hw.sva_event_state AS sva_event_state,
+                             hw.sva_behavior_type AS sva_behavior_type,
+                             hw.sva_rule_id AS sva_rule_id,
+                             hw.sva_business_event_id AS sva_business_event_id,
+                             hw.sva_business_event_name AS sva_business_event_name,
+                             hw.sva_business_template_id AS sva_business_template_id,
+                             hw.sva_business_template_version AS sva_business_template_version,
+                             hw.sva_region_id AS sva_region_id,
+                             hw.sva_region_name AS sva_region_name,
+                             hw.sva_line_id AS sva_line_id,
+                             hw.sva_line_name AS sva_line_name,
+                             hw.sva_crossing_direction AS sva_crossing_direction,
+                             hw.sva_track_id AS sva_track_id,
+                             DATE_FORMAT(hw.end_time, '%Y-%m-%d %H:%i:%s') AS end_time,
+                             hw.duration_ms AS duration_ms,
+                             hw.sva_media_status AS sva_media_status,
+                             hw.sva_media_error AS sva_media_error,
+                             (SELECT t.status
+                                    FROM h_alarm_review_task t
+                                 WHERE t.w_id = hw.w_id
+                                 ORDER BY t.id DESC
+                                 LIMIT 1) AS ai_review_status,
+                             (SELECT r.decision
+                                    FROM h_alarm_review_result r
+                                 WHERE r.task_id = (
+                                                 SELECT t.id
+                                                     FROM h_alarm_review_task t
+                                                    WHERE t.w_id = hw.w_id
+                                                    ORDER BY t.id DESC
+                                                    LIMIT 1
+                                 )
+                                 LIMIT 1) AS ai_review_decision,
+                             (SELECT r.summary
+                                    FROM h_alarm_review_result r
+                                 WHERE r.task_id = (
+                                                 SELECT t.id
+                                                     FROM h_alarm_review_task t
+                                                    WHERE t.w_id = hw.w_id
+                                                    ORDER BY t.id DESC
+                                                    LIMIT 1
+                                 )
+                                 LIMIT 1) AS ai_review_summary,
+                             (SELECT r.false_positive_score
+                                    FROM h_alarm_review_result r
+                                 WHERE r.task_id = (
+                                                 SELECT t.id
+                                                     FROM h_alarm_review_task t
+                                                    WHERE t.w_id = hw.w_id
+                                                    ORDER BY t.id DESC
+                                                    LIMIT 1
+                                 )
+                                 LIMIT 1) AS ai_false_positive_score,
+                             (SELECT DATE_FORMAT(r.create_time, '%Y-%m-%d %H:%i:%s')
+                                    FROM h_alarm_review_result r
+                                 WHERE r.task_id = (
+                                                 SELECT t.id
+                                                     FROM h_alarm_review_task t
+                                                    WHERE t.w_id = hw.w_id
+                                                    ORDER BY t.id DESC
+                                                    LIMIT 1
+                                 )
+                                 LIMIT 1) AS ai_review_time
+        FROM h_waring hw
+    </sql>
+
+    <select id="selectWaringById" parameterType="java.lang.String" resultType="HWaring">
+        <include refid="selectWaringVo"/>
+        where `id` = #{id}
+    </select>
+
+    <select id="selectLatestSvaRuleWaringForInterval" resultType="HWaring">
+        <include refid="selectWaringVo"/>
+                WHERE control_code = #{controlCode}
+                    AND sva_behavior_type = #{behaviorType}
+                    AND is_enable = 1
+                    <choose>
+                        <when test="ruleId != null and ruleId != ''">
+                            AND sva_rule_id = #{ruleId}
+                        </when>
+                        <otherwise>
+                            <choose>
+                                <when test="regionId != null and regionId != ''">
+                                    AND sva_region_id = #{regionId}
+                                </when>
+                                <otherwise>
+                                    AND (sva_region_id IS NULL OR sva_region_id = '')
+                                </otherwise>
+                            </choose>
+                            <choose>
+                                <when test="lineId != null and lineId != ''">
+                                    AND sva_line_id = #{lineId}
+                                </when>
+                                <otherwise>
+                                    AND (sva_line_id IS NULL OR sva_line_id = '')
+                                </otherwise>
+                            </choose>
+                            <choose>
+                                <when test="crossingDirection != null and crossingDirection != ''">
+                                    AND sva_crossing_direction = #{crossingDirection}
+                                </when>
+                                <otherwise>
+                                    AND (sva_crossing_direction IS NULL OR sva_crossing_direction = '')
+                                </otherwise>
+                            </choose>
+                        </otherwise>
+                    </choose>
+                    AND UNIX_TIMESTAMP(alarm_time) BETWEEN UNIX_TIMESTAMP(#{alarmTime}) - #{alarmIntervalSec}
+                            AND UNIX_TIMESTAMP(#{alarmTime})
+                ORDER BY alarm_time DESC, w_id DESC
+        LIMIT 1
+    </select>
+
+    <select id="selectWaringByWId" parameterType="int" resultType="HWaring">
+        <include refid="selectWaringVo"/>
+        where w_id = #{wId}
+        limit 1
+    </select>
+
+    <insert id="insertWaring" parameterType="HWaring">
+        INSERT INTO h_waring
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="id != null">id,</if>
+            <if test="alarm_type != null">alarm_type,</if>
+            <if test="alarm_type_name != null">alarm_type_name,</if>
+            <if test="alarm_level != null">alarm_level,</if>
+            <if test="alarm_level_name != null">alarm_level_name,</if>
+            <if test="alarm_time != null">alarm_time,</if>
+            <if test="device_id != null">device_id,</if>
+            <if test="device_name != null">device_name,</if>
+            <if test="org_index != null">org_index,</if>
+            <if test="org_name != null">org_name,</if>
+            <if test="longitude != null">longitude,</if>
+            <if test="latitude != null">latitude,</if>
+            <if test="picture_url != null">picture_url,</if>
+            <if test="picture_absolute_url != null">picture_absolute_url,</if>
+            <if test="video_url != null">video_url,</if>
+            <if test="video_absolute_url != null">video_absolute_url,</if>
+            <if test="is_handle != null">is_handle,</if>
+            <if test="is_enable != null">is_enable,</if>
+            <if test="team != null">team,</if>
+            <if test="ip != null">ip,</if>
+            <if test="control_code != null">control_code,</if>
+            <if test="sva_event_key != null">sva_event_key,</if>
+            <if test="sva_event_state != null">sva_event_state,</if>
+            <if test="sva_behavior_type != null">sva_behavior_type,</if>
+            <if test="sva_rule_id != null">sva_rule_id,</if>
+            <if test="sva_business_event_id != null">sva_business_event_id,</if>
+            <if test="sva_business_event_name != null">sva_business_event_name,</if>
+            <if test="sva_business_template_id != null">sva_business_template_id,</if>
+            <if test="sva_business_template_version != null">sva_business_template_version,</if>
+            <if test="sva_region_id != null">sva_region_id,</if>
+            <if test="sva_region_name != null">sva_region_name,</if>
+            <if test="sva_line_id != null">sva_line_id,</if>
+            <if test="sva_line_name != null">sva_line_name,</if>
+            <if test="sva_crossing_direction != null">sva_crossing_direction,</if>
+            <if test="sva_track_id != null">sva_track_id,</if>
+            <if test="end_time != null">end_time,</if>
+            <if test="duration_ms != null">duration_ms,</if>
+            <if test="sva_media_status != null">sva_media_status,</if>
+            <if test="sva_media_error != null">sva_media_error,</if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="id != null">#{id},</if>
+            <if test="alarm_type != null">#{alarm_type},</if>
+            <if test="alarm_type_name != null">#{alarm_type_name},</if>
+            <if test="alarm_level != null">#{alarm_level},</if>
+            <if test="alarm_level_name != null">#{alarm_level_name},</if>
+            <if test="alarm_time != null">#{alarm_time},</if>
+            <if test="device_id != null">#{device_id},</if>
+            <if test="device_name != null">#{device_name},</if>
+            <if test="org_index != null">#{org_index},</if>
+            <if test="org_name != null">#{org_name},</if>
+            <if test="longitude != null">#{longitude},</if>
+            <if test="latitude != null">#{latitude},</if>
+            <if test="picture_url != null">#{picture_url},</if>
+            <if test="picture_absolute_url != null">#{picture_absolute_url},</if>
+            <if test="video_url != null">#{video_url},</if>
+            <if test="video_absolute_url != null">#{video_absolute_url},</if>
+            <if test="is_handle != null">#{is_handle},</if>
+            <if test="is_enable != null">#{is_enable},</if>
+            <if test="team != null">#{team},</if>
+            <if test="ip != null">#{ip},</if>
+            <if test="control_code != null">#{control_code},</if>
+            <if test="sva_event_key != null">#{sva_event_key},</if>
+            <if test="sva_event_state != null">#{sva_event_state},</if>
+            <if test="sva_behavior_type != null">#{sva_behavior_type},</if>
+            <if test="sva_rule_id != null">#{sva_rule_id},</if>
+            <if test="sva_business_event_id != null">#{sva_business_event_id},</if>
+            <if test="sva_business_event_name != null">#{sva_business_event_name},</if>
+            <if test="sva_business_template_id != null">#{sva_business_template_id},</if>
+            <if test="sva_business_template_version != null">#{sva_business_template_version},</if>
+            <if test="sva_region_id != null">#{sva_region_id},</if>
+            <if test="sva_region_name != null">#{sva_region_name},</if>
+            <if test="sva_line_id != null">#{sva_line_id},</if>
+            <if test="sva_line_name != null">#{sva_line_name},</if>
+            <if test="sva_crossing_direction != null">#{sva_crossing_direction},</if>
+            <if test="sva_track_id != null">#{sva_track_id},</if>
+            <if test="end_time != null">#{end_time},</if>
+            <if test="duration_ms != null">#{duration_ms},</if>
+            <if test="sva_media_status != null">#{sva_media_status},</if>
+            <if test="sva_media_error != null">#{sva_media_error},</if>
+        </trim>
+        <selectKey keyProperty="w_id" order="AFTER" resultType="int">
+            SELECT LAST_INSERT_ID()
+        </selectKey>
+    </insert>
+
+    <update id="updateSvaLifecycleWaring" parameterType="HWaring">
+        UPDATE h_waring
+        <set>
+            <if test="alarm_time != null">alarm_time = #{alarm_time},</if>
+            <if test="picture_url != null">picture_url = #{picture_url},</if>
+            <if test="alarm_type_name != null">alarm_type_name = #{alarm_type_name},</if>
+            <if test="picture_absolute_url != null">picture_absolute_url = #{picture_absolute_url},</if>
+            <if test="video_url != null">video_url = #{video_url},</if>
+            <if test="video_absolute_url != null">video_absolute_url = #{video_absolute_url},</if>
+            <if test="control_code != null">control_code = #{control_code},</if>
+            <if test="sva_event_key != null">sva_event_key = #{sva_event_key},</if>
+            <if test="sva_event_state != null">sva_event_state = #{sva_event_state},</if>
+            <if test="sva_behavior_type != null">sva_behavior_type = #{sva_behavior_type},</if>
+            <if test="sva_rule_id != null">sva_rule_id = #{sva_rule_id},</if>
+            <if test="sva_business_event_id != null">sva_business_event_id = #{sva_business_event_id},</if>
+            <if test="sva_business_event_name != null">sva_business_event_name = #{sva_business_event_name},</if>
+            <if test="sva_business_template_id != null">sva_business_template_id = #{sva_business_template_id},</if>
+            <if test="sva_business_template_version != null">sva_business_template_version = #{sva_business_template_version},</if>
+            <if test="sva_region_id != null">sva_region_id = #{sva_region_id},</if>
+            <if test="sva_region_name != null">sva_region_name = #{sva_region_name},</if>
+            <if test="sva_line_id != null">sva_line_id = #{sva_line_id},</if>
+            <if test="sva_line_name != null">sva_line_name = #{sva_line_name},</if>
+            <if test="sva_crossing_direction != null">sva_crossing_direction = #{sva_crossing_direction},</if>
+            <if test="sva_track_id != null">sva_track_id = #{sva_track_id},</if>
+            <if test="end_time != null">end_time = #{end_time},</if>
+            <if test="duration_ms != null">duration_ms = #{duration_ms},</if>
+            <if test="sva_media_status != null">sva_media_status = #{sva_media_status},</if>
+            <if test="sva_media_error != null">sva_media_error = #{sva_media_error},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateSvaMediaFields" parameterType="HWaring">
+        UPDATE h_waring
+        <set>
+            <if test="picture_url != null">picture_url = #{picture_url},</if>
+            <if test="picture_absolute_url != null">picture_absolute_url = #{picture_absolute_url},</if>
+            <if test="video_url != null">video_url = #{video_url},</if>
+            <if test="video_absolute_url != null">video_absolute_url = #{video_absolute_url},</if>
+            <if test="sva_media_status != null">sva_media_status = #{sva_media_status},</if>
+            <if test="sva_media_error != null">sva_media_error = #{sva_media_error},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <select id="selectWaringList" parameterType="HWaring" resultMap="HWaringResult">
+        <include refid="selectWaringVo"/>
+        <where>
+            <if test="alarm_type_name != null and alarm_type_name != ''">
+                AND alarm_type_name = #{alarm_type_name}
+            </if>
+            <if test="alarm_level_name != null and alarm_level_name != ''">
+                AND alarm_level_name like concat('%', #{alarm_level_name}, '%')
+            </if>
+            <if test="device_name != null and device_name != ''">
+                AND device_name like concat('%', #{device_name}, '%')
+            </if>
+            <if test="org_name != null and org_name != ''">
+                AND org_index = #{org_name}
+            </if>
+            <if test="begin != null and begin != ''"><!-- 开始时间检索 -->
+                AND UNIX_TIMESTAMP(alarm_time) &gt;= #{begin}
+            </if>
+            <if test="end != null and end != ''"><!-- 结束时间检索 -->
+                AND UNIX_TIMESTAMP(alarm_time) &lt;= #{end}
+            </if>
+            <if test="is_handle != null">
+                AND is_handle = #{is_handle}
+            </if>
+            <if test="w_id != null and w_id != ''">
+                AND w_id = #{w_id}
+            </if>
+            <if test="team != null and team != ''">
+                AND team = #{team}
+            </if>
+            AND is_enable = 1
+        </where>
+        ORDER BY
+        alarm_time
+        DESC
+    </select>
+
+    <select id="selectWaringListByOrgIndex" parameterType="HWaring" resultMap="HWaringResult">
+        <include refid="selectWaringVo"/>
+        <where>
+            org_index = #{org_index}
+            AND is_enable = 1
+            <if test="alarm_type_name != null and alarm_type_name != ''">
+                AND alarm_type_name = #{alarm_type_name}
+            </if>
+            <if test="alarm_level_name != null and alarm_level_name != ''">
+                AND alarm_level_name like concat('%', #{alarm_level_name}, '%')
+            </if>
+            <if test="device_name != null and device_name != ''">
+                AND device_name like concat('%', #{device_name}, '%')
+            </if>
+            <if test="org_name != null and org_name != ''">
+                AND org_index = #{org_name}
+            </if>
+            <if test="begin != null and begin != ''"><!-- 开始时间检索 -->
+                AND UNIX_TIMESTAMP(alarm_time) &gt;= #{begin}
+            </if>
+            <if test="end != null and end != ''"><!-- 结束时间检索 -->
+                AND UNIX_TIMESTAMP(alarm_time) &lt;= #{end}
+            </if>
+            <if test="is_handle != null">
+                AND is_handle = #{is_handle}
+            </if>
+            <if test="w_id != null and w_id != ''">
+                AND w_id = #{w_id}
+            </if>
+            <if test="team != null and team != ''">
+                AND team = #{team}
+            </if>
+        </where>
+        ORDER BY
+        alarm_time
+        DESC
+    </select>
+
+    <!--报警-->
+    <!--本月-->
+    <select id="getBetweenWaring" parameterType="HWaring" resultType="int">
+        SELECT count(*)
+        FROM h_waring
+        WHERE UNIX_TIMESTAMP(alarm_time) &gt;= #{begin}
+          AND UNIX_TIMESTAMP(alarm_time) &lt;= #{end}
+          AND is_enable = 1
+    </select>
+
+    <select id="getBetweenWaringOfOrg" parameterType="HWaring" resultType="int">
+        SELECT count(*)
+        FROM h_waring
+        WHERE UNIX_TIMESTAMP(alarm_time) &gt;= #{begin}
+          AND UNIX_TIMESTAMP(alarm_time) &lt;= #{end}
+          AND org_index = #{org_index}
+          AND is_enable = 1
+    </select>
+
+    <!--去年本月-->
+    <select id="getBetweenLastYearMonthWaring" parameterType="HWaring" resultType="int">
+        SELECT count(*)
+        FROM h_waring
+        WHERE UNIX_TIMESTAMP(alarm_time) &gt;= #{begin}
+          AND UNIX_TIMESTAMP(alarm_time) &lt;= #{end}
+          AND is_enable = 1
+    </select>
+
+    <select id="getBetweenLastYearMonthWaringOfOrg" parameterType="HWaring" resultType="int">
+        SELECT count(*)
+        FROM h_waring
+        WHERE UNIX_TIMESTAMP(alarm_time) &gt;= #{begin}
+          AND UNIX_TIMESTAMP(alarm_time) &lt;= #{end}
+          AND org_index = #{org_index}
+          AND is_enable = 1
+    </select>
+
+    <!--上个月-->
+    <select id="getBetweenLastMonthWaring" parameterType="HWaring" resultType="int">
+        SELECT count(*)
+        FROM h_waring
+        WHERE UNIX_TIMESTAMP(alarm_time) &gt;= #{begin}
+          AND UNIX_TIMESTAMP(alarm_time) &lt;= #{end}
+          AND is_enable = 1
+    </select>
+
+    <select id="getBetweenLastMonthWaringOfOrg" parameterType="HWaring" resultType="int">
+        SELECT count(*)
+        FROM h_waring
+        WHERE UNIX_TIMESTAMP(alarm_time) &gt;= #{begin}
+          AND UNIX_TIMESTAMP(alarm_time) &lt;= #{end}
+          AND org_index = #{org_index}
+          AND is_enable = 1
+    </select>
+
+    <!--本年-->
+    <select id="getBetweenYearWaring" parameterType="HWaring" resultType="int">
+        SELECT count(*)
+        FROM h_waring
+        WHERE UNIX_TIMESTAMP(alarm_time) &gt;= #{begin}
+          AND UNIX_TIMESTAMP(alarm_time) &lt;= #{end}
+          AND is_enable = 1
+    </select>
+
+    <select id="getBetweenYearWaringOfOrg" parameterType="HWaring" resultType="int">
+        SELECT count(*)
+        FROM h_waring
+        WHERE UNIX_TIMESTAMP(alarm_time) &gt;= #{begin}
+          AND UNIX_TIMESTAMP(alarm_time) &lt;= #{end}
+          AND org_index = #{org_index}
+          AND is_enable = 1
+    </select>
+
+    <!--重大报警-->
+    <select id="getBetweenWaringByLevel" parameterType="HWaring" resultType="int">
+        SELECT count(*)
+        FROM h_waring
+        WHERE UNIX_TIMESTAMP(alarm_time) &gt;= #{begin}
+          AND UNIX_TIMESTAMP(alarm_time) &lt;= #{end}
+          AND alarm_level = #{alarm_level}
+          AND is_enable = 1
+    </select>
+
+    <select id="getBetweenWaringByLevelOfOrg" parameterType="HWaring" resultType="int">
+        SELECT count(*)
+        FROM h_waring
+        WHERE UNIX_TIMESTAMP(alarm_time) &gt;= #{begin}
+          AND UNIX_TIMESTAMP(alarm_time) &lt;= #{end}
+          AND alarm_level = #{alarm_level}
+          AND org_index = #{org_index}
+          AND is_enable = 1
+    </select>
+
+    <!--逾期-->
+    <select id="getBetweenWaringByOverdue" parameterType="HWaring" resultType="int">
+        SELECT count(*)
+        FROM h_waring
+        WHERE UNIX_TIMESTAMP(alarm_time) &gt;= #{begin}
+          AND UNIX_TIMESTAMP(alarm_time) &lt;= #{end}
+          AND DATEDIFF(NOW(), alarm_time) &gt; #{params.beOverdue}
+          AND is_handle = 0
+          AND is_enable = 1
+    </select>
+
+    <select id="getBetweenWaringByOverdueOfOrg" parameterType="HWaring" resultType="int">
+        SELECT count(*)
+        FROM h_waring
+        WHERE UNIX_TIMESTAMP(alarm_time) &gt;= #{begin}
+          AND UNIX_TIMESTAMP(alarm_time) &lt;= #{end}
+          AND org_index = #{org_index}
+          AND DATEDIFF(NOW(), alarm_time) &gt; #{params.beOverdue}
+          AND is_handle = 0
+          AND is_enable = 1
+    </select>
+
+    <!--处理率-->
+    <select id="getBetweenWaringByHandle" parameterType="HWaring" resultType="int">
+        SELECT count(*)
+        FROM h_waring
+        WHERE UNIX_TIMESTAMP(alarm_time) &gt;= #{begin}
+          AND UNIX_TIMESTAMP(alarm_time) &lt;= #{end}
+          AND is_handle = #{is_handle}
+          AND is_enable = 1
+    </select>
+
+    <select id="getBetweenWaringByHandleOfOrg" parameterType="HWaring" resultType="int">
+        SELECT count(*)
+        FROM h_waring
+        WHERE UNIX_TIMESTAMP(alarm_time) &gt;= #{begin}
+          AND UNIX_TIMESTAMP(alarm_time) &lt;= #{end}
+          AND is_handle = #{is_handle}
+          AND org_index = #{org_index}
+          AND is_enable = 1
+    </select>
+
+    <!--排行-->
+    <select id="getTypeRanking" parameterType="HWaring" resultType="map">
+        SELECT count(*) as num, alarm_type_name
+        FROM h_waring
+        WHERE UNIX_TIMESTAMP(alarm_time) &gt;= #{begin}
+          AND UNIX_TIMESTAMP(alarm_time) &lt;= #{end}
+          AND is_enable = 1
+        GROUP BY alarm_type_name
+        ORDER BY num DESC LIMIT 5
+    </select>
+
+    <select id="getTypeRankingByOrgIndex" parameterType="HWaring" resultType="map">
+        SELECT count(*) as num, alarm_type_name
+        FROM h_waring
+        WHERE org_index = #{org_index}
+          AND UNIX_TIMESTAMP(alarm_time) &gt;= #{begin}
+          AND UNIX_TIMESTAMP(alarm_time) &lt;= #{end}
+          AND is_enable = 1
+        GROUP BY alarm_type_name
+        ORDER BY num DESC LIMIT 5
+    </select>
+
+    <select id="getOrgRanking" parameterType="HWaring" resultType="map">
+        SELECT count(*) as num, team AS dept_name
+        FROM h_waring
+          where UNIX_TIMESTAMP(h_waring.alarm_time) &gt;= #{begin}
+          AND UNIX_TIMESTAMP(h_waring.alarm_time) &lt;= #{end}
+          AND is_enable = 1
+        GROUP BY team
+    </select>
+
+    <select id="getLevelRanking" parameterType="HWaring" resultType="map">
+        SELECT count(*) as num, alarm_level_name
+        FROM h_waring
+        WHERE UNIX_TIMESTAMP(h_waring.alarm_time) &gt;= #{begin}
+          AND UNIX_TIMESTAMP(h_waring.alarm_time) &lt;= #{end}
+          AND is_enable = 1
+        GROUP BY alarm_level_name
+        ORDER BY num DESC LIMIT 5
+    </select>
+
+    <select id="getLevelRankingByOrgIndex" parameterType="HWaring" resultType="map">
+        SELECT count(*) as num, alarm_level_name
+        FROM h_waring
+        WHERE org_index = #{org_index}
+          AND UNIX_TIMESTAMP(h_waring.alarm_time) &gt;= #{begin}
+          AND UNIX_TIMESTAMP(h_waring.alarm_time) &lt;= #{end}
+          AND is_enable = 1
+        GROUP BY alarm_level_name
+        ORDER BY num DESC LIMIT 5
+    </select>
+
+    <select id="getChuNum"  parameterType="HWaring" >
+        select count(*) as num
+        from h_waring
+        where UNIX_TIMESTAMP(h_waring.alarm_time) &gt;= #{begin}
+          AND UNIX_TIMESTAMP(h_waring.alarm_time) &lt;= #{end}
+          AND is_handle = #{is_handle}
+          AND is_enable = 1
+    </select>
+
+    <select id="getChuNumByOrgIndex"  parameterType="HWaring" >
+        select count(*) as num
+        from h_waring
+        where org_index = #{org_index}
+          AND UNIX_TIMESTAMP(h_waring.alarm_time) &gt;= #{begin}
+          AND UNIX_TIMESTAMP(h_waring.alarm_time) &lt;= #{end}
+          AND is_handle = #{is_handle}
+          AND is_enable = 1
+    </select>
+
+    <!--趋势图-->
+    <select id="getYearTrend" parameterType="HWaring" resultType="map">
+        SELECT YEAR(alarm_time) AS years, count(*) AS total
+        FROM h_waring
+        WHERE is_enable = 1
+        GROUP BY years
+    </select>
+
+    <select id="getYearTrendByOrgIndex" parameterType="HWaring" resultType="map">
+        SELECT YEAR(alarm_time) AS years, count(*) AS total
+        FROM h_waring
+        WHERE org_index = #{org_index} AND is_enable = 1
+        GROUP BY years
+    </select>
+
+    <select id="getMonthTrend" parameterType="HWaring" resultType="map">
+        SELECT MONTH(alarm_time) AS months, count(*) AS total
+        FROM h_waring
+        WHERE UNIX_TIMESTAMP(alarm_time) &gt;= #{begin}
+          AND UNIX_TIMESTAMP(alarm_time) &lt;= #{end}
+          AND is_enable = 1
+        GROUP BY months
+    </select>
+
+    <select id="getMonthTrendByOrgIndex" parameterType="HWaring" resultType="map">
+        SELECT MONTH(alarm_time) AS months, count(*) AS total
+        FROM h_waring
+        WHERE UNIX_TIMESTAMP(alarm_time) &gt;= #{begin}
+          AND UNIX_TIMESTAMP(alarm_time) &lt;= #{end}
+          AND org_index = #{org_index}
+          AND is_enable = 1
+        GROUP BY months
+    </select>
+
+    <select id="getQuarterTrend" parameterType="HWaring" resultType="map">
+        SELECT QUARTER(alarm_time) AS quarters, count(*) AS total
+        FROM h_waring
+        WHERE UNIX_TIMESTAMP(alarm_time) &gt;= #{begin}
+          AND UNIX_TIMESTAMP(alarm_time) &lt;= #{end}
+          AND is_enable = 1
+        GROUP BY quarters
+    </select>
+
+    <select id="getQuarterTrendByOrgIndex" parameterType="HWaring" resultType="map">
+        SELECT QUARTER(alarm_time) AS quarters, count(*) AS total
+        FROM h_waring
+        WHERE UNIX_TIMESTAMP(alarm_time) &gt;= #{begin}
+          AND UNIX_TIMESTAMP(alarm_time) &lt;= #{end}
+          AND org_index = #{org_index}
+          AND is_enable = 1
+        GROUP BY quarters
+    </select>
+
+    <select id="getWeekTrend" parameterType="HWaring" resultType="map">
+        SELECT WEEK(alarm_time, 1) AS weeks, count(*) AS total
+        FROM h_waring
+        WHERE UNIX_TIMESTAMP(alarm_time) &gt;= #{begin}
+          AND UNIX_TIMESTAMP(alarm_time) &lt;= #{end}
+          AND is_enable = 1
+        GROUP BY weeks
+    </select>
+
+    <select id="getWeekTrendByOrgIndex" parameterType="HWaring" resultType="map">
+        SELECT WEEK(alarm_time, 1) AS weeks, count(*) AS total
+        FROM h_waring
+        WHERE UNIX_TIMESTAMP(alarm_time) &gt;= #{begin}
+          AND UNIX_TIMESTAMP(alarm_time) &lt;= #{end}
+          AND org_index = #{org_index}
+          AND is_enable = 1
+        GROUP BY weeks
+    </select>
+
+    <!--等级分布-->
+    <select id="getLevelSpread" parameterType="HWaring" resultType="map">
+        SELECT count(*) as num, is_handle
+        FROM h_waring
+        WHERE UNIX_TIMESTAMP(alarm_time) &gt;= #{begin}
+          AND UNIX_TIMESTAMP(alarm_time) &lt;= #{end}
+        GROUP BY is_handle;
+    </select>
+
+    <select id="getLevelSpreadByOrgIndex" parameterType="HWaring" resultType="map">
+        SELECT count(*) as num, alarm_level_name
+        FROM h_waring
+        WHERE UNIX_TIMESTAMP(alarm_time) &gt;= #{begin}
+          AND UNIX_TIMESTAMP(alarm_time) &lt;= #{end}
+          AND org_index = #{org_index}
+          AND is_enable = 1
+        GROUP BY alarm_level_name;
+    </select>
+
+    <!--类型分布-->
+    <select id="getTypeSpread" parameterType="HWaring" resultType="map">
+        SELECT count(*) as num, alarm_type_name
+        FROM h_waring
+        WHERE UNIX_TIMESTAMP(alarm_time) &gt;= #{begin}
+          AND UNIX_TIMESTAMP(alarm_time) &lt;= #{end}
+          AND is_enable = 1
+        GROUP BY alarm_type_name;
+    </select>
+
+    <select id="getTypeSpreadByOrgIndex" parameterType="HWaring" resultType="map">
+        SELECT count(*) as num, alarm_type_name
+        FROM h_waring
+        WHERE UNIX_TIMESTAMP(alarm_time) &gt;= #{begin}
+          AND UNIX_TIMESTAMP(alarm_time) &lt;= #{end}
+          AND org_index = #{org_index}
+          AND is_enable = 1
+        GROUP BY alarm_type_name;
+    </select>
+
+    <update id="updateHandle" parameterType="java.lang.String">
+        UPDATE h_waring
+        SET is_handle = 1
+        WHERE `id` = #{id}
+    </update>
+
+    <!--误报-->
+    <update id="updateHandleForTitlle" parameterType="java.lang.String">
+        UPDATE h_waring
+        SET is_handle = 1, is_enable = 0
+        WHERE `id` = #{id}
+    </update>
+
+    <select id="getOne" parameterType="int" resultType="com.ruoyi.waring.domain.Details">
+        SELECT h_waring.alarm_level_name,
+               h_waring.alarm_type_name,
+               h_waring.alarm_time,
+               h_waring.device_name,
+               h_waring.is_handle,
+                h_waring.sva_event_state,
+                h_waring.sva_behavior_type,
+                h_waring.sva_rule_id,
+                h_waring.sva_region_name,
+                h_waring.sva_line_name,
+                h_waring.sva_crossing_direction,
+                DATE_FORMAT(h_waring.end_time, '%Y-%m-%d %H:%i:%s') AS end_time,
+                h_waring.duration_ms,
+                    (SELECT h.h_title
+                        FROM h_handle h
+                      WHERE h.w_id = h_waring.w_id
+                      ORDER BY h.h_create_time DESC, h.h_id DESC
+                      LIMIT 1) AS h_title,
+                    (SELECT h.h_create_time
+                        FROM h_handle h
+                      WHERE h.w_id = h_waring.w_id
+                      ORDER BY h.h_create_time DESC, h.h_id DESC
+                      LIMIT 1) AS h_create_time,
+                    (SELECT h.h_remark
+                        FROM h_handle h
+                      WHERE h.w_id = h_waring.w_id
+                      ORDER BY h.h_create_time DESC, h.h_id DESC
+                      LIMIT 1) AS h_remark,
+                    (SELECT h.h_org_name
+                        FROM h_handle h
+                      WHERE h.w_id = h_waring.w_id
+                      ORDER BY h.h_create_time DESC, h.h_id DESC
+                      LIMIT 1) AS h_org_name,
+                    h_waring.picture_absolute_url,
+                                        h_waring.video_absolute_url,
+                                        h_waring.sva_media_status,
+                                        h_waring.sva_media_error,
+                             (SELECT t.status
+                                    FROM h_alarm_review_task t
+                                 WHERE t.w_id = h_waring.w_id
+                                 ORDER BY t.id DESC
+                                 LIMIT 1) AS ai_review_status,
+                             (SELECT r.decision
+                                    FROM h_alarm_review_result r
+                                 WHERE r.task_id = (
+                                     SELECT t.id
+                                       FROM h_alarm_review_task t
+                                      WHERE t.w_id = h_waring.w_id
+                                      ORDER BY t.id DESC
+                                      LIMIT 1
+                                 )
+                                 LIMIT 1) AS ai_review_decision,
+                             (SELECT r.summary
+                                    FROM h_alarm_review_result r
+                                 WHERE r.task_id = (
+                                     SELECT t.id
+                                       FROM h_alarm_review_task t
+                                      WHERE t.w_id = h_waring.w_id
+                                      ORDER BY t.id DESC
+                                      LIMIT 1
+                                 )
+                                 LIMIT 1) AS ai_review_summary,
+                             (SELECT r.false_positive_score
+                                    FROM h_alarm_review_result r
+                                 WHERE r.task_id = (
+                                     SELECT t.id
+                                       FROM h_alarm_review_task t
+                                      WHERE t.w_id = h_waring.w_id
+                                      ORDER BY t.id DESC
+                                      LIMIT 1
+                                 )
+                                 LIMIT 1) AS ai_false_positive_score,
+                             (SELECT DATE_FORMAT(r.create_time, '%Y-%m-%d %H:%i:%s')
+                                    FROM h_alarm_review_result r
+                                 WHERE r.task_id = (
+                                     SELECT t.id
+                                       FROM h_alarm_review_task t
+                                      WHERE t.w_id = h_waring.w_id
+                                      ORDER BY t.id DESC
+                                      LIMIT 1
+                                 )
+                                 LIMIT 1) AS ai_review_time
+        FROM h_waring
+        WHERE h_waring.w_id = #{w_id}
+    </select>
+
+    <select id="getHistoryWaring" parameterType="java.lang.String" resultMap="HWaringResult">
+        <include refid="selectWaringVo"/>
+        <where>
+            device_id = #{place} AND is_enable = 1
+        </where>
+        ORDER BY alarm_time DESC
+    </select>
+
+    <select id="getNoWaring">
+        SELECT count(*)
+        FROM h_waring
+        WHERE device_id = #{device_id}
+          AND TIMESTAMPDIFF(SECOND, alarm_time, #{alarm_time}) &lt;= 7200
+          AND TIMESTAMPDIFF(SECOND, alarm_time, #{alarm_time}) &gt; 0
+          AND alarm_type = "99158eabc762e2f75fcc325d2055343e"
+    </select>
+
+    <select id="getNoCarWaring">
+        SELECT count(*)
+        FROM h_waring
+        WHERE device_id = #{device_id}
+          AND TIMESTAMPDIFF(SECOND, alarm_time, #{alarm_time}) &lt;= 2
+          AND TIMESTAMPDIFF(SECOND, alarm_time, #{alarm_time}) &gt; 0
+          AND alarm_type = "0bbfb1c17f1cc4ce5937b9ab5ef229c5"
+    </select>
+
+    <select id="getWaring">
+        SELECT alarm_type_name, device_name, alarm_time, picture_absolute_url FROM h_waring  WHERE is_enable = 1 AND is_handle = 0  ORDER BY alarm_time DESC LIMIT 7
+    </select>
+
+    <select id="getWaringByOrg">
+        SELECT alarm_type_name, device_name, alarm_time, picture_absolute_url FROM h_waring WHERE org_index = #{org_index} AND is_enable = 1 AND is_handle = 0 ORDER BY alarm_time DESC LIMIT 7
+    </select>
+
+    <select id="getAlarmPhoto">
+        SELECT h_waring.device_name, h_waring.picture_absolute_url, h_waring.alarm_type_name FROM h_handle INNER JOIN h_waring ON h_waring.w_id = h_handle.w_id WHERE h_handle.h_title = '确认' AND h_handle.h_remark != '测试' AND h_waring.is_enable = 1 AND h_waring.alarm_time >= CURRENT_DATE - INTERVAL 2 MONTH ORDER BY RAND() LIMIT 6
+    </select>
+
+    <select id="getAlarmPhotoByOrg">
+        SELECT h_waring.device_name, h_waring.picture_absolute_url, h_waring.alarm_type_name FROM h_handle INNER JOIN h_waring ON h_waring.w_id = h_handle.w_id WHERE h_handle.h_title = '确认' AND h_handle.h_remark != '测试' AND h_waring.is_enable = 1 AND h_waring.alarm_time >= CURRENT_DATE - INTERVAL 2 MONTH AND h_waring.org_index = #{org_index} ORDER BY RAND() LIMIT 6
+    </select>
+
+    <select id="selectReconditionList" parameterType="HWaring" resultMap="HWaringResult">
+        <include refid="selectWaringVo"/>
+        <where>
+            <if test="alarm_type_name != null and alarm_type_name != ''">
+                AND alarm_type_name = #{alarm_type_name}
+            </if>
+            <if test="alarm_level_name != null and alarm_level_name != ''">
+                AND alarm_level_name like concat('%', #{alarm_level_name}, '%')
+            </if>
+            <if test="device_name != null and device_name != ''">
+                AND device_name like concat('%', #{device_name}, '%')
+            </if>
+            <if test="org_name != null and org_name != ''">
+                AND org_name like concat('%', #{org_name}, '%')
+            </if>
+            <if test="begin != null and begin != ''"><!-- 开始时间检索 -->
+                AND UNIX_TIMESTAMP(alarm_time) &gt;= #{begin}
+            </if>
+            <if test="end != null and end != ''"><!-- 结束时间检索 -->
+                AND UNIX_TIMESTAMP(alarm_time) &lt;= #{end}
+            </if>
+            <if test="is_handle != null and is_handle != ''">
+                AND is_handle = #{is_handle}
+            </if>
+            <if test="team != null and team != ''">
+                AND team = #{team}
+            </if>
+            AND alarm_type = #{alarm_type}
+        </where>
+        ORDER BY
+        alarm_time
+        DESC
+    </select>
+
+    <select id="selectReconditionListByOrgIndex" parameterType="HWaring" resultMap="HWaringResult">
+        <include refid="selectWaringVo"/>
+        <where>
+            org_index = #{org_index}
+            <if test="alarm_type_name != null and alarm_type_name != ''">
+                AND alarm_type_name = #{alarm_type_name}
+            </if>
+            <if test="alarm_level_name != null and alarm_level_name != ''">
+                AND alarm_level_name like concat('%', #{alarm_level_name}, '%')
+            </if>
+            <if test="device_name != null and device_name != ''">
+                AND device_name like concat('%', #{device_name}, '%')
+            </if>
+            <if test="org_name != null and org_name != ''">
+                AND org_name like concat('%', #{org_name}, '%')
+            </if>
+            <if test="begin != null and begin != ''"><!-- 开始时间检索 -->
+                AND UNIX_TIMESTAMP(alarm_time) &gt;= #{begin}
+            </if>
+            <if test="end != null and end != ''"><!-- 结束时间检索 -->
+                AND UNIX_TIMESTAMP(alarm_time) &lt;= #{end}
+            </if>
+            <if test="is_handle != null and is_handle != ''">
+                AND is_handle = #{is_handle}
+            </if>
+            <if test="team != null and team != ''">
+                AND team = #{team}
+            </if>
+            AND alarm_type = #{alarm_type}
+        </where>
+        ORDER BY
+        alarm_time
+        DESC
+    </select>
+
+    <select id="selectWubaoList" parameterType="HWaring" resultMap="HWaringResult">
+        SELECT
+            h_waring.w_id,
+            h_waring.id,
+            h_waring.alarm_type,
+            h_waring.alarm_type_name,
+            h_waring.alarm_level,
+            h_waring.alarm_level_name,
+            h_waring.alarm_time,
+            h_waring.device_id,
+            h_waring.team,
+            h_waring.device_name,
+            h_waring.org_index,
+            h_waring.org_name,
+            h_waring.longitude,
+            h_waring.latitude,
+            h_waring.picture_url,
+            h_waring.picture_absolute_url,
+            h_waring.is_handle,
+            h_waring.is_enable,
+            h_waring.ip
+        FROM h_waring INNER JOIN h_handle ON h_waring.w_id = h_handle.w_id
+        <where>
+            h_waring.is_handle = 1 AND h_handle.h_title = "误报"
+            <if test="device_name != null and device_name != ''">
+                AND h_waring.device_name like concat('%', #{device_name}, '%')
+            </if>
+            <if test="begin != null and begin != ''"><!-- 开始时间检索 -->
+                AND UNIX_TIMESTAMP(alarm_time) &gt;= #{begin}
+            </if>
+            <if test="end != null and end != ''"><!-- 结束时间检索 -->
+                AND UNIX_TIMESTAMP(alarm_time) &lt;= #{end}
+            </if>
+            <if test="alarm_type_name != null and alarm_type_name != ''">
+                AND h_waring.alarm_type_name = #{alarm_type_name}
+            </if>
+            <if test="org_name != null and org_name != ''">
+                AND h_waring.org_name like concat('%', #{org_name}, '%')
+            </if>
+            <if test="team != null and team != ''">
+                AND h_waring.team = #{team}
+            </if>
+        </where>
+        ORDER BY
+        h_waring.alarm_time
+        DESC
+    </select>
+
+    <select id="selectWubaoListByOrgIndex" parameterType="HWaring" resultMap="HWaringResult">
+        SELECT
+        h_waring.w_id,
+        h_waring.id,
+        h_waring.alarm_type,
+        h_waring.alarm_type_name,
+        h_waring.alarm_level,
+        h_waring.alarm_level_name,
+        h_waring.alarm_time,
+        h_waring.device_id,
+        h_waring.team,
+        h_waring.device_name,
+        h_waring.org_index,
+        h_waring.org_name,
+        h_waring.longitude,
+        h_waring.latitude,
+        h_waring.picture_url,
+        h_waring.picture_absolute_url,
+        h_waring.is_handle,
+        h_waring.is_enable,
+        h_waring.ip
+        FROM h_waring INNER JOIN h_handle ON h_waring.w_id = h_handle.w_id
+        <where>
+            h_waring.org_index = #{org_index} AND h_waring.is_handle = 1 AND h_handle.h_title = "误报"
+            <if test="device_name != null and device_name != ''">
+                AND h_waring.device_name like concat('%', #{device_name}, '%')
+            </if>
+            <if test="begin != null and begin != ''"><!-- 开始时间检索 -->
+                AND UNIX_TIMESTAMP(alarm_time) &gt;= #{begin}
+            </if>
+            <if test="end != null and end != ''"><!-- 结束时间检索 -->
+                AND UNIX_TIMESTAMP(alarm_time) &lt;= #{end}
+            </if>
+            <if test="alarm_type_name != null and alarm_type_name != ''">
+                AND h_waring.alarm_type_name = #{alarm_type_name}
+            </if>
+            <if test="org_name != null and org_name != ''">
+                AND h_waring.org_name like concat('%', #{org_name}, '%')
+            </if>
+            <if test="team != null and team != ''">
+                AND h_waring.team = #{team}
+            </if>
+        </where>
+        ORDER BY
+        h_waring.alarm_time
+        DESC
+    </select>
+
+    <select id="getId" resultType="java.lang.String">
+        SELECT `id` FROM h_waring WHERE w_id = #{id}
+    </select>
+
+    <select id="getWei" parameterType="HWaring" resultType="int">
+        SELECT count(*) AS num FROM h_waring WHERE
+            is_handle = 0
+            AND UNIX_TIMESTAMP(alarm_time) &gt;= #{begin}
+            AND UNIX_TIMESTAMP(alarm_time) &lt;= #{end}
+            AND is_enable = 1
+    </select>
+
+    <select id="getWeiByOrgIndex" parameterType="HWaring" resultType="int">
+        SELECT count(*) AS num FROM h_waring WHERE
+            is_handle = 0
+            AND UNIX_TIMESTAMP(alarm_time) &gt;= #{begin}
+            AND UNIX_TIMESTAMP(alarm_time) &lt;= #{end}
+            AND org_index = #{org_index}
+            AND is_enable = 1
+    </select>
+
+    <select id="getWu" parameterType="HWaring" resultType="int">
+        SELECT count(*) AS num FROM h_waring
+            INNER JOIN h_handle ON h_handle.w_id = h_waring.w_id
+            WHERE h_handle.h_title = "误报"
+            AND UNIX_TIMESTAMP(h_waring.alarm_time) &gt;= #{begin}
+            AND UNIX_TIMESTAMP(h_waring.alarm_time) &lt;= #{end}
+            AND h_waring.is_enable = 1
+    </select>
+
+    <select id="getWuByOrgIndex" parameterType="HWaring" resultType="int">
+        SELECT count(*) AS num FROM h_waring
+            INNER JOIN h_handle ON h_handle.w_id = h_waring.w_id
+            WHERE h_handle.h_title = "误报"
+            AND UNIX_TIMESTAMP(h_waring.alarm_time) &gt;= #{begin}
+            AND UNIX_TIMESTAMP(h_waring.alarm_time) &lt;= #{end}
+            AND h_waring.org_index = #{org_index}
+            AND h_waring.is_enable = 1
+    </select>
+
+    <select id="getZheng" parameterType="HWaring" resultType="int">
+        SELECT count(*) AS num FROM h_waring
+            INNER JOIN h_handle ON h_handle.w_id = h_waring.w_id
+            WHERE h_handle.h_title = "确认"
+            AND UNIX_TIMESTAMP(h_waring.alarm_time) &gt;= #{begin}
+            AND UNIX_TIMESTAMP(h_waring.alarm_time) &lt;= #{end}
+            AND h_waring.is_enable = 1
+    </select>
+
+    <select id="getZhengByOrgIndex" parameterType="HWaring" resultType="int">
+        SELECT count(*) AS num FROM h_waring
+            INNER JOIN h_handle ON h_handle.w_id = h_waring.w_id
+            WHERE h_handle.h_title = "确认"
+            AND UNIX_TIMESTAMP(h_waring.alarm_time) &gt;= #{begin}
+            AND UNIX_TIMESTAMP(h_waring.alarm_time) &lt;= #{end}
+            AND h_waring.org_index = #{org_index}
+            AND h_waring.is_enable = 1
+    </select>
+</mapper>

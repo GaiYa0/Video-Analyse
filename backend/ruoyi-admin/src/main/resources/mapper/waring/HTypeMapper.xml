@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.waring.mapper.HTypeMapper">
+
+    <resultMap type="com.ruoyi.waring.domain.HType" id="HTypeResult">
+        <result property="t_id" column="t_id"/>
+        <result property="device_id" column="device_id"/>
+        <result property="device_name" column="device_name"/>
+        <result property="alarm_type" column="alarm_type"/>
+        <result property="alarm_type_name" column="alarm_type_name"/>
+        <result property="alarm_level" column="alarm_level"/>
+        <result property="alarm_level_name" column="alarm_level_name"/>
+        <result property="org_name" column="org_name"/>
+        <result property="org_index" column="org_index"/>
+        <result property="create_time" column="create_time"/>
+        <result property="update_time" column="update_time"/>
+        <result property="create_user" column="create_user"/>
+        <result property="update_user" column="update_user"/>
+        <result property="is_handle" column="is_handle"/>
+    </resultMap>
+
+    <sql id="selectTypeVo">
+        SELECT t_id,
+               device_id,
+               device_name,
+               alarm_type,
+               alarm_type_name,
+               alarm_level,
+               alarm_level_name,
+               create_time,
+               update_time,
+               create_user,
+               update_user,
+               org_index,
+               org_name,
+               is_handle
+        FROM h_waring_type
+    </sql>
+
+    <insert id="insertType" parameterType="HType">
+        INSERT INTO h_waring_type
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="device_id != null">device_id,</if>
+            <if test="device_name != null">device_name,</if>
+            <if test="alarm_type != null">alarm_type,</if>
+            <if test="alarm_type_name != null">alarm_type_name,</if>
+            <if test="alarm_level != null">alarm_level,</if>
+            <if test="alarm_level_name != null">alarm_level_name,</if>
+            <if test="org_index != null">org_index,</if>
+            <if test="org_name != null">org_name,</if>
+            <if test="create_time != null">create_time,</if>
+            <if test="update_time != null">update_time,</if>
+            <if test="create_user != null">create_user,</if>
+            <if test="update_user != null">update_user,</if>
+            <if test="is_handle != null">is_handle,</if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="device_id != null">#{device_id},</if>
+            <if test="device_name != null">#{device_name},</if>
+            <if test="alarm_type != null">#{alarm_type},</if>
+            <if test="alarm_type_name != null">#{alarm_type_name},</if>
+            <if test="alarm_level != null">#{alarm_level},</if>
+            <if test="alarm_level_name != null">#{alarm_level_name},</if>
+            <if test="org_index != null">#{org_index},</if>
+            <if test="org_name != null">#{org_name},</if>
+            <if test="create_time != null">#{create_time},</if>
+            <if test="update_time != null">#{update_time},</if>
+            <if test="create_user != null">#{create_user},</if>
+            <if test="update_user != null">#{update_user},</if>
+            <if test="is_handle != null">#{is_handle},</if>
+        </trim>
+    </insert>
+
+    <select id="checkTypeUnique" parameterType="HType" resultMap="HTypeResult">
+        SELECT device_id, alarm_type
+        FROM h_waring_type
+        WHERE device_id = #{device_id}
+          AND alarm_type = #{alarm_type}
+          AND is_handle = 0
+    </select>
+
+    <select id="selectTypeList" resultType="HType" resultMap="HTypeResult">
+        <include refid="selectTypeVo"/>
+        <where>
+            <if test="org_name != null and org_name != ''">
+                AND org_name like concat('%', #{org_name}, '%')
+            </if>
+            <if test="device_id != null and device_id != ''">
+                AND device_id like concat('%', #{device_id}, '%')
+            </if>
+            <if test="device_name != null and device_name != ''">
+                AND device_name like concat('%', #{device_name}, '%')
+            </if>
+            <if test="alarm_type_name != null and alarm_type_name != ''">
+                AND alarm_type_name = #{alarm_type_name}
+            </if>
+            <if test="alarm_level != null and alarm_level != ''"><!-- 开始时间检索 -->
+                AND alarm_level = #{alarm_level}
+            </if>
+            <if test="is_handle != null and is_handle != ''">
+                AND is_handle = #{is_handle}
+            </if>
+        </where>
+    </select>
+
+    <delete id="deleteType">
+        DELETE FROM h_waring_type WHERE t_id IN
+        <foreach item="type_id" collection="array" open="(" separator="," close=")">
+            #{type_id}
+        </foreach>
+    </delete>
+
+    <select id="getWaringType">
+        <include refid="selectTypeVo"/>
+        WHERE alarm_type = #{alarm_type} AND device_id = #{device_id}
+    </select>
+
+    <select id="getTypeWaring">
+        SELECT distinct alarm_type_name
+        FROM h_waring_type
+    </select>
+
+    <select id="getAlarmTypeFilterOptions" resultMap="HTypeResult">
+        SELECT grouped.alarm_type_name
+        FROM (
+            SELECT COALESCE(NULLIF(TRIM(sva_business_event_name), ''), NULLIF(TRIM(alarm_type_name), '')) AS alarm_type_name,
+                   COUNT(*) AS total
+            FROM h_waring
+            WHERE is_enable = 1
+            GROUP BY COALESCE(NULLIF(TRIM(sva_business_event_name), ''), NULLIF(TRIM(alarm_type_name), ''))
+        ) grouped
+        WHERE grouped.alarm_type_name IS NOT NULL
+        ORDER BY grouped.total DESC, grouped.alarm_type_name ASC
+    </select>
+
+    <select id="getDisType">
+        SELECT distinct device_id
+        FROM h_waring_type
+    </select>
+</mapper>

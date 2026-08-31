@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.system.mapper.DeploymentTaskEventMapper">
+
+    <resultMap type="DeploymentTaskEvent" id="DeploymentTaskEventResult">
+        <result property="id" column="id" />
+        <result property="deploymentId" column="deployment_id" />
+        <result property="eventKey" column="event_key" />
+        <result property="templateId" column="template_id" />
+        <result property="templateVersion" column="template_version" />
+        <result property="eventName" column="event_name" />
+        <result property="enabled" column="enabled" />
+        <result property="sortOrder" column="sort_order" />
+        <result property="parameterValuesJson" column="parameter_values_json" />
+        <result property="compiledRuleIdsJson" column="compiled_rule_ids_json" />
+        <result property="compiledRuleSnapshotJson" column="compiled_rule_snapshot_json" />
+        <result property="createTime" column="create_time" />
+        <result property="updateTime" column="update_time" />
+    </resultMap>
+
+    <sql id="selectDeploymentTaskEventVo">
+        select id,
+               deployment_id,
+               event_key,
+               template_id,
+               template_version,
+               event_name,
+               enabled,
+               sort_order,
+               parameter_values_json,
+               compiled_rule_ids_json,
+               compiled_rule_snapshot_json,
+               create_time,
+               update_time
+          from deployment_task_event
+    </sql>
+
+    <select id="selectByDeploymentId" parameterType="String" resultMap="DeploymentTaskEventResult">
+        <include refid="selectDeploymentTaskEventVo" />
+        where deployment_id = #{deploymentId}
+        order by sort_order asc, id asc
+    </select>
+
+    <select id="selectById" parameterType="long" resultMap="DeploymentTaskEventResult">
+        <include refid="selectDeploymentTaskEventVo" />
+        where id = #{id}
+        limit 1
+    </select>
+
+    <select id="selectByDeploymentIds" resultMap="DeploymentTaskEventResult">
+        <include refid="selectDeploymentTaskEventVo" />
+        where deployment_id in
+        <foreach collection="deploymentIds" item="deploymentId" open="(" separator="," close=")">
+            #{deploymentId}
+        </foreach>
+        order by deployment_id asc, sort_order asc, id asc
+    </select>
+
+    <insert id="insertDeploymentTaskEvents">
+        insert into deployment_task_event (
+            deployment_id,
+            event_key,
+            template_id,
+            template_version,
+            event_name,
+            enabled,
+            sort_order,
+            parameter_values_json,
+            compiled_rule_ids_json,
+            compiled_rule_snapshot_json,
+            create_time,
+            update_time
+        ) values
+        <foreach collection="list" item="item" separator=",">
+            (
+                #{item.deploymentId},
+                #{item.eventKey},
+                #{item.templateId},
+                #{item.templateVersion},
+                #{item.eventName},
+                #{item.enabled},
+                #{item.sortOrder},
+                #{item.parameterValuesJson},
+                #{item.compiledRuleIdsJson},
+                #{item.compiledRuleSnapshotJson},
+                #{item.createTime},
+                #{item.updateTime}
+            )
+        </foreach>
+    </insert>
+
+    <update id="updateDeploymentTaskEvent" parameterType="DeploymentTaskEvent">
+        update deployment_task_event
+        set deployment_id = #{deploymentId},
+            event_key = #{eventKey},
+            template_id = #{templateId},
+            template_version = #{templateVersion},
+            event_name = #{eventName},
+            enabled = #{enabled},
+            sort_order = #{sortOrder},
+            parameter_values_json = #{parameterValuesJson},
+            compiled_rule_ids_json = #{compiledRuleIdsJson},
+            compiled_rule_snapshot_json = #{compiledRuleSnapshotJson},
+            update_time = #{updateTime}
+        where id = #{id}
+    </update>
+
+    <delete id="deleteById" parameterType="long">
+        delete from deployment_task_event
+        where id = #{id}
+    </delete>
+
+    <delete id="deleteByDeploymentId" parameterType="String">
+        delete from deployment_task_event
+        where deployment_id = #{deploymentId}
+    </delete>
+
+</mapper>

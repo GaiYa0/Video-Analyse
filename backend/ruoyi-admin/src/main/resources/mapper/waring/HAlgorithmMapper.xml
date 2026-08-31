@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.waring.mapper.HAlgorithmMapper">
+
+<!--    <resultMap type="com.ruoyi.waring.domain.HAlgorithm" id="DeviceResult">-->
+<!--        <result property="device_name" column="device_name"/>-->
+<!--        <result property="device_id" column="device_id"/>-->
+<!--    </resultMap>-->
+    <select id="selectWaringList" resultType="HAlgorithm">
+        select
+            id as id,
+            code as code,
+            name as name,
+            state as status,
+            code as algorithmCode,
+            name as algorithmName,
+            code as algorithm_code,
+            name as algorithm_name
+        from av_algorithm
+        where state = 0
+        order by sort asc, id asc
+    </select>
+
+    <select id="selectObjectStrByCode" resultType="java.lang.String">
+        select object_str
+        from av_algorithm
+        where state = 0
+          and code = #{code}
+        limit 1
+    </select>
+
+        <select id="selectApiUrlByCode" resultType="java.lang.String">
+                select api_url
+                from av_algorithm
+                where state = 0
+                    and code = #{code}
+                limit 1
+        </select>
+
+        <select id="selectNameByCode" resultType="java.lang.String">
+            select name
+            from av_algorithm
+            where state = 0
+                and code = #{code}
+            limit 1
+        </select>
+</mapper>

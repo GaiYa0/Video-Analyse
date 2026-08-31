@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.system.mapper.DeploymentTaskAlgorithmMapper">
+
+    <resultMap type="DeploymentTaskAlgorithm" id="DeploymentTaskAlgorithmResult">
+        <result property="id" column="id" />
+        <result property="deploymentId" column="deployment_id" />
+        <result property="algorithmCode" column="algorithm_code" />
+        <result property="algorithmName" column="algorithm_name" />
+        <result property="detectFps" column="detect_fps" />
+        <result property="scoreThreshold" column="score_threshold" />
+        <result property="nmsThreshold" column="nms_threshold" />
+        <result property="targetCodesText" column="target_codes" />
+        <result property="sortOrder" column="sort_order" />
+        <result property="createTime" column="create_time" />
+        <result property="updateTime" column="update_time" />
+    </resultMap>
+
+    <sql id="selectDeploymentTaskAlgorithmVo">
+        select id,
+               deployment_id,
+               algorithm_code,
+               algorithm_name,
+               detect_fps,
+               score_threshold,
+               nms_threshold,
+               target_codes,
+               sort_order,
+               create_time,
+               update_time
+          from deployment_task_algorithm
+    </sql>
+
+    <select id="selectByDeploymentId" parameterType="String" resultMap="DeploymentTaskAlgorithmResult">
+        <include refid="selectDeploymentTaskAlgorithmVo" />
+        where deployment_id = #{deploymentId}
+        order by sort_order asc, id asc
+    </select>
+
+    <select id="selectByDeploymentIds" resultMap="DeploymentTaskAlgorithmResult">
+        <include refid="selectDeploymentTaskAlgorithmVo" />
+        where deployment_id in
+        <foreach collection="deploymentIds" item="deploymentId" open="(" separator="," close=")">
+            #{deploymentId}
+        </foreach>
+        order by deployment_id asc, sort_order asc, id asc
+    </select>
+
+    <insert id="insertDeploymentTaskAlgorithms">
+        insert into deployment_task_algorithm (
+            deployment_id,
+            algorithm_code,
+            algorithm_name,
+            detect_fps,
+            score_threshold,
+            nms_threshold,
+            target_codes,
+            sort_order,
+            create_time,
+            update_time
+        ) values
+        <foreach collection="list" item="item" separator=",">
+            (
+                #{item.deploymentId},
+                #{item.algorithmCode},
+                #{item.algorithmName},
+                #{item.detectFps},
+                #{item.scoreThreshold},
+                #{item.nmsThreshold},
+                #{item.targetCodesText},
+                #{item.sortOrder},
+                #{item.createTime},
+                #{item.updateTime}
+            )
+        </foreach>
+    </insert>
+
+    <delete id="deleteByDeploymentId" parameterType="String">
+        delete from deployment_task_algorithm
+        where deployment_id = #{deploymentId}
+    </delete>
+
+</mapper>

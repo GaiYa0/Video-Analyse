@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.system.mapper.DeploymentBusinessEventTemplateMapper">
+
+    <resultMap type="DeploymentBusinessEventTemplate" id="DeploymentBusinessEventTemplateResult">
+        <result property="templateId" column="template_id" />
+        <result property="templateCode" column="template_code" />
+        <result property="templateName" column="template_name" />
+        <result property="templateDesc" column="template_desc" />
+        <result property="scopeType" column="scope_type" />
+        <result property="ownerOrgIndex" column="owner_org_index" />
+        <result property="ownerUserId" column="owner_user_id" />
+        <result property="status" column="status" />
+        <result property="versionNo" column="version_no" />
+        <result property="tagsJson" column="tags_json" />
+        <result property="parameterSchemaJson" column="parameter_schema_json" />
+        <result property="ruleBlueprintJson" column="rule_blueprint_json" />
+        <result property="uiSchemaJson" column="ui_schema_json" />
+        <result property="createBy" column="create_by" />
+        <result property="updateBy" column="update_by" />
+        <result property="createTime" column="create_time" />
+        <result property="updateTime" column="update_time" />
+    </resultMap>
+
+    <sql id="selectDeploymentBusinessEventTemplateVo">
+        select template_id,
+               template_code,
+               template_name,
+               template_desc,
+               scope_type,
+               owner_org_index,
+               owner_user_id,
+               status,
+               version_no,
+               tags_json,
+               parameter_schema_json,
+               rule_blueprint_json,
+               ui_schema_json,
+               create_by,
+               update_by,
+               create_time,
+               update_time
+          from deployment_business_event_template
+    </sql>
+
+    <select id="selectByTemplateId" parameterType="String" resultMap="DeploymentBusinessEventTemplateResult">
+        <include refid="selectDeploymentBusinessEventTemplateVo" />
+        where template_id = #{templateId}
+        limit 1
+    </select>
+
+    <select id="selectList" parameterType="DeploymentBusinessEventTemplate" resultMap="DeploymentBusinessEventTemplateResult">
+        <include refid="selectDeploymentBusinessEventTemplateVo" />
+        <where>
+            <if test="templateCode != null and templateCode != ''">
+                and template_code like concat('%', #{templateCode}, '%')
+            </if>
+            <if test="templateName != null and templateName != ''">
+                and template_name like concat('%', #{templateName}, '%')
+            </if>
+            <if test="scopeType != null and scopeType != ''">
+                and scope_type = #{scopeType}
+            </if>
+            <if test="status != null and status != ''">
+                and status = #{status}
+            </if>
+            <if test="ownerOrgIndex != null and ownerOrgIndex != ''">
+                and owner_org_index = #{ownerOrgIndex}
+            </if>
+            <if test="ownerUserId != null">
+                and owner_user_id = #{ownerUserId}
+            </if>
+        </where>
+        order by update_time desc, create_time desc
+    </select>
+
+    <insert id="insertTemplate" parameterType="DeploymentBusinessEventTemplate">
+        insert into deployment_business_event_template (
+            template_id,
+            template_code,
+            template_name,
+            template_desc,
+            scope_type,
+            owner_org_index,
+            owner_user_id,
+            status,
+            version_no,
+            tags_json,
+            parameter_schema_json,
+            rule_blueprint_json,
+            ui_schema_json,
+            create_by,
+            update_by,
+            create_time,
+            update_time
+        ) values (
+            #{templateId},
+            #{templateCode},
+            #{templateName},
+            #{templateDesc},
+            #{scopeType},
+            #{ownerOrgIndex},
+            #{ownerUserId},
+            #{status},
+            #{versionNo},
+            #{tagsJson},
+            #{parameterSchemaJson},
+            #{ruleBlueprintJson},
+            #{uiSchemaJson},
+            #{createBy},
+            #{updateBy},
+            #{createTime},
+            #{updateTime}
+        )
+    </insert>
+
+    <update id="updateTemplate" parameterType="DeploymentBusinessEventTemplate">
+        update deployment_business_event_template
+           set template_code = #{templateCode},
+               template_name = #{templateName},
+               template_desc = #{templateDesc},
+               scope_type = #{scopeType},
+               owner_org_index = #{ownerOrgIndex},
+               owner_user_id = #{ownerUserId},
+               status = #{status},
+               version_no = #{versionNo},
+               tags_json = #{tagsJson},
+               parameter_schema_json = #{parameterSchemaJson},
+               rule_blueprint_json = #{ruleBlueprintJson},
+               ui_schema_json = #{uiSchemaJson},
+               update_by = #{updateBy},
+               update_time = #{updateTime}
+         where template_id = #{templateId}
+    </update>
+
+    <delete id="deleteByTemplateId" parameterType="String">
+        delete from deployment_business_event_template
+        where template_id = #{templateId}
+    </delete>
+
+</mapper>

@@ -1,0 +1,220 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.waring.mapper.HDeviceMapper">
+
+    <resultMap type="com.ruoyi.waring.domain.HDevice" id="HDeviceResult">
+        <result property="ape_id" column="ape_id"/>
+        <result property="name" column="name"/>
+        <result property="stream_source_type" column="stream_source_type"/>
+        <result property="direct_source_url" column="direct_source_url"/>
+        <result property="play_url" column="play_url"/>
+        <result property="zlm_proxy_key" column="zlm_proxy_key"/>
+        <result property="resource_type" column="resource_type"/>
+        <result property="sub_type" column="sub_type"/>
+        <result property="ip_addr" column="ip_addr"/>
+        <result property="port" column="port"/>
+        <result property="org_index" column="org_index"/>
+        <result property="org_name" column="org_name"/>
+        <result property="place_code" column="place_code"/>
+        <result property="place" column="place"/>
+        <result property="is_online" column="is_online"/>
+        <result property="producer" column="producer"/>
+        <result property="producer_name" column="producer_name"/>
+        <result property="parent_code" column="parent_code"/>
+        <result property="zlm_server_id" column="zlm_server_id"/>
+        <result property="sva_server_id" column="sva_server_id"/>
+        <result property="monitor_status" column="monitor_status"/>
+        <result property="create_time" column="create_time"/>
+        <result property="update_time" column="update_time"/>
+    </resultMap>
+
+    <sql id="selectDeviceVo">
+        SELECT
+            ape_id,
+            name,
+            stream_source_type,
+            direct_source_url,
+            play_url,
+            zlm_proxy_key,
+            resource_type,
+            sub_type,
+            ip_addr,
+            port,
+            org_index,
+            org_name,
+            place_code,
+            place,
+            is_online,
+            producer,
+            producer_name,
+            parent_code,
+            zlm_server_id,
+            sva_server_id,
+            monitor_status,
+            create_time,
+            update_time
+        FROM
+            h_device
+    </sql>
+
+    <insert id="insertDevice">
+        INSERT INTO h_device
+        (ape_id, name, stream_source_type, direct_source_url, play_url, zlm_proxy_key, resource_type, sub_type, ip_addr, port, org_index, org_name, place_code, place, is_online, producer, producer_name, parent_code, zlm_server_id, sva_server_id, monitor_status, create_time, update_time)
+        VALUES
+            (#{ape_id}, #{name}, IFNULL(UPPER(#{stream_source_type}), 'DIRECT'), #{direct_source_url}, #{play_url}, #{zlm_proxy_key}, #{resource_type}, #{sub_type}, #{ip_addr}, #{port}, #{org_index}, #{org_name}, #{place_code}, #{place}, #{is_online}, #{producer}, #{producer_name}, #{parent_code}, IFNULL(#{zlm_server_id}, 1), IFNULL(#{sva_server_id}, 1), IFNULL(#{monitor_status}, 'STOPPED'), #{create_time}, #{update_time})
+    </insert>
+
+    <delete id="deleteDevice">
+        DELETE FROM h_device
+    </delete>
+
+    <select id="selectDeviceByApeId" resultMap="HDeviceResult">
+        <include refid="selectDeviceVo"/>
+        WHERE ape_id = #{apeId}
+    </select>
+
+    <insert id="insertDeviceCrud" parameterType="HDevice">
+        INSERT INTO h_device
+        (ape_id, name, stream_source_type, direct_source_url, play_url, zlm_proxy_key, resource_type, sub_type, ip_addr, port, org_index, org_name, place_code, place, is_online, producer, producer_name, parent_code, zlm_server_id, sva_server_id, monitor_status, create_time, update_time)
+        VALUES
+            (#{ape_id}, #{name}, IFNULL(UPPER(#{stream_source_type}), 'DIRECT'), #{direct_source_url}, #{play_url}, #{zlm_proxy_key}, #{resource_type}, #{sub_type}, #{ip_addr}, #{port}, #{org_index}, #{org_name}, #{place_code}, #{place}, #{is_online}, #{producer}, #{producer_name}, #{parent_code}, IFNULL(#{zlm_server_id}, 1), IFNULL(#{sva_server_id}, 1), IFNULL(#{monitor_status}, 'STOPPED'), #{create_time}, #{update_time})
+    </insert>
+
+    <update id="updateDevice" parameterType="HDevice">
+        UPDATE h_device
+        <set>
+            <if test="name != null">name = #{name},</if>
+            <if test="stream_source_type != null and stream_source_type != ''">stream_source_type = #{stream_source_type},</if>
+            <if test="direct_source_url != null">direct_source_url = #{direct_source_url},</if>
+            <if test="play_url != null">play_url = #{play_url},</if>
+            <if test="zlm_proxy_key != null">zlm_proxy_key = #{zlm_proxy_key},</if>
+            <if test="resource_type != null">resource_type = #{resource_type},</if>
+            <if test="sub_type != null">sub_type = #{sub_type},</if>
+            <if test="ip_addr != null">ip_addr = #{ip_addr},</if>
+            <if test="port != null and port > 0">port = #{port},</if>
+            <if test="org_index != null">org_index = #{org_index},</if>
+            <if test="org_name != null">org_name = #{org_name},</if>
+            <if test="place_code != null">place_code = #{place_code},</if>
+            <if test="place != null">place = #{place},</if>
+            <if test="is_online != null">is_online = #{is_online},</if>
+            <if test="producer != null">producer = #{producer},</if>
+            <if test="producer_name != null">producer_name = #{producer_name},</if>
+            <if test="parent_code != null">parent_code = #{parent_code},</if>
+            <if test="zlm_server_id != null">zlm_server_id = #{zlm_server_id},</if>
+            <if test="sva_server_id != null">sva_server_id = #{sva_server_id},</if>
+            <if test="monitor_status != null and monitor_status != ''">monitor_status = #{monitor_status},</if>
+            <if test="update_time != null">update_time = #{update_time},</if>
+        </set>
+        WHERE ape_id = #{ape_id}
+    </update>
+
+    <update id="updateMonitorStateByApeId">
+        UPDATE h_device
+        <set>
+            <if test="monitorStatus != null and monitorStatus != ''">monitor_status = #{monitorStatus},</if>
+        </set>
+        WHERE ape_id = #{apeId}
+    </update>
+
+    <update id="updatePlayUrlByApeId">
+        UPDATE h_device
+        SET play_url = #{playUrl}
+        WHERE ape_id = #{apeId}
+    </update>
+
+    <update id="updateZlmProxyKeyByApeId">
+        UPDATE h_device
+        SET zlm_proxy_key = #{zlmProxyKey}
+        WHERE ape_id = #{apeId}
+    </update>
+
+    <delete id="deleteDeviceByApeIds">
+        DELETE FROM h_device
+        WHERE ape_id IN
+        <foreach collection="apeIds" item="apeId" open="(" separator="," close=")">
+            #{apeId}
+        </foreach>
+    </delete>
+
+    <select id="selectDeviceList" parameterType="HDevice" resultMap="HDeviceResult">
+        <include refid="selectDeviceVo"/>
+        <where>
+            <if test="params.org_indexs != null and params.org_indexs != ''">
+                AND org_index IN
+                <foreach collection="params.org_indexs" item="orgIndex" open="(" separator="," close=")">
+                    #{orgIndex}
+                </foreach>
+            </if>
+            <if test="ape_id != null and ape_id != ''">
+                AND ape_id like concat('%', #{ape_id}, '%')
+            </if>
+            <if test="name != null and name != ''">
+                AND `name` like concat('%', #{name}, '%')
+            </if>
+            <if test="ip_addr != null and ip_addr != ''">
+                AND ip_addr like concat('%', #{ip_addr}, '%')
+            </if>
+            <if test="is_online != null and is_online != ''">
+                AND is_online = #{is_online}
+            </if>
+            <if test="monitor_status != null and monitor_status != ''">
+                AND monitor_status = #{monitor_status}
+            </if>
+        </where>
+    </select>
+
+    <select id="getDeviceNum">
+        SELECT COUNT(*) FROM h_device
+    </select>
+
+    <select id="getDeviceNumByOrg">
+        SELECT COUNT(*) FROM h_device
+        <where>
+            <if test="params.org_indexs != null and params.org_indexs != ''">
+                AND org_index IN
+                <foreach collection="params.org_indexs" item="orgIndex" open="(" separator="," close=")">
+                    #{orgIndex}
+                </foreach>
+            </if>
+        </where>
+    </select>
+
+    <select id="getDeviceEnableNum">
+        SELECT COUNT(*) FROM h_device WHERE is_online = 1
+    </select>
+
+    <select id="getDeviceEnableNumByOrg">
+        SELECT COUNT(*) FROM h_device
+        <where>
+            <if test="params.org_indexs != null and params.org_indexs != ''">
+                AND org_index IN
+                <foreach collection="params.org_indexs" item="orgIndex" open="(" separator="," close=")">
+                    #{orgIndex}
+                </foreach>
+            </if>
+            AND is_online = 1
+        </where>
+    </select>
+
+    <select id="selectLDeviceList" parameterType="HDevice" resultMap="HDeviceResult">
+        <include refid="selectDeviceVo"/>
+        <where>
+            <if test="params.org_indexs != null and params.org_indexs != ''">
+                AND org_index IN
+                <foreach collection="params.org_indexs" item="orgIndex" open="(" separator="," close=")">
+                    #{orgIndex}
+                </foreach>
+            </if>
+            <if test="ape_id != null and ape_id != ''">
+                AND ape_id like concat('%', #{ape_id}, '%')
+            </if>
+            <if test="name != null and name != ''">
+                AND `name` like concat('%', #{name}, '%')
+            </if>
+            <if test="ip_addr != null and ip_addr != ''">
+                AND ip_addr like concat('%', #{ip_addr}, '%')
+            </if>
+                AND is_online != 1
+        </where>
+    </select>
+</mapper>

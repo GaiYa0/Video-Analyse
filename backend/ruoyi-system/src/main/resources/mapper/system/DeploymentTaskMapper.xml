@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.system.mapper.DeploymentTaskMapper">
+
+    <resultMap type="DeploymentTask" id="DeploymentTaskResult">
+        <result property="deploymentId" column="deployment_id" />
+        <result property="taskName" column="task_name" />
+        <result property="deviceId" column="device_id" />
+        <result property="algorithmCode" column="algorithm_code" />
+        <result property="algorithmName" column="algorithm_name" />
+        <result property="targetCode" column="target_code" />
+        <result property="pushEnabled" column="push_enabled" />
+        <result property="frontendOverlayEnabled" column="frontend_overlay_enabled" />
+        <result property="recordEngine" column="record_engine" />
+        <result property="alarmIntervalSec" column="alarm_interval_sec" />
+        <result property="dwellEnabled" column="dwell_enabled" />
+        <result property="dwellThresholdMs" column="dwell_threshold_ms" />
+        <result property="aiReviewEnabled" column="ai_review_enabled" />
+        <result property="aiReviewPrompt" column="ai_review_prompt" />
+        <result property="remark" column="remark" />
+        <result property="geometryConfig" column="geometry_config" />
+        <result property="streamUrl" column="stream_url" />
+        <result property="pushStreamUrl" column="push_stream_url" />
+        <result property="algorithmStreamUrl" column="algorithm_stream_url" />
+        <result property="status" column="status" />
+        <result property="startTime" column="start_time" />
+        <result property="stopTime" column="stop_time" />
+        <result property="createTime" column="create_time" />
+        <result property="updateTime" column="update_time" />
+    </resultMap>
+
+    <sql id="selectDeploymentTaskVo">
+        select deployment_id,
+               task_name,
+               device_id,
+               algorithm_code,
+               algorithm_name,
+               target_code,
+               push_enabled,
+               frontend_overlay_enabled,
+               record_engine,
+               alarm_interval_sec,
+               dwell_enabled,
+               dwell_threshold_ms,
+               ai_review_enabled,
+               ai_review_prompt,
+               remark,
+               geometry_config,
+               stream_url,
+               push_stream_url,
+               algorithm_stream_url,
+               status,
+               start_time,
+               stop_time,
+               create_time,
+               update_time
+          from deployment_task
+    </sql>
+
+    <insert id="insertDeploymentTask" parameterType="DeploymentTask">
+        insert into deployment_task (
+            deployment_id,
+            task_name,
+            device_id,
+            algorithm_code,
+            algorithm_name,
+            target_code,
+            push_enabled,
+            frontend_overlay_enabled,
+            record_engine,
+            alarm_interval_sec,
+            dwell_enabled,
+            dwell_threshold_ms,
+            ai_review_enabled,
+            ai_review_prompt,
+            remark,
+            geometry_config,
+            stream_url,
+            push_stream_url,
+            algorithm_stream_url,
+            status,
+            create_time,
+            update_time
+        ) values (
+            #{deploymentId},
+            #{taskName},
+            #{deviceId},
+            #{algorithmCode},
+            #{algorithmName},
+            #{targetCode},
+            #{pushEnabled},
+            #{frontendOverlayEnabled},
+            #{recordEngine},
+            #{alarmIntervalSec},
+            #{dwellEnabled},
+            #{dwellThresholdMs},
+            #{aiReviewEnabled},
+            #{aiReviewPrompt},
+            #{remark},
+            #{geometryConfig},
+            #{streamUrl},
+            #{pushStreamUrl},
+            #{algorithmStreamUrl},
+            #{status},
+            #{createTime},
+            #{updateTime}
+        )
+    </insert>
+
+    <update id="updateDeploymentTask" parameterType="DeploymentTask">
+        update deployment_task
+           set task_name = #{taskName},
+               device_id = #{deviceId},
+               algorithm_code = #{algorithmCode},
+               algorithm_name = #{algorithmName},
+               target_code = #{targetCode},
+               push_enabled = #{pushEnabled},
+               frontend_overlay_enabled = #{frontendOverlayEnabled},
+               record_engine = #{recordEngine},
+               alarm_interval_sec = #{alarmIntervalSec},
+               dwell_enabled = #{dwellEnabled},
+               dwell_threshold_ms = #{dwellThresholdMs},
+               ai_review_enabled = #{aiReviewEnabled},
+               ai_review_prompt = #{aiReviewPrompt},
+               remark = #{remark},
+               geometry_config = #{geometryConfig},
+               stream_url = #{streamUrl},
+               push_stream_url = #{pushStreamUrl},
+               algorithm_stream_url = #{algorithmStreamUrl},
+               update_time = #{updateTime}
+         where deployment_id = #{deploymentId}
+    </update>
+
+    <select id="selectDeploymentTaskById" parameterType="String" resultMap="DeploymentTaskResult">
+        <include refid="selectDeploymentTaskVo" />
+        where deployment_id = #{deploymentId}
+    </select>
+
+    <select id="selectDeploymentTaskList" parameterType="DeploymentTask" resultMap="DeploymentTaskResult">
+        <include refid="selectDeploymentTaskVo" />
+        <where>
+            <if test="status != null and status != ''">
+                and status = #{status}
+            </if>
+            <if test="taskName != null and taskName != ''">
+                and task_name like concat('%', #{taskName}, '%')
+            </if>
+            <if test="deploymentId != null and deploymentId != ''">
+                and deployment_id = #{deploymentId}
+            </if>
+        </where>
+        order by update_time desc
+    </select>
+
+    <update id="updateDeploymentTaskStart">
+        update deployment_task
+           set status = #{status},
+               start_time = #{startTime},
+               stop_time = null,
+               update_time = #{updateTime}
+         where deployment_id = #{deploymentId}
+    </update>
+
+    <update id="updateDeploymentTaskStop">
+        update deployment_task
+           set status = #{status},
+               stop_time = #{stopTime},
+               update_time = #{updateTime}
+         where deployment_id = #{deploymentId}
+    </update>
+
+</mapper>

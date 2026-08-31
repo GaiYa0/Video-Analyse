@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.waring.mapper.HDistMapper">
+
+    <resultMap type="com.ruoyi.waring.domain.HDist" id="HDistResult">
+        <result property="d_id" column="d_id"/>
+        <result property="id" column="id"/>
+        <result property="person_name" column="person_name"/>
+        <result property="pass_time" column="pass_time"/>
+        <result property="person_no" column="person_no"/>
+        <result property="index_path_name" column="index_path_name"/>
+        <result property="pass_time_exc" column="pass_time_exc"/>
+        <result property="pass_time_ms" column="pass_time_ms"/>
+        <result property="site_name" column="site_name"/>
+        <result property="attendance_identification" column="attendance_identification"/>
+        <result property="attendance_identification_absolute" column="attendance_identification_absolute"/>
+        <result property="type" column="type"/>
+    </resultMap>
+
+    <sql id="selectDistVo">
+        SELECT
+            d_id,
+            id,
+            person_name,
+            pass_time,
+            person_no,
+            index_path_name,
+            pass_time_exc,
+            pass_time_ms,
+            site_name,
+            attendance_identification,
+            attendance_identification_absolute,
+            type
+        FROM
+            h_dist
+    </sql>
+
+    <insert id="insertDist">
+        INSERT INTO h_dist
+        (id, person_name, pass_time, person_no, index_path_name, pass_time_exc, pass_time_ms, site_name, attendance_identification, attendance_identification_absolute, type)
+        VALUES
+            (#{id}, #{person_name}, #{pass_time}, #{person_no}, #{index_path_name}, #{pass_time_exc}, #{pass_time_ms}, #{site_name}, #{attendance_identification}, #{attendance_identification_absolute}, #{type})
+    </insert>
+
+    <select id="selectDistList">
+        <include refid="selectDistVo"/>
+        <where>
+            <if test="begin != null and begin != ''"><!-- 开始时间检索 -->
+                AND UNIX_TIMESTAMP(pass_time) &gt;= #{begin}
+            </if>
+            <if test="end != null and end != ''"><!-- 结束时间检索 -->
+                AND UNIX_TIMESTAMP(pass_time) &lt;= #{end}
+            </if>
+            <if test="type != null and type != ''"><!-- 结束时间检索 -->
+                AND type = #{type}
+            </if>
+        </where>
+        ORDER BY
+        pass_time
+        DESC
+    </select>
+
+    <select id="getId">
+        select count(*) from h_dist where `id` = #{id}
+    </select>
+
+    <select id="getChao">
+        SELECT
+            count(DISTINCT ( person_name )) as num,site_name
+        FROM
+            h_dist
+        WHERE
+            pass_time >= DATE_SUB( NOW(), INTERVAL 5 MINUTE )
+        GROUP BY site_name
+    </select>
+</mapper>

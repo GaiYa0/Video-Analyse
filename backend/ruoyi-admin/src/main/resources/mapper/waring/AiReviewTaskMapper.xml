@@ -1,0 +1,163 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.waring.mapper.AiReviewTaskMapper">
+
+    <resultMap id="AiReviewTaskResult" type="com.ruoyi.waring.domain.AiReviewTask">
+        <result property="id" column="id"/>
+        <result property="wId" column="w_id"/>
+        <result property="reviewType" column="review_type"/>
+        <result property="mediaUrl" column="media_url"/>
+        <result property="promptSnapshot" column="prompt_snapshot"/>
+        <result property="serverId" column="server_id"/>
+        <result property="status" column="status"/>
+        <result property="retryCount" column="retry_count"/>
+        <result property="maxRetries" column="max_retries"/>
+        <result property="nextRetryTime" column="next_retry_time"/>
+        <result property="startedTime" column="started_time"/>
+        <result property="finishedTime" column="finished_time"/>
+        <result property="errorMessage" column="error_message"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateTime" column="update_time"/>
+    </resultMap>
+
+    <insert id="insertTask" parameterType="com.ruoyi.waring.domain.AiReviewTask" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO h_alarm_review_task (
+            w_id,
+            review_type,
+            media_url,
+            prompt_snapshot,
+            server_id,
+            status,
+            retry_count,
+            max_retries,
+            next_retry_time,
+            started_time,
+            finished_time,
+            error_message,
+            create_time,
+            update_time
+        ) VALUES (
+            #{wId},
+            #{reviewType},
+            #{mediaUrl},
+            #{promptSnapshot},
+            #{serverId},
+            #{status},
+            #{retryCount},
+            #{maxRetries},
+            #{nextRetryTime},
+            #{startedTime},
+            #{finishedTime},
+            #{errorMessage},
+            #{createTime},
+            #{updateTime}
+        )
+    </insert>
+
+    <select id="selectById" resultMap="AiReviewTaskResult">
+        SELECT id,
+               w_id,
+               review_type,
+               media_url,
+               prompt_snapshot,
+               server_id,
+               status,
+               retry_count,
+               max_retries,
+               next_retry_time,
+               started_time,
+               finished_time,
+               error_message,
+               create_time,
+               update_time
+        FROM h_alarm_review_task
+        WHERE id = #{id}
+        LIMIT 1
+    </select>
+
+    <select id="countOpenTasksByWarningId" resultType="int">
+        SELECT COUNT(*)
+        FROM h_alarm_review_task
+        WHERE w_id = #{wId}
+          AND status IN ('PENDING', 'RUNNING')
+    </select>
+
+    <select id="selectPendingBatch" resultMap="AiReviewTaskResult">
+        SELECT id,
+               w_id,
+               review_type,
+               media_url,
+               prompt_snapshot,
+               server_id,
+               status,
+               retry_count,
+               max_retries,
+               next_retry_time,
+               started_time,
+               finished_time,
+               error_message,
+               create_time,
+               update_time
+        FROM h_alarm_review_task
+        WHERE (status = 'PENDING'
+               OR (status = 'FAILED' AND retry_count &lt; max_retries AND next_retry_time IS NOT NULL AND next_retry_time &lt;= #{now}))
+        ORDER BY CASE WHEN status = 'PENDING' THEN 0 ELSE 1 END, id ASC
+        LIMIT #{limit}
+    </select>
+
+    <update id="claimPendingTask">
+        UPDATE h_alarm_review_task
+        SET status = 'RUNNING',
+            started_time = #{startedTime},
+            update_time = #{updateTime},
+            error_message = NULL
+        WHERE id = #{id}
+          AND status = 'PENDING'
+    </update>
+
+    <update id="claimRetryTask">
+        UPDATE h_alarm_review_task
+        SET status = 'RUNNING',
+            started_time = #{startedTime},
+            update_time = #{updateTime},
+            error_message = NULL
+        WHERE id = #{id}
+          AND status = 'FAILED'
+          AND retry_count &lt; max_retries
+          AND next_retry_time IS NOT NULL
+          AND next_retry_time &lt;= #{now}
+    </update>
+
+    <update id="markSuccess">
+        UPDATE h_alarm_review_task
+        SET status = 'SUCCESS',
+            server_id = #{serverId},
+            finished_time = #{finishedTime},
+            update_time = #{updateTime},
+            next_retry_time = NULL,
+            error_message = NULL
+        WHERE id = #{id}
+    </update>
+
+    <update id="markFailed">
+        UPDATE h_alarm_review_task
+        SET status = 'FAILED',
+            server_id = #{serverId},
+            retry_count = #{retryCount},
+            next_retry_time = #{nextRetryTime},
+            error_message = #{errorMessage},
+            finished_time = #{finishedTime},
+            update_time = #{updateTime}
+        WHERE id = #{id}
+    </update>
+
+    <update id="markSkipped">
+        UPDATE h_alarm_review_task
+        SET status = 'SKIPPED',
+            error_message = #{errorMessage},
+            finished_time = #{finishedTime},
+            update_time = #{updateTime},
+            next_retry_time = NULL
+        WHERE id = #{id}
+    </update>
+</mapper>

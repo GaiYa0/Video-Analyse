@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.system.mapper.ScreenWallStreamMapper">
+
+    <resultMap id="ScreenWallStreamResult" type="ScreenWallStream">
+        <result property="id" column="id" />
+        <result property="wallCode" column="wall_code" />
+        <result property="sourceType" column="source_type" />
+        <result property="sourceId" column="source_id" />
+        <result property="deviceId" column="device_id" />
+        <result property="playUrl" column="play_url" />
+        <result property="title" column="title" />
+        <result property="slotIndex" column="slot_index" />
+        <result property="enabled" column="enabled" />
+        <result property="createTime" column="create_time" />
+        <result property="updateTime" column="update_time" />
+    </resultMap>
+
+    <sql id="selectScreenWallStreamVo">
+        select id,
+               wall_code,
+               source_type,
+               source_id,
+               device_id,
+               play_url,
+               title,
+               slot_index,
+               enabled,
+               create_time,
+               update_time
+          from h_screen_wall_stream
+    </sql>
+
+    <select id="selectScreenWallStreamById" parameterType="Long" resultMap="ScreenWallStreamResult">
+        <include refid="selectScreenWallStreamVo" />
+        where id = #{id}
+    </select>
+
+    <select id="selectByWallCodeAndDeviceId" resultMap="ScreenWallStreamResult">
+        <include refid="selectScreenWallStreamVo" />
+        where wall_code = #{wallCode}
+          and device_id = #{deviceId}
+        limit 1
+    </select>
+
+    <select id="selectByWallCodeAndSlotIndex" resultMap="ScreenWallStreamResult">
+        <include refid="selectScreenWallStreamVo" />
+        where wall_code = #{wallCode}
+          and slot_index = #{slotIndex}
+        limit 1
+    </select>
+
+    <select id="selectEnabledListByWallCode" resultMap="ScreenWallStreamResult">
+        <include refid="selectScreenWallStreamVo" />
+        where wall_code = #{wallCode}
+          and enabled = 1
+        order by slot_index asc, update_time desc
+    </select>
+
+    <insert id="insertScreenWallStream" parameterType="ScreenWallStream" useGeneratedKeys="true" keyProperty="id">
+        insert into h_screen_wall_stream (
+            wall_code,
+            source_type,
+            source_id,
+            device_id,
+            play_url,
+            title,
+            slot_index,
+            enabled,
+            create_time,
+            update_time
+        ) values (
+            #{wallCode},
+            #{sourceType},
+            #{sourceId},
+            #{deviceId},
+            #{playUrl},
+            #{title},
+            #{slotIndex},
+            #{enabled},
+            #{createTime},
+            #{updateTime}
+        )
+    </insert>
+
+    <update id="updateScreenWallStream" parameterType="ScreenWallStream">
+        update h_screen_wall_stream
+           set source_type = #{sourceType},
+               source_id = #{sourceId},
+               device_id = #{deviceId},
+               play_url = #{playUrl},
+               title = #{title},
+               slot_index = #{slotIndex},
+               enabled = #{enabled},
+               update_time = #{updateTime}
+         where id = #{id}
+    </update>
+
+    <delete id="deleteScreenWallStreamById" parameterType="Long">
+        delete from h_screen_wall_stream where id = #{id}
+    </delete>
+
+</mapper>

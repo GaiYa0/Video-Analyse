@@ -1,0 +1,6 @@
+---
+description: easySVA 三人协作：先读角色手册和 PR 规范
+alwaysApply: true
+---
+
+开始任何实现前阅读 `AGENTS.md`、`docs/分工.md`、当前角色的 `docs/roles/` 手册，以及 `docs/PR规范.md`。按角色限制可写路径。未过验收点 1 时不要写 GB28181 或睡岗业务代码。不要在 macOS 上跑官方安装脚本。

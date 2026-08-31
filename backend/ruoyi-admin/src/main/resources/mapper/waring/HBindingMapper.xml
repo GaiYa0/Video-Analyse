@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.waring.mapper.HBindingMapper">
+
+    <resultMap type="com.ruoyi.waring.domain.HBinding" id="HBindingResult">
+        <result property="b_id" column="b_id"/>
+        <result property="device_name" column="device_name"/>
+        <result property="device_index" column="device_index"/>
+        <result property="team_name" column="team_name"/>
+    </resultMap>
+    <select id="getTeam">
+        select team_name from h_binding where device_index = #{device}
+    </select>
+
+    <select id="getTeamWaring">
+        select DISTINCT team_name from h_binding
+    </select>
+</mapper>

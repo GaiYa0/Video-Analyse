@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.waring.mapper.HPersonMapper">
+
+    <resultMap type="com.ruoyi.waring.domain.HPerson" id="HPersonResult">
+        <result property="p_id" column="p_id"/>
+        <result property="statistic_time" column="statistic_time"/>
+        <result property="statistic_in_person_count" column="statistic_in_person_count"/>
+        <result property="statistic_out_person_count" column="statistic_out_person_count"/>
+        <result property="statistic_person_count" column="statistic_person_count"/>
+        <result property="area_name" column="area_name"/>
+    </resultMap>
+    <sql id="selectPersonVo">
+        select
+            p_id,
+            statistic_time,
+            statistic_in_person_count,
+            statistic_out_person_count,
+            statistic_person_count,
+            area_name
+        from
+            h_person
+    </sql>
+
+    <insert id="insertPerson">
+        INSERT INTO h_person
+        (statistic_time, statistic_in_person_count, statistic_out_person_count, statistic_person_count, area_name)
+        VALUES
+            (#{statistic_time}, #{statistic_in_person_count}, #{statistic_out_person_count}, #{statistic_person_count}, #{area_name})
+    </insert>
+</mapper>

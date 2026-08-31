@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.waring.mapper.HHandleMapper">
+
+    <resultMap type="com.ruoyi.waring.domain.HHandle" id="HHandleResult">
+        <result property="h_id" column="h_id"/>
+        <result property="w_id" column="w_id"/>
+        <result property="h_title" column="h_title"/>
+        <result property="h_remark" column="h_remark"/>
+        <result property="h_create_time" column="h_create_time"/>
+        <result property="h_org_index" column="h_org_index"/>
+        <result property="h_org_name" column="h_org_name"/>
+        <result property="h_time" column="h_time"/>
+    </resultMap>
+
+    <sql id="selectHandleVo">
+        SELECT
+            h_id,
+            w_id,
+            h_title,
+            h_remark,
+            h_create_time,
+            h_org_index,
+            h_org_name,
+            h_time
+        FROM
+            h_handle
+    </sql>
+
+    <insert id="insertHandle">
+        INSERT INTO h_handle
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="h_id != null">h_id,</if>
+            <if test="w_id != null">w_id,</if>
+            <if test="h_title != null">h_title,</if>
+            <if test="h_remark != null">h_remark,</if>
+            <if test="h_create_time != null">h_create_time,</if>
+            <if test="h_org_index != null">h_org_index,</if>
+            <if test="h_org_name != null">h_org_name,</if>
+            <if test="h_time != null">h_time,</if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="h_id != null">#{h_id},</if>
+            <if test="w_id != null">#{w_id},</if>
+            <if test="h_title != null">#{h_title},</if>
+            <if test="h_remark != null">#{h_remark},</if>
+            <if test="h_create_time != null">#{h_create_time},</if>
+            <if test="h_org_index != null">#{h_org_index},</if>
+            <if test="h_org_name != null">#{h_org_name},</if>
+            <if test="h_time != null">#{h_time},</if>
+        </trim>
+    </insert>
+
+    <select id="getHandleData" parameterType="HHandle" resultType="map">
+        SELECT h_handle.h_org_name, h_handle.h_create_time, h_waring.w_id, h_waring.device_name, h_waring.alarm_type_name FROM h_handle INNER JOIN h_waring ON h_waring.w_id = h_handle.w_id WHERE h_waring.is_handle = 1 AND h_waring.is_enable = 1 ORDER BY h_create_time DESC LIMIT 10;
+    </select>
+
+    <select id="getHandleDataByOrgIndex" parameterType="HHandle" resultType="map">
+        SELECT h_handle.h_org_name, h_handle.h_create_time,h_waring.w_id, h_waring.device_name, h_waring.alarm_type_name FROM h_handle INNER JOIN h_waring ON h_waring.w_id = h_handle.w_id WHERE h_waring.is_handle = 1 AND h_waring.is_enable = 1 AND h_handle.h_org_index = #{params.org_index} ORDER BY h_create_time DESC LIMIT 10;
+    </select>
+
+    <select id="getTestData">
+        SELECT
+            h_waring.w_id,
+            h_waring.alarm_type_name,
+            h_waring.alarm_level_name,
+            h_waring.device_name,
+            h_waring.picture_absolute_url,
+            h_waring.org_name,
+            h_waring.team,
+            h_waring.device_id,
+            h_waring.alarm_time,
+            h_waring.is_handle,
+            h_waring.ip
+        FROM h_handle INNER JOIN h_waring ON h_waring.w_id = h_handle.w_id
+        <where>
+            <if test="alarm_type_name != null and alarm_type_name != ''">
+                AND h_waring.alarm_type_name like concat('%', #{alarm_type_name}, '%')
+            </if>
+            <if test="alarm_level_name != null and alarm_level_name != ''">
+                AND h_waring.alarm_level_name like concat('%', #{alarm_level_name}, '%')
+            </if>
+            <if test="device_name != null and device_name != ''">
+                AND h_waring.device_name like concat('%', #{device_name}, '%')
+            </if>
+            <if test="org_name != null and org_name != ''">
+                AND h_waring.org_name like concat('%', #{org_name}, '%')
+            </if>
+            <if test="begin != null and begin != ''"><!-- 开始时间检索 -->
+                AND UNIX_TIMESTAMP(h_waring.alarm_time) &gt;= #{begin}
+            </if>
+            <if test="end != null and end != ''"><!-- 结束时间检索 -->
+                AND UNIX_TIMESTAMP(h_waring.alarm_time) &lt;= #{end}
+            </if>
+            <if test="team != null and team != ''">
+                AND h_waring.team = #{team}
+            </if>
+                AND h_handle.h_remark = "测试"
+        </where>
+        ORDER BY
+        alarm_time
+        DESC
+    </select>
+</mapper>
