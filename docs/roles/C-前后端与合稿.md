@@ -18,8 +18,7 @@
 
 - `backend/` 业务：设备表、布控规则、告警类型与入库、查询接口（**不含** A 负责的 ZLM REST/Hook 客户端）
 - `web/`：设备列表、布控、告警、预览相关页面
-- `docs/分工.md`、`docs/当前阶段.md`、`docs/architecture.md`（总图、目录、把 A/B 章节链进去）
-- `docs/user-manual.md`、演示 PPT/视频的目录与剪辑说明
+- `docs/分工.md`、`docs/当前阶段.md`、`docs/architecture.md`（小组只维护这一份架构文）
 - `.github/`（PR 模板等协作文件）
 
 ## 不要改
@@ -41,9 +40,9 @@
 
 1. 建 GitHub monorepo，导入 `backend/` `web/` `server/` `mediaServer/`，加 A、B 为 Collaborator，保护 `main`
 2. 确认三人读过 [../PR规范.md](../PR规范.md)
-3. 在浏览器走通：登录 → 设备管理加 RTSP → 预览 → 布控 → 告警截图，写成操作步骤（给验收老师照做）
-4. 写 `docs/architecture.md`：仓库拓扑、端到端数据流总图、三张核心表的索引；**流媒体章留给 A，分析器章留给 B**
-5. 提醒三人给 Gitee 上游五仓点 Star（课件要检查）
+3. 审查同学 A 的部署 PR；用浏览器（或 A 的演示机 IP）走通登录 → 设备 → 预览 → 布控 → 告警，把步骤写进 `docs/architecture.md` 末节，**不要另开操作手册**
+4. 只维护 `docs/architecture.md`：拓扑、数据流、三张表索引；流媒体细节链 A，分析器链 B
+5. 提醒三人给 Gitee 上游五仓点 Star；合并文档 PR，不要直推 `main` 堆新 md
 
 ### 验收点 2
 
@@ -55,7 +54,7 @@
 
 ### 验收点 4
 
-使用手册结构、演示视频剪辑、PPT 目录由你串。A 提供部署片段，B 提供算法片段，你不从零写完全部讲稿。
+使用手册、演示视频、PPT 并进答辩材料或 `architecture.md`，不另开一堆 md。A 提供部署片段，B 提供算法片段。
 
 ## 架构文档最低目录（你负责搭架子）
 
