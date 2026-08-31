@@ -4,6 +4,7 @@
 
 **一句话：同学 A 守住 Ubuntu 演示机并主攻国标流媒体，同学 B 主攻睡岗并和 A 完成 C++ 集成，同学 C 主攻前后端与合稿。**
 
+- 当前阶段（AI 以这份为准）：[docs/当前阶段.md](docs/当前阶段.md)
 - 总览：[docs/分工.md](docs/分工.md)
 - PR：[docs/PR规范.md](docs/PR规范.md)
 - 给 AI：[AGENTS.md](AGENTS.md)

@@ -1,6 +1,6 @@
 # 角色手册：同学 C（前后端与合稿）
 
-给协作 AI：你正在协助**同学 C（Mac）**。先读 [../分工.md](../分工.md) 和 [../PR规范.md](../PR规范.md)。不要在 macOS 上跑 easySVA 官方安装脚本，不要代写 A/B 的章节正文，不要改 `server/` 推理或 `mediaServer` 配置。
+给协作 AI：你正在协助**同学 C（Mac）**。先读 [../当前阶段.md](../当前阶段.md)、[../分工.md](../分工.md) 和 [../PR规范.md](../PR规范.md)。不要在 macOS 上跑 easySVA 官方安装脚本，不要代写 A/B 的章节正文，不要改 `server/` 推理或 `mediaServer` 配置。
 
 ## 一句话
 
@@ -18,7 +18,7 @@
 
 - `backend/` 业务：设备表、布控规则、告警类型与入库、查询接口（**不含** A 负责的 ZLM REST/Hook 客户端）
 - `web/`：设备列表、布控、告警、预览相关页面
-- `docs/分工.md`、`docs/architecture.md`（总图、目录、把 A/B 章节链进去）
+- `docs/分工.md`、`docs/当前阶段.md`、`docs/architecture.md`（总图、目录、把 A/B 章节链进去）
 - `docs/user-manual.md`、演示 PPT/视频的目录与剪辑说明
 - `.github/`（PR 模板等协作文件）
 
@@ -37,7 +37,7 @@
 
 ## 四个验收点
 
-### 验收点 1（现在，禁止做新功能开发）
+### 验收点 1
 
 1. 建 GitHub monorepo，导入 `backend/` `web/` `server/` `mediaServer/`，加 A、B 为 Collaborator，保护 `main`
 2. 确认三人读过 [../PR规范.md](../PR规范.md)
@@ -64,7 +64,7 @@
 3. 端到端数据流图
 4. 设备 / 布控 / 告警表（链到细节或自己列字段）
 5. 链到 A《流媒体》、B《分析器》
-6. 后续切入点（只写将改哪里，第一阶段不写实现代码）
+6. 后续切入点（只写将改哪里）
 
 ## 开 PR 时
 
