@@ -110,19 +110,27 @@ jdbc:mysql://127.0.0.1:3307/easySVA?...
 
 ## 5. 日常启动（重启电脑 / 重启 WSL 后）
 
-在 **Windows PowerShell** 执行（路径以本机 clone 位置为准）：
+在 **Windows PowerShell** 进入仓库根目录，一键启动：
+
+```powershell
+cd E:\video-analysis\Video-Analyse-main
+.\scripts\start_easysva.ps1
+```
+
+需要同时推测试流（cup.mp4 → RTMP）：
+
+```powershell
+.\scripts\start_easysva.ps1 -WithStream
+```
+
+也可直接调 WSL 脚本（路径随 clone 位置变化）：
 
 ```powershell
 wsl -d Ubuntu-22.04 -u root -- bash /mnt/e/video-analysis/Video-Analyse-main/scripts/start_easysva.sh
+wsl -d Ubuntu-22.04 -u root -- bash /mnt/e/video-analysis/Video-Analyse-main/scripts/start_easysva.sh --with-stream
 ```
 
-或 D 盘：
-
-```powershell
-wsl -d Ubuntu-22.04 -u root -- bash /mnt/d/video-analysis/Video-Analyse-main/scripts/start_easysva.sh
-```
-
-脚本会：启动 MariaDB(3307) → Nginx → backend(9114) → MediaServer → Analyzer，并做简单健康检查。
+脚本会：MariaDB(3307) → Redis → Nginx → backend(9114) → MediaServer → Analyzer，并做健康检查。若在 Windows 上编辑过 `.sh` 导致 CRLF，脚本会自动修复换行符。
 
 **手动检查：**
 
@@ -192,16 +200,27 @@ tail -50 /opt/SVA/server/log.out
 
 
 
-## 9. 给 成员 的访问信息
+## 9. 给成员的访问信息
 
+| 项目 | 值 |
+| --- | --- |
+| 本机浏览器 | `http://localhost/` 或 `http://localhost:8080/` |
+| 同学访问（局域网） | `http://<你的IP>:8080/`（**不要用 `:80`**） |
+| 账号 | `admin` / `admin123` |
+| 重启后 | 先 `.\scripts\start_easysva.ps1`，同学连不上再运行 `.\scripts\setup_windows_lan_access.ps1`（管理员） |
 
-| 项目     | 值                                               |
-| ------ | ----------------------------------------------- |
-| 演示 URL | `http://<演示机IP>/`（本机可用 `http://localhost/`）     |
-| 账号     | `admin` / `admin123`                            |
-| 后端 API | `http://<IP>:9114/`（页面通过 Nginx `/prod-api/` 代理） |
-| 重启后    | 由 A 执行 `start_easysva.sh` 后再测                   |
+**为什么不用 `http://10.x.x.x/`（80 端口）？**
 
+本机 `.wslconfig` 使用 `networkingMode=mirrored`，WSL 与 Windows 共用 WLAN IP。在本机浏览器访问自己的局域网 IP + 80 端口常会失败；若还开了 Clash（`127.0.0.1:7890`），请求会被代理成 502/超时。
+
+**一次性配置局域网（管理员 PowerShell）：**
+
+```powershell
+cd E:\video-analysis\Video-Analyse-main
+.\scripts\setup_windows_lan_access.ps1
+```
+
+会放行防火墙 80/8080，并设置 `8080 → WSL 80` 转发。配置好后同学用 `http://<IP>:8080/`。
 
 WSL IP 查看：`wsl -d Ubuntu-22.04 -- hostname -I`
 
@@ -213,7 +232,8 @@ WSL IP 查看：`wsl -d Ubuntu-22.04 -- hostname -I`
 | 添加设备 / 拉流 **连接超时**                     | 公网 RTSP 不可达，或误用 554 端口                                        | 用本机 RTMP 9995 推流                  |
 | 保存布控报「geometryConfig 至少需要一个 3 点以上的主区域」 | 未画检测区域                                                        | 左侧点「区域对齐」或手动画区并设主区域               |
 | 顶部 `live-output` 404                   | 前端调用 `POST /deployments/{id}/live-output`，当前安装的后端 **未实现** 该接口 | 可忽略；以报警列表为准，勿依赖布控详情页算法预览流         |
-| 重启后网页 502                              | 后端未起或连错数据库                                                    | 执行 `start_easysva.sh`             |
+| 本机 / 同学打不开 `http://<IP>/` 或 `:8080` | WSL mirrored；**Clash/VPN 劫持局域网**；防火墙未放行 | **先关 VPN/Clash**；同学用 `http://<IP>:8080/`；管理员运行 `setup_windows_lan_access.ps1` 或 `open_lan_firewall.bat` |
+| 重启后网页 502 | 后端未起或连错数据库 | 执行 `start_easysva.ps1` |
 | MariaDB 启动失败                           | Windows MySQL 占 3306                                          | 使用 MariaDB **3307** + 后端 JDBC 改端口 |
 
 
@@ -225,5 +245,6 @@ WSL IP 查看：`wsl -d Ubuntu-22.04 -- hostname -I`
 | 日期         | 说明                                             |
 | ---------- | ---------------------------------------------- |
 | 2026-08-31 | 初稿：WSL2 + D 盘、GPU 安装、3307/9994/9995、验收点 1 跑通记录 |
+| 2026-08-31 | 一键启动 `start_easysva.ps1`；局域网 `:8080`；关 Clash/VPN 才能互访 |
 
 
