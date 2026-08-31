@@ -25,7 +25,7 @@
 
 - `mediaServer/conf` 与 SIP 配置
 - `server/` 模型、推理、取流
-- A 的 `deploy-notes.md` / 流媒体章正文、B 的分析器章 / 算法说明正文（你可以改目录和错字，不改技术结论）
+- A 的 `deploy-notes.md`、以及 `architecture.md` 里直连流媒体实测节（可改目录和错字，不改端口和路径结论）
 - 在未与 B 签字前「发明」一套睡岗告警字段
 
 ## 和谁对接

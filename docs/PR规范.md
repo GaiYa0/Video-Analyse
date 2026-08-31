@@ -24,7 +24,7 @@ chore/<简述>            仓库杂务（gitignore、脚本）
 
 | 角色 | 可以改 | 未经商量禁止改 |
 | --- | --- | --- |
-| A | `mediaServer/`（尤其配置）、`backend/` 里调 ZLM REST/Hook 的客户端与接口、`docs/deploy-notes.md`、`docs/architecture-streaming.md`、`docs/deploy-manual.md` | `web/` 页面、设备表结构、睡岗算法与 `server/` 推理逻辑 |
+| A | `mediaServer/`（尤其配置）、`backend/` 里调 ZLM REST/Hook 的客户端与接口、`docs/deploy-notes.md`、`docs/architecture.md` 流媒体实测节 | `web/` 页面、设备表结构、睡岗算法与 `server/` 推理逻辑 |
 | B | `server/`、`docs/fixtures/`、`server/models/` 或约定模型目录、睡岗 Python 原型目录、`docs/architecture-analyzer.md`、`docs/algorithm-sleep.md` | `web/`、设备表与布控页、ZLM `config.ini` 国标段、`docs` 里 A/C 的章节 |
 | C | `backend/` 业务（设备表、布控、告警）、`web/`、`docs/分工.md`、`docs/当前阶段.md`、`docs/architecture.md`、`.github/` | `mediaServer/conf`、`server/` 推理与模型、在 Mac 上提交「我改过官方安装脚本」之类部署改动 |
 

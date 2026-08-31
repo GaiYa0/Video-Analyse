@@ -7,11 +7,10 @@
 | 文档 | 说明 |
 | --- | --- |
 | [docs/当前阶段.md](docs/当前阶段.md) | 当前 `phase` 与阶段禁令（AI 以这份为准） |
-| [docs/architecture.md](docs/architecture.md) | **同学 C**：架构总图、三张表、P1 走查 |
+| [docs/architecture.md](docs/architecture.md) | 架构总图 + 直连流媒体实测（C 合稿，张柏烁并入） |
 | [docs/分工.md](docs/分工.md) | 三人分工总览 |
 | [docs/PR规范.md](docs/PR规范.md) | 分支、commit、PR 要求 |
 | [docs/deploy-notes.md](docs/deploy-notes.md) | **同学 A**：演示机部署与日常启动 |
-| [docs/architecture-streaming.md](docs/architecture-streaming.md) | **同学 A**：流媒体与布控数据流 |
 | [AGENTS.md](AGENTS.md) | 给协作 AI 的须知 |
 
 ```text

@@ -22,7 +22,7 @@
 
 - `mediaServer/`，尤其 `config.ini`（第三阶段开 SIP 5060）
 - `backend/` 里**仅**调用 ZLM REST / Hook 的客户端、同步设备接口
-- `docs/deploy-notes.md`、`docs/architecture-streaming.md`、`docs/deploy-manual.md`
+- `docs/deploy-notes.md`、`docs/architecture.md` 里的流媒体实测节
 
 ## 不要改
 
@@ -46,7 +46,7 @@
 3. 重启后四服务起来：backend、Analyzer、ZLMediaKit、MariaDB
 4. 把 80 / 9114 / ZLM 相关端口给 B、C 能访问
 5. 亲手走通：加 RTSP → 预览 → 原 YOLO 布控 → 告警截图（预览失败先查 H.265 和 IP）
-6. 写 `docs/deploy-notes.md` 和 `docs/architecture-streaming.md`（RTSP 如何进 ZLM、播放地址、在线状态从哪来）
+6. 写 `docs/deploy-notes.md`；流如何进 ZLM、播放地址、在线状态写进 `docs/architecture.md`（不要另开流媒体文档）
 
 官方脚本部署后常见路径（以实际为准，写进笔记）：
 
