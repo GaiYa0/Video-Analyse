@@ -20,6 +20,7 @@ import com.ruoyi.system.domain.DeploymentTask;
 import com.ruoyi.system.service.IDeploymentTaskService;
 import com.ruoyi.system.service.ISysDeptService;
 import com.ruoyi.system.service.ISysUserService;
+import com.ruoyi.waring.Util.AlarmMediaUrls;
 import com.ruoyi.waring.Util.OpcUtil;
 import com.ruoyi.waring.Util.TimeUtil;
 import com.ruoyi.waring.domain.*;
@@ -897,13 +898,13 @@ public class HWaringController extends BaseController implements SvaDetectEventC
         }
 
         if (isAbsoluteMediaUrl(trimmed)) {
-            return trimmed;
+            return AlarmMediaUrls.toBrowserUrl(trimmed);
         }
 
         String relativePath = trimmed.startsWith("/") ? trimmed.substring(1) : trimmed;
         String host = resolveRecordEngineHost(deploymentTask, device);
         if (host == null || host.trim().isEmpty()) {
-            return relativePath;
+            return AlarmMediaUrls.toBrowserUrl(relativePath);
         }
 
         String normalizedHost = host.trim();
@@ -913,7 +914,7 @@ public class HWaringController extends BaseController implements SvaDetectEventC
         if (!normalizedHost.startsWith("http://") && !normalizedHost.startsWith("https://")) {
             normalizedHost = "http://" + normalizedHost;
         }
-        return normalizedHost + "/" + relativePath;
+        return AlarmMediaUrls.toBrowserUrl(normalizedHost + "/" + relativePath);
     }
 
     private void requestZlmRecordTask(HWaring waring, DeploymentTask deploymentTask, HDevice device) {
@@ -1353,7 +1354,7 @@ public class HWaringController extends BaseController implements SvaDetectEventC
     @GetMapping("/list")
     public TableDataInfo list(HWaring waring) {
         List<HWaring> list = hWaringService.selectWaringList(waring, getUserId(), 0);
-        return getDataTable(list);
+        return getDataTable(AlarmMediaUrls.rewrite(list));
     }
 
     /**
@@ -1411,6 +1412,7 @@ public class HWaringController extends BaseController implements SvaDetectEventC
     @GetMapping(value = "/{id}")
     public AjaxResult getOne(@PathVariable int id) {
         Details map = hWaringService.getOne(id);
+        AlarmMediaUrls.rewrite(map);
         return new AjaxResult(200, "操作成功", map);
     }
 
@@ -1419,7 +1421,7 @@ public class HWaringController extends BaseController implements SvaDetectEventC
      */
     @PostMapping("/importTemplate")
     public void importTemplate(HttpServletResponse response, HWaring waring) {
-        List<HWaring> list = hWaringService.selectWaringList(waring, getUserId(), 1);
+        List<HWaring> list = AlarmMediaUrls.rewrite(hWaringService.selectWaringList(waring, getUserId(), 1));
         ExcelUtil<HWaring> util = new ExcelUtil<HWaring>(HWaring.class);
         util.exportExcel(response, list, "报警数据");
     }
@@ -1433,7 +1435,7 @@ public class HWaringController extends BaseController implements SvaDetectEventC
     public TableDataInfo getHistoryWaring(HWaring waring) {
         PageDomain pageDomain = TableSupport.getPageDomain();
         PageHelper.startPage(pageDomain.getPageNum(), pageDomain.getPageSize(), pageDomain.getOrderBy());
-        List<HWaring> list = hWaringService.getHistoryWaring(waring.getDevice_id());
+        List<HWaring> list = AlarmMediaUrls.rewrite(hWaringService.getHistoryWaring(waring.getDevice_id()));
         return getDataTable(list);
     }
 
@@ -1442,7 +1444,7 @@ public class HWaringController extends BaseController implements SvaDetectEventC
      */
     @GetMapping("/getRecondition")
     public TableDataInfo getRecondition(HWaring waring) {
-        List<HWaring> list = hWaringService.selectReconditionList(waring, getUserId());
+        List<HWaring> list = AlarmMediaUrls.rewrite(hWaringService.selectReconditionList(waring, getUserId()));
         return getDataTable(list);
     }
 
@@ -1454,7 +1456,7 @@ public class HWaringController extends BaseController implements SvaDetectEventC
      */
     @GetMapping("getWubao")
     public TableDataInfo getWubao(HWaring waring) {
-        List<HWaring> list = hWaringService.selectWubaoList(waring, getUserId());
+        List<HWaring> list = AlarmMediaUrls.rewrite(hWaringService.selectWubaoList(waring, getUserId()));
         return getDataTable(list);
     }
 

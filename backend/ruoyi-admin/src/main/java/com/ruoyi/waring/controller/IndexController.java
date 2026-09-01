@@ -5,6 +5,7 @@ import com.ruoyi.common.core.controller.BaseController;
 import com.ruoyi.common.core.domain.AjaxResult;
 import com.ruoyi.common.core.domain.entity.SysDept;
 import com.ruoyi.system.service.ISysDeptService;
+import com.ruoyi.waring.Util.AlarmMediaUrls;
 import com.ruoyi.waring.service.HDeviceService;
 import com.ruoyi.waring.service.HHandleService;
 import com.ruoyi.waring.service.HWaringService;
@@ -363,6 +364,7 @@ public class IndexController extends BaseController {
     @GetMapping("/getRealAlarm")
     public AjaxResult getRealAlarm() {
         List<Map<String, Object>> alarm = hWaringService.getWaring(getUserId());
+        AlarmMediaUrls.rewritePictureMaps(alarm);
         return new AjaxResult(200, "操作成功", alarm);
     }
 
@@ -372,6 +374,7 @@ public class IndexController extends BaseController {
     @GetMapping("/getAlarmPhoto")
     public AjaxResult getAlarmPhoto() {
         List<Map<String, Object>> alarm = hWaringService.getAlarmPhoto(getUserId());
+        AlarmMediaUrls.rewritePictureMaps(alarm);
         return new AjaxResult(200, "操作成功", alarm);
     }
 }
