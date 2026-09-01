@@ -5116,20 +5116,27 @@ export default {
 
 <style scoped>
 .deployment-add-page {
+  width: 100%;
+  max-width: 100%;
   min-width: 0;
+  box-sizing: border-box;
+  height: calc(100dvh - 84px);
   min-height: calc(100vh - 84px);
   display: flex;
   flex-direction: column;
   gap: 12px;
   color: var(--sva-text);
+  overflow: hidden;
+  padding: 12px 16px;
 }
 
 .workspace-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  gap: 12px;
   flex-wrap: wrap;
+  flex-shrink: 0;
 }
 
 .workspace-title-wrap {
@@ -5137,20 +5144,24 @@ export default {
   align-items: center;
   gap: 12px;
   min-width: 0;
+  flex: 1 1 220px;
 }
 
 .workspace-actions {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
 }
 
 .workspace-body {
   flex: 1;
   min-height: 0;
+  min-width: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(420px, 520px);
-  gap: 16px;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, clamp(280px, 38%, 560px));
+  gap: 12px;
+  overflow: hidden;
 }
 
 .preview-pane,
@@ -5163,15 +5174,18 @@ export default {
   padding: 12px;
   display: flex;
   flex-direction: column;
+  overflow: auto;
 }
 
-.config-pane {
-  overflow: auto;
+.config-form,
+.config-tabs {
+  min-width: 0;
+  width: 100%;
 }
 
 .preview-meta {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 8px;
   margin-top: 8px;
 }
@@ -5194,19 +5208,24 @@ export default {
 
 .algorithm-number-input {
   width: 100%;
-  min-width: 128px;
+  min-width: 0;
+}
+
+.config-pane .algorithm-task-params-row {
+  display: flex;
+  flex-wrap: wrap;
 }
 
 .config-pane .algorithm-task-params-row .el-col {
-  width: 100%;
+  width: auto;
+  flex: 1 1 148px;
   max-width: 100%;
   margin-bottom: 8px;
 }
 
-
 .rules-workspace {
   display: grid;
-  grid-template-columns: 168px minmax(0, 1fr);
+  grid-template-columns: minmax(120px, 168px) minmax(0, 1fr);
   gap: 12px;
 }
 
@@ -5231,26 +5250,47 @@ export default {
   color: var(--sva-accent);
 }
 
-@media (max-width: 1439px) {
+@media (max-width: 1100px) {
   .workspace-body {
     grid-template-columns: 1fr;
+    overflow: auto;
+  }
+
+  .deployment-add-page {
+    height: auto;
+    overflow: visible;
   }
 
   .video-wrapper {
-    max-height: 40vh;
+    flex: none;
+    max-height: 36dvh;
   }
 
-  .preview-meta,
   .rules-workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .rules-nav {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 720px) {
+  .deployment-add-page {
+    padding: 12px;
+  }
+
+  .preview-meta {
     grid-template-columns: 1fr;
   }
 }
 
 .page-title {
-  font-size: 20px;
+  font-size: clamp(16px, 1.4vw, 20px);
   font-weight: 600;
   color: var(--sva-text);
-  margin-bottom: 16px;
+  margin-bottom: 0;
 }
 
 .card-header {
@@ -5291,9 +5331,10 @@ export default {
 .video-wrapper {
   position: relative;
   width: 100%;
-  flex: 1;
-  min-height: 240px;
-  max-height: calc(100vh - 380px);
+  flex: 1 1 auto;
+  min-height: 160px;
+  max-height: min(52dvh, 720px);
+  aspect-ratio: 16 / 9;
   background: #0f1115;
   border-radius: 4px;
   overflow: hidden;
@@ -5591,7 +5632,7 @@ export default {
 .behavior-rule-section-title {
   font-size: 13px;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--sva-text);
 }
 
 .behavior-rule-section-meta {
@@ -5691,7 +5732,7 @@ export default {
   font-size: 13px;
   font-weight: 600;
   line-height: 1.5;
-  color: #1f2937;
+  color: var(--sva-text);
 }
 
 .behavior-sequence-group-title-line {
@@ -5876,13 +5917,13 @@ export default {
   font-size: 13px;
   font-weight: 600;
   line-height: 1.5;
-  color: #1f2937;
+  color: var(--sva-text);
 }
 
 .behavior-rule-item--grouped {
   --behavior-stage-accent: #94a3b8;
   padding-top: 14px;
-  background: rgba(255, 255, 255, 0.88);
+  background: var(--sva-surface-2);
 }
 
 .behavior-rule-item--grouped::before {
