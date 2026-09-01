@@ -65,9 +65,10 @@ export default {
   font-size: 14px;
   line-height: 50px;
   margin-left: 8px;
+  color: var(--sva-text-muted);
 
   .no-redirect {
-    color: #97a8be;
+    color: var(--sva-text);
     cursor: text;
   }
 }

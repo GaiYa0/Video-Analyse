@@ -33,6 +33,8 @@ export default {
   width: 100%;
   position: relative;
   overflow: hidden;
+  background: var(--sva-bg);
+  color: var(--sva-text);
 }
 
 .fixed-header + .app-main {
@@ -65,11 +67,11 @@ export default {
 }
 
 ::-webkit-scrollbar-track {
-  background-color: #f1f1f1;
+  background-color: var(--sva-bg);
 }
 
 ::-webkit-scrollbar-thumb {
-  background-color: #c0c0c0;
+  background-color: rgba(139, 148, 158, 0.45);
   border-radius: 3px;
 }
 </style>

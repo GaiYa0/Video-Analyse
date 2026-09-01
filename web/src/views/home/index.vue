@@ -122,7 +122,7 @@ export default {
   mounted() {
     this.fetchData();
     this.$nextTick(() => {
-      this.kanban.parentNode.style.backgroundColor = "white";
+      this.kanban.parentNode.style.backgroundColor = "var(--sva-bg)";
     })
   }
 };

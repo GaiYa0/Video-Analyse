@@ -27,7 +27,7 @@
       </template> -->
       <template>
         <el-button type="text" icon="el-icon-data-line" @click="jump2DP"
-                   class="right-menu-item hover-effect">大屏
+                   class="right-menu-item hover-effect dping-nav-btn">大屏
         </el-button>
       </template>
 
@@ -142,11 +142,11 @@ export default {
 }
 
 .navbar {
-  background-color: white;
+  background-color: var(--sva-surface);
   height: 50px;
   overflow: hidden;
   position: relative;
-  box-shadow: 0 1px 4px rgba(0, 21, 41, .08);
+  border-bottom: 1px solid var(--sva-border);
 
   .hamburger-container {
     line-height: 46px;
@@ -157,7 +157,7 @@ export default {
     -webkit-tap-highlight-color: transparent;
 
     &:hover {
-      background: rgba(0, 0, 0, .025)
+      background: rgba(255, 255, 255, .04)
     }
   }
 
@@ -191,7 +191,7 @@ export default {
       padding: 0 8px;
       height: 100%;
       font-size: 18px;
-      color: #5a5e66;
+      color: var(--sva-text-muted);
       vertical-align: text-bottom;
 
       &.hover-effect {
@@ -199,9 +199,21 @@ export default {
         transition: background .3s;
 
         &:hover {
-          background: rgba(0, 0, 0, .025)
+          background: rgba(255, 255, 255, .04)
         }
       }
+    }
+
+    .dping-nav-btn {
+      min-width: 72px;
+      height: 32px;
+      margin: 9px 8px 0 0;
+      padding: 0 12px;
+      line-height: 30px;
+      border: 1px solid var(--sva-border);
+      border-radius: 6px;
+      color: var(--sva-text);
+      background: transparent;
     }
 
     .avatar-container {

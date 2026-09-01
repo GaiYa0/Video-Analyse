@@ -6,9 +6,6 @@
         <div v-else class="host-body">
           <!-- 头部开始-->
           <div class="d-flex jc-center title_wrap">
-            <!--          <div class="zuojuxing"></div>-->
-            <!--          <div class="youjuxing"></div>-->
-            <!--          <div class="guang"></div>-->
             <div class="d-flex jc-center">
               <div class="title">
                 <span class="title-text">AI视频安全生产分析系统</span>
@@ -28,20 +25,19 @@
           <div class="contents">
             <div class="content_left">
               <!-- 1. 监测点 -->
-              <ItemWrap class="content_left_top left-box-bg dp-enter-lite" title="监测点">
+              <ItemWrap class="content_left_top dp-enter-lite" title="监测点">
                 <MonitoringPoints></MonitoringPoints>
               </ItemWrap>
 
               <!-- 2. 处置情况 -->
-              <ItemWrap class="content_left_bottom left-box-bg dp-enter-lite" title="处置情况" title-offset-y="-1px"
-                        style="padding: 0 10px 16px 10px">
+              <ItemWrap class="content_left_bottom dp-enter-lite" title="处置情况">
                 <WarningSummary/>
               </ItemWrap>
             </div>
 
             <div class="content_center">
               <!-- 3. 历史报警 -->
-              <ItemWrap class="content_center_top center-top-box-bg dp-enter-lite" title="" title-offset-x="130px">
+              <ItemWrap class="content_center_top dp-enter-lite" title="">
                 <div class="center-top-content">
                   <div class="centerModeTabs" role="tablist" aria-label="中栏显示模式">
                     <div
@@ -72,28 +68,24 @@
               </ItemWrap>
 
               <!-- 4. 实时报警 -->
-              <ItemWrap class="content_center_bottom center-top-box-bg dp-enter-lite" title="待处理报警" title-offset-y="-6px"
-                        title-offset-x="130px">
+              <ItemWrap class="content_center_bottom dp-enter-lite" title="待处理报警">
                 <RealtimeWarning/>
               </ItemWrap>
             </div>
 
             <div class="contetn_right">
               <!-- 5. 综合统计 -->
-              <ItemWrap class="contetn_left-bottom contetn_lr-item right-box-bg dp-enter-lite" style="margin-top: 19px"
-                        title="综合统计" title-offset-y="-1px" title-offset-x="100px">
+              <ItemWrap class="contetn_left-bottom contetn_lr-item dp-enter-lite" title="综合统计">
                 <TotalSummary/>
               </ItemWrap>
 
               <!-- 6. 报警 TOP5 -->
-              <ItemWrap class="contetn_left-bottom contetn_lr-item right-box-bg dp-enter-lite" title="报警统计" title-offset-y="-1px"
-                        title-offset-x="100px">
+              <ItemWrap class="contetn_left-bottom contetn_lr-item dp-enter-lite" title="报警统计">
                 <WarningRank/>
               </ItemWrap>
 
               <!-- 7. 报警增长率-->
-              <ItemWrap class="contetn_left-bottom contetn_lr-item right-box-bg dp-enter-lite" title="报警增长率"
-                        title-offset-y="-1px" title-offset-x="100px">
+              <ItemWrap class="contetn_left-bottom contetn_lr-item dp-enter-lite" title="报警增长率">
                 <WarningGrowth/>
               </ItemWrap>
             </div>
@@ -246,39 +238,29 @@ export default {
 @import "./home.scss";
 
 .scale-contain {
-  --dp-radius-md: 10px;
-  --dp-radius-sm: 8px;
-  --dp-shadow-soft: 0 10px 22px rgba(5, 20, 45, 0.32);
-  --dp-dur-base: 0.2s;
   position: fixed;
   inset: 0;
   width: 100vw;
   height: 100vh;
   overflow: hidden;
-  background: url("~@/assets/img/beijing.png") no-repeat;
-  background-size: 100% 100%;
-  background-attachment: fixed;
+  background: var(--sva-bg);
 }
 
 .contents {
   display: flex;
   flex-direction: row;
-  /* 或者直接写 'row'，默认就是水平方向 */
 
-  // 左方
   .content_left {
     width: 300px;
     box-sizing: border-box;
   }
 
-  // 右方
   .contetn_right {
     width: 430px;
     box-sizing: border-box;
     margin-left: 10px;
   }
 
-  // 结构一样
   .content_left,
   .contetn_right {
     display: flex;
@@ -287,55 +269,35 @@ export default {
     position: relative;
   }
 
-  // 中间
   .content_center {
     width: 1290px;
     display: flex;
     flex-direction: column;
-
   }
 
-  // 左上块
   .content_left_top {
     height: 505px;
     margin-top: 20px;
   }
 
-  // 左下块
   .content_left_bottom {
     height: 440px;
   }
 
-  // 中上
   .content_center_top {
     width: 100%;
     height: 505px;
     margin-top: 20px;
   }
 
-  // 中下
   .content_center_bottom {
     width: 100%;
     height: 440px;
   }
 
-  .content_right {
-    height: 300px;
-  }
-
-  .content_right .content_right:first-child {
-    margin-top: 20px;
-  }
-
-  //左右两侧 三个块
   .contetn_lr-item {
     height: 310px;
   }
-
-  .content_right:first-child {
-    margin-top: 20px;
-  }
-
 }
 
 .content_left_top.dp-enter-lite {
@@ -352,10 +314,6 @@ export default {
 
 .content_center_bottom.dp-enter-lite {
   animation-delay: 0.14s;
-}
-
-.contetn_lr-item.dp-enter-lite {
-  animation-duration: 0.3s;
 }
 
 .contetn_right .contetn_lr-item.dp-enter-lite:nth-child(1) {
@@ -381,62 +339,35 @@ export default {
   }
 }
 
-@keyframes rotating {
-  0% {
-    -webkit-transform: rotate(0) scale(1);
-    transform: rotate(0) scale(1);
-  }
-
-  50% {
-    -webkit-transform: rotate(180deg) scale(1.1);
-    transform: rotate(180deg) scale(1.1);
-  }
-
-  100% {
-    -webkit-transform: rotate(360deg) scale(1);
-    transform: rotate(360deg) scale(1);
-  }
-}
-
 .top-actions {
   position: absolute;
-  top: 14px;
-  right: 48px;
+  top: 12px;
+  right: 24px;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   z-index: 9;
 }
 
 .topActionButton {
   cursor: pointer;
   min-width: 88px;
-  height: 34px;
-  padding: 0 14px;
+  height: 32px;
+  padding: 0 12px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
-  font-weight: 600;
-  color: #dff2ff;
-  border-radius: var(--dp-radius-sm);
-  border: 1px solid rgba(152, 206, 255, 0.42);
-  background: linear-gradient(180deg, rgba(16, 52, 97, 0.85) 0%, rgba(11, 33, 66, 0.9) 100%);
-  box-shadow: inset 0 1px 0 rgba(220, 241, 255, 0.2);
-  transition: transform var(--dp-dur-base) ease, border-color var(--dp-dur-base) ease, background var(--dp-dur-base) ease;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--sva-text);
+  border-radius: 6px;
+  border: 1px solid var(--sva-border);
+  background: transparent;
 }
 
 .topActionButton:hover {
-  transform: translateY(-1px);
-  border-color: rgba(176, 222, 255, 0.78);
-}
-
-.topActionButton:active {
-  transform: translateY(0);
-}
-
-.enterButton {
-  background: linear-gradient(180deg, rgba(27, 72, 126, 0.92) 0%, rgba(15, 42, 84, 0.92) 100%);
+  border-color: var(--sva-accent);
+  color: var(--sva-accent);
 }
 
 .center-top-content {
@@ -447,10 +378,10 @@ export default {
 .centerModeTabs {
   position: absolute;
   top: 8px;
-  left: 18px;
+  left: 16px;
   display: flex;
   align-items: flex-end;
-  gap: 10px;
+  gap: 16px;
   z-index: 5;
 }
 
@@ -458,78 +389,31 @@ export default {
   height: 100%;
   padding: 48px 14px 12px;
   box-sizing: border-box;
-  border-radius: 0 var(--dp-radius-md) var(--dp-radius-md) var(--dp-radius-md);
-  border: 1px solid rgba(120, 182, 236, 0.36);
-  background: linear-gradient(180deg, rgba(8, 34, 68, 0.66) 0%, rgba(4, 22, 49, 0.74) 100%);
-  box-shadow: var(--dp-shadow-soft);
 }
 
 .modeButton {
   cursor: pointer;
-  position: relative;
-  min-width: 132px;
-  height: 38px;
-  padding: 0 16px;
+  min-width: 96px;
+  height: 32px;
+  padding: 0 8px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
-  font-weight: 600;
-  color: rgba(221, 234, 255, 0.78);
-  border: 1px solid rgba(133, 173, 223, 0.38);
-  border-bottom: none;
-  border-radius: var(--dp-radius-sm) var(--dp-radius-sm) 0 0;
-  background: linear-gradient(180deg, rgba(21, 50, 86, 0.92) 0%, rgba(13, 32, 57, 0.88) 100%);
-  box-shadow: inset 0 1px 0 rgba(205, 227, 255, 0.15);
-  transform: translateY(3px);
-  transition: transform var(--dp-dur-base) ease, color var(--dp-dur-base) ease, box-shadow var(--dp-dur-base) ease, background var(--dp-dur-base) ease;
-}
-
-.modeButton::after {
-  content: "";
-  position: absolute;
-  left: 12px;
-  right: 12px;
-  bottom: -1px;
-  height: 1px;
-  background: rgba(9, 17, 31, 0.88);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--sva-text-muted);
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: transparent;
 }
 
 .modeButton.active {
-  color: #ecf7ff;
-  background: linear-gradient(180deg, rgba(61, 117, 187, 0.98) 0%, rgba(38, 87, 149, 0.96) 100%);
-  border-color: rgba(141, 200, 255, 0.86);
-  transform: translateY(0);
-  box-shadow: 0 7px 16px rgba(16, 44, 79, 0.46), inset 0 1px 0 rgba(220, 242, 255, 0.42);
-}
-
-.modeButton.active::after {
-  background: rgba(60, 112, 180, 0.96);
-}
-
-.modeButton:active {
-  transform: translateY(1px);
+  color: var(--sva-text);
+  border-bottom-color: var(--sva-accent);
 }
 
 .tabLabel {
   letter-spacing: 1px;
-}
-
-.left-box-bg {
-  background: url("~@/assets/images/leftContainBg.png") no-repeat;
-  background-size: 100% 100%;
-  background-attachment: fixed;
-}
-
-.center-top-box-bg {
-  background: url("~@/assets/images/centerTopContainBg.png") no-repeat;
-  background-size: 100% 100%;
-  background-attachment: fixed;
-}
-
-.right-box-bg {
-  background: url("~@/assets/images/rightContainBg.png") no-repeat;
-  background-size: cover;
 }
 
 .current-date {
@@ -539,10 +423,9 @@ export default {
   bottom: 8px;
   z-index: 2;
   pointer-events: none;
-  padding-top: 5px;
-  font-weight: bold;
-  font-size: 17px;
-  color: #fff;
+  font-weight: 500;
+  font-size: 13px;
+  color: var(--sva-text-muted);
   text-align: center;
 }
 
@@ -550,8 +433,7 @@ export default {
   position: fixed;
   inset: 0;
   z-index: 1200;
-  background: rgba(2, 9, 20, 0.82);
-  backdrop-filter: blur(1px);
+  background: rgba(14, 17, 22, 0.88);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -562,30 +444,27 @@ export default {
 .realtime-fullscreen-panel {
   width: 100%;
   height: 100%;
-  border-radius: 12px;
+  border-radius: 8px;
   overflow: hidden;
-  border: 1px solid rgba(120, 182, 236, 0.45);
-  background: linear-gradient(180deg, rgba(6, 26, 53, 0.98) 0%, rgba(3, 19, 41, 0.98) 100%);
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.45);
+  border: 1px solid var(--sva-border);
+  background: var(--sva-surface);
   display: flex;
   flex-direction: column;
 }
 
 .realtime-fullscreen-header {
-  height: 52px;
+  height: 48px;
   padding: 0 14px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1px solid rgba(133, 173, 223, 0.3);
-  background: linear-gradient(90deg, rgba(23, 61, 117, 0.9) 0%, rgba(11, 36, 74, 0.86) 100%);
+  border-bottom: 1px solid var(--sva-border);
 }
 
 .fullscreen-title {
-  color: #ecf7ff;
-  font-size: 16px;
+  color: var(--sva-text);
+  font-size: 15px;
   font-weight: 600;
-  letter-spacing: 1px;
 }
 
 .fullscreen-actions {
@@ -599,24 +478,18 @@ export default {
   min-width: 64px;
   height: 32px;
   padding: 0 12px;
-  border-radius: 8px;
-  border: 1px solid rgba(152, 206, 255, 0.42);
-  color: #dff2ff;
-  background: linear-gradient(180deg, rgba(16, 52, 97, 0.85) 0%, rgba(11, 33, 66, 0.9) 100%);
-  font-size: 14px;
-  font-weight: 600;
+  border-radius: 6px;
+  border: 1px solid var(--sva-border);
+  color: var(--sva-text);
+  background: transparent;
+  font-size: 13px;
   line-height: 32px;
   box-sizing: border-box;
 }
 
 .fullscreen-action-btn.active {
-  color: #ecf7ff;
-  border-color: rgba(141, 200, 255, 0.86);
-  background: linear-gradient(180deg, rgba(61, 117, 187, 0.98) 0%, rgba(38, 87, 149, 0.96) 100%);
-}
-
-.fullscreen-close {
-  min-width: 72px;
+  border-color: var(--sva-accent);
+  color: var(--sva-accent);
 }
 
 .realtime-fullscreen-body {

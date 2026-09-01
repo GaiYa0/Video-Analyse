@@ -46,7 +46,14 @@
       <el-table-column type="selection" width="55"/>
       <el-table-column label="序号" type="index" width="55"/>
       <el-table-column label="报警类型" prop="alarm_type_name" :show-overflow-tooltip="true" width="200"
-                       align="center"/>
+                       align="center">
+        <template slot-scope="scope">
+          <span
+            class="alarm-type-badge"
+            :class="{ 'is-sleep': isSleepType(scope.row.alarm_type_name) }"
+          >{{ scope.row.alarm_type_name || '—' }}</span>
+        </template>
+      </el-table-column>
 
       <el-table-column label="设备通道名称" prop="device_name" :show-overflow-tooltip="true" width="300"/>
       <el-table-column label="组织名称" prop="org_name" :show-overflow-tooltip="true" width="180"/>
@@ -120,7 +127,12 @@
           <div class="grid-content bg-purple-light">
             <el-descriptions class="margin-top" title="报警信息" :column="1" size="medium"
                              style="margin: 0px 0 35px 40px;">
-              <el-descriptions-item label="报警类型"> {{ detailsInfo.alarm_type_name }}</el-descriptions-item>
+              <el-descriptions-item label="报警类型">
+                <span
+                  class="alarm-type-badge"
+                  :class="{ 'is-sleep': isSleepType(detailsInfo.alarm_type_name) }"
+                >{{ detailsInfo.alarm_type_name || '—' }}</span>
+              </el-descriptions-item>
               <el-descriptions-item label="报警时间"> {{ detailsInfo.alarm_time }}</el-descriptions-item>
               <el-descriptions-item label="设备通道">
                 <el-tag size="small"> {{ detailsInfo.device_name }}</el-tag>
@@ -326,7 +338,7 @@ export default {
   mounted() {
     this.fetchQueryOptionData();
     this.$nextTick(() => {
-      this.deviceContainer.parentNode.style.backgroundColor = "white";
+      this.deviceContainer.parentNode.style.backgroundColor = "var(--sva-bg)";
     });
     this.solveRouterQuery();
   },
@@ -335,7 +347,7 @@ export default {
     this.$nextTick(() => {
       this.fetchQueryOptionData();
     this.$nextTick(() => {
-      this.deviceContainer.parentNode.style.backgroundColor = "white";
+      this.deviceContainer.parentNode.style.backgroundColor = "var(--sva-bg)";
     });
     this.querySpecificParams.w_id = undefined;//清除搜索内容
       this.solveRouterQuery(); 
@@ -621,6 +633,10 @@ export default {
       this.multiple = !selection.length
     },
 
+    isSleepType(name) {
+      return String(name || '').indexOf('睡岗') !== -1
+    },
+
     isHandled(value) {
       return String(value) === '1';
     },
@@ -769,19 +785,19 @@ export default {
 <style scoped>
 .ai-review-summary {
   margin-top: 4px;
-  color: #606266;
+  color: var(--sva-text-muted);
   font-size: 12px;
   line-height: 1.4;
 }
 
 .rule-summary-primary {
-  color: #303133;
+  color: var(--sva-text);
   line-height: 1.4;
 }
 
 .rule-summary-secondary {
   margin-top: 4px;
-  color: #909399;
+  color: var(--sva-text-muted);
   font-size: 12px;
   line-height: 1.4;
 }

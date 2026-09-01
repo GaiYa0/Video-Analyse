@@ -125,11 +125,11 @@ const option =  {
             },
             {
               offset: 0.5,
-              color: "rgb(13,178,220)", // 0% 处的颜色
+              color: "rgba(107,155,184,0.85)", // 0% 处的颜色
             },
             {
               offset: 1,
-              color: "rgb(4,107,187)", // 100% 处的颜色
+              color: "rgba(107,155,184,0.45)", // 100% 处的颜色
             },
           ],
         },
@@ -166,7 +166,7 @@ export default {
             detail: {
               show: true,
               offsetCenter: [0, "30%"],
-              color: "#00fdfa",
+              color: "#6b9bb8",
               formatter: function (params) {
                 return '监测点：' + params;
               },
@@ -186,7 +186,7 @@ export default {
             detail: {
               show: true,
               offsetCenter: [0, "30%"],
-              color: "#00fdfa",
+              color: "#6b9bb8",
               formatter: function (params) {
                 return '在线：' + params;
               },
@@ -206,7 +206,7 @@ export default {
             detail: {
               show: true,
               offsetCenter: [0, "30%"],
-              color: "#00fdfa",
+              color: "#6b9bb8",
               formatter: function (params) {
                 return '离线：' + params;
               },
@@ -224,7 +224,7 @@ export default {
         style: {
           ...style,
           // stroke: "#00fdfa",
-          fill: "#00fdfa",
+          fill: "#6b9bb8",
         },
       },
       onlineconfig: {
@@ -401,7 +401,7 @@ export default {
   list-style: none;
 
   .user-title {
-    color: #00fdfa;
+    color: var(--sva-text);
     cursor: pointer;
     flex: 1;
     text-align: center

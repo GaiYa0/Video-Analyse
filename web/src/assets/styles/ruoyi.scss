@@ -92,8 +92,8 @@
   .el-table__header-wrapper, .el-table__fixed-header-wrapper {
     th {
       word-break: break-word;
-      background-color: #f8f8f9;
-      color: #515a6e;
+      background-color: var(--sva-surface-2);
+      color: var(--sva-text-muted);
       height: 40px;
       font-size: 13px;
     }
@@ -109,8 +109,8 @@
 /** 表单布局 **/
 .form-header {
   font-size: 15px;
-  color: #6379bb;
-  border-bottom: 1px solid #ddd;
+  color: var(--sva-accent);
+  border-bottom: 1px solid var(--sva-border);
   margin: 8px 10px 25px 10px;
   padding-bottom: 5px
 }
@@ -127,8 +127,8 @@
 /* tree border */
 .tree-border {
   margin-top: 5px;
-  border: 1px solid #e5e6e7;
-  background: #FFFFFF none;
+  border: 1px solid var(--sva-border);
+  background: var(--sva-surface) none;
   border-radius: 4px;
 }
 

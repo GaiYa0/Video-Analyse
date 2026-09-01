@@ -273,7 +273,7 @@ export default {
   mounted() {
     this.fetchQueryOptionData();
     this.$nextTick(() => {
-      this.deviceContainer.parentNode.style.backgroundColor = "white";
+      this.deviceContainer.parentNode.style.backgroundColor = "var(--sva-bg)";
     });
     this.solveRouterQuery();
   },

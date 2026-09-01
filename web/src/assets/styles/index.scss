@@ -6,14 +6,20 @@
 @import './btn.scss';
 
 :root {
-  --sva-tech-cyan: #57d8ff;
-  --sva-tech-cyan-soft: rgba(87, 216, 255, 0.42);
-  --sva-tech-bg-deep: #06182f;
-  --sva-tech-bg-mid: #0b2749;
+  --sva-bg: #0e1116;
+  --sva-surface: #161b22;
+  --sva-surface-2: #1c2128;
+  --sva-border: rgba(255, 255, 255, 0.08);
+  --sva-text: #e6edf3;
+  --sva-text-muted: #8b949e;
+  --sva-accent: #6b9bb8;
+  --sva-radius: 8px;
 }
 
 body {
   height: 100%;
+  background: var(--sva-bg);
+  color: var(--sva-text);
   -moz-osx-font-smoothing: grayscale;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
@@ -129,6 +135,29 @@ aside {
 //main-container全局样式
 .app-container {
   padding: 20px;
+  color: var(--sva-text);
+}
+
+.alarm-type-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--sva-text);
+  background: rgba(107, 155, 184, 0.18);
+  border: 1px solid rgba(107, 155, 184, 0.35);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.alarm-type-badge.is-sleep {
+  background: rgba(196, 140, 90, 0.2);
+  border-color: rgba(196, 140, 90, 0.45);
+  color: #f0d9c0;
 }
 
 .components-container {
