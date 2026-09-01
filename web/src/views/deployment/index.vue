@@ -261,12 +261,17 @@ export default {
       const deviceId = this.getFieldValue(detail, 'deviceId', 'device_id', 'apeId', 'ape_id') || this.getFieldValue(row, 'deviceId', 'device_id', 'apeId', 'ape_id') || ''
       const slotIndex = this.getFieldValue(detail, 'slotIndex', 'slot_index')
       const fallbackSlotIndex = this.getFieldValue(row, 'slotIndex', 'slot_index')
-      const liveOutputResponse = await updateDeploymentLiveOutput(sourceId, {
-        videoEnabled: true,
-        liveEventEnabled: true,
-        wsEventFps: 8
-      })
-      const liveOutputData = (liveOutputResponse && liveOutputResponse.data) || liveOutputResponse || {}
+      const liveOutputData = {}
+      try {
+        const liveOutputResponse = await updateDeploymentLiveOutput(sourceId, {
+          videoEnabled: true,
+          liveEventEnabled: true,
+          wsEventFps: 8
+        })
+        Object.assign(liveOutputData, (liveOutputResponse && liveOutputResponse.data) || liveOutputResponse || {})
+      } catch (error) {
+        // live-output 缺失时回退设备预览，不挡上墙。
+      }
       const algorithmStreamUrl = this.getFieldValue(liveOutputData, 'algorithmStreamUrl', 'algorithm_stream_url') || ''
       const taskPushEnabled = Boolean(algorithmStreamUrl)
       let playUrl = algorithmStreamUrl

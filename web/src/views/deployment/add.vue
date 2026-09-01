@@ -1567,13 +1567,18 @@ export default {
         const status = String(this.getFieldValue(detail, 'status') || '').toUpperCase()
         const isRunning = status === 'RUNNING'
         if (isRunning) {
-          const liveOutputResponse = await updateDeploymentLiveOutput(this.deploymentId, {
-            videoEnabled: true,
-            liveEventEnabled: true,
-            wsEventFps: 8
-          })
-          const liveOutputData = (liveOutputResponse && liveOutputResponse.data) || liveOutputResponse || {}
-          const algorithmStreamUrl = this.getFieldValue(liveOutputData, 'algorithmStreamUrl', 'algorithm_stream_url') || ''
+          let algorithmStreamUrl = ''
+          try {
+            const liveOutputResponse = await updateDeploymentLiveOutput(this.deploymentId, {
+              videoEnabled: true,
+              liveEventEnabled: true,
+              wsEventFps: 8
+            })
+            const liveOutputData = (liveOutputResponse && liveOutputResponse.data) || liveOutputResponse || {}
+            algorithmStreamUrl = this.getFieldValue(liveOutputData, 'algorithmStreamUrl', 'algorithm_stream_url') || ''
+          } catch (error) {
+            algorithmStreamUrl = ''
+          }
           if (algorithmStreamUrl) {
             this.streamUrl = algorithmStreamUrl
             this.playStream(algorithmStreamUrl)
