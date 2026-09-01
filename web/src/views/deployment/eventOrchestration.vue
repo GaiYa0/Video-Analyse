@@ -435,7 +435,8 @@ export default {
 
 <style scoped>
 .event-orchestration-page {
-  min-width: 980px;
+  min-width: 0;
+  color: var(--sva-text);
 }
 
 .top-card,
@@ -459,7 +460,7 @@ export default {
 
 .condition-hint {
   margin-top: 6px;
-  color: #909399;
+  color: var(--sva-text-muted);
   font-size: 12px;
 }
 </style>

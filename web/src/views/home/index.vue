@@ -47,19 +47,13 @@ import hazardcount from "./components/hazard-count.vue"
 import hazardtrend from "./components/hazard-trend.vue"
 import hazarddistribution from "./components/hazard-distribution.vue"
 import store from "@/store"
-import {
-  Grid as TinyGrid,
-  GridColumn as TinyGridColumn,
-  Option as TinyOption,
-  Select as TinySelect
-} from '@opentiny/vue';
+import TinyGrid, { GridColumn as TinyGridColumn } from '@opentiny/vue-grid'
 import {getDeptList, getHandleData} from '@/api/system/kanban';
 
 export default {
   name: "Index",
   components: {
-    hazardcount, hazardtrend, hazarddistribution, TinyGrid, TinyGridColumn, TinySelect,
-    TinyOption
+    hazardcount, hazardtrend, hazarddistribution, TinyGrid, TinyGridColumn
   },
   data() {
     return {
@@ -122,7 +116,7 @@ export default {
   mounted() {
     this.fetchData();
     this.$nextTick(() => {
-      this.kanban.parentNode.style.backgroundColor = "white";
+      this.kanban.parentNode.style.backgroundColor = "var(--sva-bg)";
     })
   }
 };
@@ -156,7 +150,7 @@ export default {
 
   .font {
     padding: 12px 8px;
-    color: #575d6c;
+    color: var(--sva-text-muted);
     font-size: 16px;
     line-height: 14px;
   }
@@ -183,7 +177,7 @@ export default {
 
     .section-title {
       margin: 0 0 12px;
-      color: #303133;
+      color: var(--sva-text);
       font-size: 16px;
       font-weight: 600;
       line-height: 22px;
@@ -196,7 +190,7 @@ export default {
     .announcement-card {
       flex: 1;
       height: 100%;
-      border: 1px solid #ebeef5;
+      border: 1px solid var(--sva-border);
       box-shadow: none;
     }
 
@@ -218,8 +212,8 @@ export default {
       flex-direction: column;
       // justify-content: space-evenly;
       padding: 20px;
-      color: #010407;
-      background: #fff;
+      color: var(--sva-text);
+      background: var(--sva-surface);
       border-radius: 10px;
       box-shadow: 0 4px 12px 0 rgba(0, 0, 0, 0.05);
 
@@ -263,7 +257,7 @@ export default {
 }
 
 .col > span:first-child {
-  color: #010407;
+  color: var(--sva-text);
   font-weight: 500;
 }
 
@@ -273,7 +267,7 @@ export default {
 }
 
 /deep/ .announcement-grid.tiny-grid__border {
-  --ti-grid-border-color: #ebeef5;
+  --ti-grid-border-color: var(--sva-border);
 }
 
 /deep/ .announcement-grid.tiny-grid__border .tiny-grid-body__column,
@@ -291,23 +285,23 @@ export default {
 
 /deep/ .announcement-grid .tiny-grid-header__column {
   height: 46px;
-  color: #303133;
+  color: var(--sva-text-muted);
   font-size: 14px;
   font-weight: 500;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  background-color: #f5f7fa;
+  background-color: var(--sva-surface-2);
 }
 
 /deep/ .announcement-grid .tiny-grid-body__column {
   height: 46px;
-  color: #303133;
+  color: var(--sva-text);
   font-size: 14px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  background-color: #fff;
+  background-color: var(--sva-surface);
 }
 
 /deep/ .el-input--medium .el-input__inner {

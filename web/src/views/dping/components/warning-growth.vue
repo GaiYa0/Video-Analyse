@@ -1,86 +1,38 @@
 <template>
-  <div>
-    <div class="col">
-      <el-row :gutter="12">
-        <el-col :span="12">
-          <div class="grid-content bg-purple">
-            <el-col class="growthitem">
-              月度增长率：
-              <span v-if="growthData.monthGrowthRate > 0"><img src="@/assets/images/home-up.png"
-                                                               class="image"/></span>
-              <span v-else-if="growthData.monthGrowthRate < 0"><img src="@/assets/images/home-down.png"
-                                                                    class="image"/></span>
-              <span v-else> </span>
-              <span class="gate-color">{{ growthData.monthGrowthRate }}%</span>
-            </el-col>
-            <el-col class="growthitem">
-              季度增长率：
-              <span v-if="growthData.quarteGrowthRate > 0"><img src="@/assets/images/home-up.png"
-                                                                class="image"/></span>
-              <span v-else-if="growthData.quarteGrowthRate < 0"><img src="@/assets/images/home-down.png"
-                                                                     class="image"/></span>
-              <span v-else> </span>
-              <span class="gate-color">{{ growthData.quarteGrowthRate }}%</span>
-            </el-col>
-            <el-col class="growthitem">
-              年度增长率：
-              <span v-if="growthData.yearGrowthRate > 0"><img src="@/assets/images/home-up.png"
-                                                              class="image"/></span>
-              <span v-else-if="growthData.yearGrowthRate < 0"><img src="@/assets/images/home-down.png"
-                                                                   class="image"/></span>
-              <span v-else> </span>
-              <span class="gate-color">{{ growthData.yearGrowthRate }}%</span>
-            </el-col>
-          </div>
-        </el-col>
-        <el-col :span="12">
-          <div class="grid-content bg-purple-light">
-            <el-col class="growthitem">
-              月度处置率:
-              <span v-if="growthData.monthRectification > 0"><img src="@/assets/images/home-up.png"
-                                                                  class="image"/></span>
-              <span v-else-if="growthData.monthRectification < 0"><img src="@/assets/images/home-down.png"
-                                                                       class="image"/></span>
-              <span v-else> </span>
-              <span class="gate-color">{{ growthData.monthRectification }}%</span>
-            </el-col>
-            <el-col class="growthitem">
-              季度处置率：
-              <span v-if="growthData.quarterRectification > 0"><img src="@/assets/images/home-up.png"
-                                                                    class="image"/></span>
-              <span v-else-if="growthData.quarterRectification < 0"><img src="@/assets/images/home-down.png"
-                                                                         class="image"/></span>
-              <span v-else> </span>
-              <span class="gate-color">{{ growthData.quarterRectification }}%</span>
-            </el-col>
-            <el-col class="growthitem">
-              年度处置率：
-              <span v-if="growthData.yearRectification > 0"><img src="@/assets/images/home-up.png"
-                                                                 class="image"/></span>
-              <span v-else-if="growthData.yearRectification < 0"><img src="@/assets/images/home-down.png"
-                                                                      class="image"/></span>
-              <span v-else> </span>
-              <span class="gate-color">{{ growthData.yearRectification }}%</span>
-            </el-col>
-          </div>
-        </el-col>
-      </el-row>
-    </div>
+  <div class="growth-table-wrap">
+    <table class="growth-table">
+      <thead>
+        <tr>
+          <th></th>
+          <th>增长率</th>
+          <th>处置率</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>月度</td>
+          <td>{{ formatRate(growthData.monthGrowthRate) }}</td>
+          <td>{{ formatRate(growthData.monthRectification) }}</td>
+        </tr>
+        <tr>
+          <td>季度</td>
+          <td>{{ formatRate(growthData.quarteGrowthRate) }}</td>
+          <td>{{ formatRate(growthData.quarterRectification) }}</td>
+        </tr>
+        <tr>
+          <td>年度</td>
+          <td>{{ formatRate(growthData.yearGrowthRate) }}</td>
+          <td>{{ formatRate(growthData.yearRectification) }}</td>
+        </tr>
+      </tbody>
+    </table>
   </div>
 </template>
 
 <script>
-import {Col as TinyCol, Layout as TinyLayout, Row as TinyRow,} from '@opentiny/vue';
-
 import {getGrowth} from '@/api/system/kanban';
 
 export default {
-  components: {
-    TinyLayout,
-    TinyRow,
-    TinyCol
-  },
-
   data() {
     return {
       growthData: {
@@ -96,6 +48,14 @@ export default {
   },
 
   methods: {
+    formatRate(value) {
+      const num = Number(value);
+      if (!Number.isFinite(num)) {
+        return '—';
+      }
+      return `${num}%`;
+    },
+
     async fetchData() {
       try {
         const growthRes = await getGrowth();
@@ -123,7 +83,6 @@ export default {
     },
   },
 
-
   mounted() {
     this.fetchData()
     window.addEventListener('sva:alarm-push', this.handleAlarmPush)
@@ -136,48 +95,33 @@ export default {
 };
 </script>
 
-<style scoped lang="less">
-.col {
-  margin-top: 30px;
-  background-color: transparent;
-  display: flex;
-  justify-content: space-around;
-  height: 250px;
+<style scoped lang="scss">
+.growth-table-wrap {
+  padding: 24px 16px 8px;
+}
+
+.growth-table {
+  width: 100%;
+  border-collapse: collapse;
+  color: var(--sva-text);
+  font-size: 14px;
+}
+
+.growth-table th,
+.growth-table td {
+  padding: 12px 8px;
   text-align: center;
-  border-radius: 10px;
-  box-shadow: 0 4px 12px 0 rgba(0, 0, 0, 0.05);
+  border-bottom: 1px solid var(--sva-border);
 }
 
-.data-container {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  /* 两列等宽 */
-  grid-gap: 15px;
-  /* 列与列之间的间距 */
+.growth-table th {
+  color: var(--sva-text-muted);
+  font-weight: 500;
 }
 
-.item {
-  color: white;
-  padding: 6px;
+.growth-table td:first-child,
+.growth-table th:first-child {
   text-align: left;
-}
-
-.clickable {
-  cursor: pointer;
-  user-select: none;
-  transition: color 0.3s ease;
-  font-size: small;
-}
-
-.growthitem {
-  background: url("~@/assets/images/warnGateBg.png") no-repeat;
-  background-size: cover;
-  color: white;
-  padding: 20px;
-  font-size: large;
-}
-
-.gate-color {
-  color: #30FBE5;
+  color: var(--sva-text-muted);
 }
 </style>

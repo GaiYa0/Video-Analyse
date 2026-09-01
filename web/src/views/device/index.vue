@@ -132,7 +132,7 @@ export default {
   mounted() {
     this.getDeptTree();
     this.$nextTick(() => {
-      this.deviceContainer.parentNode.style.backgroundColor = "white";
+      this.deviceContainer.parentNode.style.backgroundColor = "var(--sva-bg)";
     })
     const isOnline = this.$route.query.isOnline;
     if (isOnline) this.queryParams.is_online = isOnline;

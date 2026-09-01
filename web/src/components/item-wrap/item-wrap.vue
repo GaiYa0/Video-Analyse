@@ -1,7 +1,7 @@
 <template>
   <div class="lr_titles">
     <div class="item_title" v-if="title !== ''">
-      <div class="title-inner" style="font-size: large;" :style="{ left : titleOffsetX, top: titleOffsetY }"> &nbsp;&nbsp;{{ title }}&nbsp;&nbsp; </div>
+      <div class="title-inner" :style="{ left : titleOffsetX, top: titleOffsetY }">{{ title }}</div>
     </div>
     <div :class="title !== '' ? 'item_title_content' : 'item_title_content_def'">
       <slot></slot>
@@ -28,20 +28,20 @@ export default {
       required: false
     },
   },
-  created() { },
-
-  mounted() { },
-  methods: {},
 };
 </script>
 
 <style lang='scss' scoped>
-$item-title-height: 56px;
-$item_title_content-height: calc(100% - 38px);
+$item-title-height: 40px;
+$item_title_content-height: calc(100% - 40px);
 
 .lr_titles {
-  margin: 5px;
+  margin: 8px;
   box-sizing: border-box;
+  border: 1px solid var(--sva-border);
+  border-radius: var(--sva-radius);
+  background: var(--sva-surface);
+  overflow: hidden;
 
   :deep(.border-box-content) {
     box-sizing: border-box;
@@ -52,32 +52,18 @@ $item_title_content-height: calc(100% - 38px);
     height: $item-title-height;
     line-height: $item-title-height;
     width: 100%;
-    color: #31abe3;
-    // background: linear-gradient(to right, transparent, #0f0756, transparent);
+    color: var(--sva-text-muted);
     position: relative;
-
-    .zuo,
-    .you {
-      width: 58px;
-      height: 14px;
-      background-image: url("../../assets/img/titles/zuo.png");
-      margin-left: 10px;
-      margin-right: 10px;
-    }
-
-    .you {
-      transform: rotate(180deg);
-    }
+    border-bottom: 1px solid var(--sva-border);
 
     .title-inner {
-      font-weight: 900;
-      letter-spacing: 2px;
-      background: #FFFFFF;
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
+      font-weight: 600;
+      font-size: 14px;
+      letter-spacing: 1px;
+      color: var(--sva-text);
       position: absolute;
-      left: 71px;
-      top:2px
+      left: 16px;
+      top: 0;
     }
   }
 

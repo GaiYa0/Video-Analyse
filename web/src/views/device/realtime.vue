@@ -144,7 +144,7 @@ export default {
     this.getDeptTree()
     this.$nextTick(() => {
       if (this.deviceContainer && this.deviceContainer.parentNode) {
-        this.deviceContainer.parentNode.style.backgroundColor = 'white'
+        this.deviceContainer.parentNode.style.backgroundColor = 'var(--sva-bg)'
       }
     })
     this.getList()

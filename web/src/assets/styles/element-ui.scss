@@ -3,6 +3,7 @@
 .el-breadcrumb__inner,
 .el-breadcrumb__inner a {
   font-weight: 400 !important;
+  color: var(--sva-text-muted) !important;
 }
 
 .el-upload {
@@ -89,4 +90,219 @@
   > .el-submenu__title
   .el-submenu__icon-arrow {
   display: none;
+}
+
+.el-card,
+.el-dialog,
+.el-drawer__body,
+.el-message-box {
+  background: var(--sva-surface);
+  color: var(--sva-text);
+  border-color: var(--sva-border);
+}
+
+.el-dialog__header,
+.el-dialog__title,
+.el-message-box__title,
+.el-drawer__header {
+  color: var(--sva-text);
+}
+
+.el-dialog__body,
+.el-message-box__content {
+  color: var(--sva-text-muted);
+}
+
+.el-form-item__label {
+  color: var(--sva-text-muted);
+}
+
+.el-input__inner,
+.el-textarea__inner,
+.el-range-editor.el-input__inner {
+  background: var(--sva-surface-2);
+  border-color: var(--sva-border);
+  color: var(--sva-text);
+}
+
+.el-input__inner::placeholder,
+.el-textarea__inner::placeholder {
+  color: var(--sva-text-muted);
+}
+
+.el-select-dropdown,
+.el-picker-panel,
+.el-dropdown-menu {
+  background: var(--sva-surface);
+  border-color: var(--sva-border);
+  color: var(--sva-text);
+}
+
+.el-select-dropdown__item {
+  color: var(--sva-text);
+}
+
+.el-select-dropdown__item.hover,
+.el-select-dropdown__item:hover {
+  background: var(--sva-surface-2);
+}
+
+.el-table,
+.el-table__expanded-cell {
+  background: var(--sva-surface);
+  color: var(--sva-text);
+}
+
+.el-table th,
+.el-table tr,
+.el-table td {
+  background-color: transparent !important;
+  color: var(--sva-text);
+  border-color: var(--sva-border);
+}
+
+.el-table th.el-table__cell {
+  background-color: var(--sva-surface-2) !important;
+  color: var(--sva-text-muted);
+}
+
+.el-table--enable-row-hover .el-table__body tr:hover > td {
+  background-color: var(--sva-surface-2) !important;
+}
+
+.el-table::before,
+.el-table--group::after,
+.el-table--border::after {
+  background-color: var(--sva-border);
+}
+
+.el-pagination {
+  color: var(--sva-text-muted);
+
+  button,
+  .el-pager li {
+    background: var(--sva-surface);
+    color: var(--sva-text);
+  }
+}
+
+.el-pagination .el-pager li.active {
+  color: var(--sva-accent);
+}
+
+.el-tabs__item {
+  color: var(--sva-text-muted);
+}
+
+.el-tabs__item.is-active {
+  color: var(--sva-accent);
+}
+
+.el-descriptions__body,
+.el-descriptions-item__label,
+.el-descriptions-item__content {
+  background: transparent;
+  color: var(--sva-text);
+}
+
+.el-loading-mask {
+  background-color: rgba(14, 17, 22, 0.72);
+}
+
+.el-button--text {
+  color: var(--sva-accent);
+}
+
+.el-tag {
+  border-color: var(--sva-border);
+}
+
+.el-button--default {
+  background: var(--sva-surface-2);
+  border-color: var(--sva-border);
+  color: var(--sva-text);
+}
+
+.el-button--default:hover,
+.el-button--default:focus {
+  background: var(--sva-surface);
+  border-color: var(--sva-accent);
+  color: var(--sva-accent);
+}
+
+.el-button--primary.is-plain {
+  background: rgba(107, 155, 184, 0.12);
+  border-color: var(--sva-accent);
+  color: var(--sva-accent);
+}
+
+.el-pagination__jump,
+.el-pagination__total {
+  color: var(--sva-text-muted);
+}
+
+.el-pagination__editor.el-input .el-input__inner {
+  background: var(--sva-surface-2);
+  border-color: var(--sva-border);
+  color: var(--sva-text);
+}
+
+.el-picker-panel__body,
+.el-date-picker,
+.el-date-range-picker {
+  background: var(--sva-surface);
+  color: var(--sva-text);
+}
+
+.el-date-table th,
+.el-date-table td,
+.el-picker-panel__icon-btn,
+.el-date-picker__header-label {
+  color: var(--sva-text);
+}
+
+.el-date-table td.disabled div {
+  background-color: var(--sva-surface-2);
+  color: var(--sva-text-muted);
+}
+
+.el-tree {
+  background: transparent;
+  color: var(--sva-text);
+}
+
+.el-tree-node__content:hover,
+.el-tree-node:focus > .el-tree-node__content {
+  background: var(--sva-surface-2);
+}
+
+.el-checkbox__label,
+.el-radio__label {
+  color: var(--sva-text);
+}
+
+.el-popover,
+.el-tooltip__popper.is-dark {
+  background: var(--sva-surface);
+  color: var(--sva-text);
+  border-color: var(--sva-border);
+}
+
+.el-empty__description p {
+  color: var(--sva-text-muted);
+}
+
+.el-message-box {
+  background: var(--sva-surface);
+  border-color: var(--sva-border);
+}
+
+.el-dropdown-menu__item {
+  color: var(--sva-text);
+}
+
+.el-dropdown-menu__item:focus,
+.el-dropdown-menu__item:not(.is-disabled):hover {
+  background: var(--sva-surface-2);
+  color: var(--sva-text);
 }

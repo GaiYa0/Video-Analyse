@@ -45,7 +45,8 @@ export function updateDeploymentLiveOutput(id, data) {
     url: `/deployments/${id}/live-output`,
     method: 'post',
     data,
-    timeout: 23000
+    timeout: 23000,
+    silent: true
   })
 }
 

@@ -5,6 +5,7 @@
     transition: margin-left .28s;
     margin-left: $base-sidebar-width;
     position: relative;
+    background: var(--sva-bg);
   }
 
   .sidebarHide {
@@ -24,8 +25,9 @@
     left: 0;
     z-index: 1001;
     overflow: hidden;
-    -webkit-box-shadow: 2px 0 6px rgba(0,21,41,.35);
-    box-shadow: 2px 0 6px rgba(0,21,41,.35);
+    border-right: 1px solid $sva-border;
+    -webkit-box-shadow: none;
+    box-shadow: none;
 
     // reset element-ui css
     .horizontal-collapse-transition {

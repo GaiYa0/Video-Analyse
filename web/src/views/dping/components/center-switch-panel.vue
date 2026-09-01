@@ -311,13 +311,18 @@ export default {
 
       try {
         const detail = this.extractResponseData(await getDeploymentDetail(stream.sourceId))
-        const liveOutputResponse = await updateDeploymentLiveOutput(stream.sourceId, {
-          videoEnabled: true,
-          liveEventEnabled: true,
-          wsEventFps: 8
-        })
-        const liveOutputData = this.extractResponseData(liveOutputResponse)
-        const algorithmStreamUrl = this.getFieldValue(liveOutputData, 'algorithmStreamUrl', 'algorithm_stream_url') || ''
+        let algorithmStreamUrl = ''
+        try {
+          const liveOutputResponse = await updateDeploymentLiveOutput(stream.sourceId, {
+            videoEnabled: true,
+            liveEventEnabled: true,
+            wsEventFps: 8
+          })
+          const liveOutputData = this.extractResponseData(liveOutputResponse)
+          algorithmStreamUrl = this.getFieldValue(liveOutputData, 'algorithmStreamUrl', 'algorithm_stream_url') || ''
+        } catch (error) {
+          algorithmStreamUrl = ''
+        }
 
         return {
           ...stream,

@@ -131,7 +131,10 @@
 
 <script>
 import {getMonthHandle, getMonthMajorWaring, getMonthOverdueWaring, getMonthWaring} from '@/api/system/kanban';
-import {Col as TinyCol, Layout as TinyLayout, Progress as TinyProgress, Row as TinyRow} from '@opentiny/vue';
+import TinyLayout from '@opentiny/vue-layout'
+import TinyRow from '@opentiny/vue-row'
+import TinyCol from '@opentiny/vue-col'
+import TinyProgress from '@opentiny/vue-progress'
 
 export default {
   components: {TinyLayout, TinyRow, TinyCol, TinyProgress},

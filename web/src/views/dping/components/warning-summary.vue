@@ -35,7 +35,7 @@ export default {
   methods: {
     initLevelEcharts() {
       const option = {
-        color: ['#A0CE3A', '#31C5C0', '#1E9BD1'],
+        color: ['#6b9bb8', '#8b949e', '#c48c5a'],
         backgroundColor: 'transparent',
         legend: {
           orient: 'vertical',

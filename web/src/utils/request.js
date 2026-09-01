@@ -80,10 +80,13 @@ service.interceptors.response.use(res => {
     const data = res.data || {}
     const hasCode = Object.prototype.hasOwnProperty.call(data, 'code')
     const code = hasCode ? Number(data.code) : null
+    const silent = Boolean(res.config && res.config.silent)
     // 获取错误信息
     const msg = errorCode[code] || data.msg || errorCode['default']
     if (code === null || Number.isNaN(code)) {
-      Notification.error({title: msg})
+      if (!silent) {
+        Notification.error({title: msg})
+      }
       return Promise.reject(new Error(msg))
     }
     if (code === 401) {
@@ -104,19 +107,28 @@ service.interceptors.response.use(res => {
       }
       return Promise.reject('无效的会话，或者会话已过期，请重新登录。')
     } else if (code === 500) {
-      Message({message: msg, type: 'error'})
+      if (!silent) {
+        Message({message: msg, type: 'error'})
+      }
       return Promise.reject(new Error(msg))
     } else if (code === 601) {
-      Message({message: msg, type: 'warning'})
+      if (!silent) {
+        Message({message: msg, type: 'warning'})
+      }
       return Promise.reject('error')
     } else if (code !== 200) {
-      Notification.error({title: msg})
+      if (!silent) {
+        Notification.error({title: msg})
+      }
       return Promise.reject('error')
     } else {
       return res.data
     }
   },
   error => {
+    if (error.config && error.config.silent) {
+      return Promise.reject(error)
+    }
     console.log('err' + error)
     let {message} = error;
     if (message == "Network Error") {
