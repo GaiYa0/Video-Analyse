@@ -48,15 +48,12 @@ import hazardtrend from "./components/hazard-trend.vue"
 import hazarddistribution from "./components/hazard-distribution.vue"
 import store from "@/store"
 import TinyGrid, { GridColumn as TinyGridColumn } from '@opentiny/vue-grid'
-import TinySelect from '@opentiny/vue-select'
-import TinyOption from '@opentiny/vue-option'
 import {getDeptList, getHandleData} from '@/api/system/kanban';
 
 export default {
   name: "Index",
   components: {
-    hazardcount, hazardtrend, hazarddistribution, TinyGrid, TinyGridColumn, TinySelect,
-    TinyOption
+    hazardcount, hazardtrend, hazarddistribution, TinyGrid, TinyGridColumn
   },
   data() {
     return {
