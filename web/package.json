@@ -6,6 +6,7 @@
   "license": "MIT",
   "scripts": {
     "dev": "NODE_OPTIONS=--openssl-legacy-provider vue-cli-service serve",
+    "build": "npm run build:prod",
     "build:prod": "NODE_OPTIONS=--openssl-legacy-provider vue-cli-service build",
     "build:stage": "NODE_OPTIONS=--openssl-legacy-provider vue-cli-service build --mode staging",
     "preview": "node build/index.js --preview",
@@ -38,6 +39,11 @@
   "dependencies": {
     "@jiaminghi/data-view": "^2.10.0",
     "@opentiny/vue": "^2.13.0",
+    "@opentiny/vue-col": "^2.13.0",
+    "@opentiny/vue-grid": "^2.13.0",
+    "@opentiny/vue-layout": "^2.13.0",
+    "@opentiny/vue-progress": "^2.13.0",
+    "@opentiny/vue-row": "^2.13.0",
     "@riophae/vue-treeselect": "0.4.0",
     "axios": "0.24.0",
     "clipboard": "2.0.8",
