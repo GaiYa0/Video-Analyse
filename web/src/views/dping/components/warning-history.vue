@@ -1,24 +1,26 @@
 <template>
   <div class="avb">
-    <el-row :gutter="20">
-      <el-col :span="8" v-for="(item, index) in deviceImages.slice(0, 3)" :key="index" style="position: relative">
+    <el-row :gutter="16">
+      <el-col :span="8" v-for="(item, index) in paddedSlots" :key="index">
         <div class="image-container">
-          <el-image class="img" :src="item.picture_absolute_url" fit="contain"
-                    :preview-src-list="[item.picture_absolute_url]"></el-image>
-          <div class="alarm-type">{{ item.alarm_type_name }}</div>
+          <el-image
+            v-if="item && item.picture_absolute_url"
+            class="img"
+            :src="item.picture_absolute_url"
+            fit="contain"
+            :preview-src-list="[item.picture_absolute_url]"
+          >
+            <div slot="error" class="image-slot">暂无截图</div>
+            <div slot="placeholder" class="image-slot">加载中</div>
+          </el-image>
+          <div v-else class="image-slot">暂无截图</div>
+          <div
+            v-if="item && item.alarm_type_name"
+            class="alarm-type-badge"
+            :class="{ 'is-sleep': isSleepType(item.alarm_type_name) }"
+          >{{ item.alarm_type_name }}</div>
         </div>
-        <div class="caption">{{ item.device_name }}</div>
-      </el-col>
-    </el-row>
-
-    <el-row :gutter="20">
-      <el-col :span="8" v-for="(item, index) in deviceImages.slice(3, 6)" :key="index + 3" style="position: relative">
-        <div class="image-container">
-          <el-image class="img" :src="item.picture_absolute_url" fit="contain"
-                    :preview-src-list="[item.picture_absolute_url]"></el-image>
-          <div class="alarm-type">{{ item.alarm_type_name }}</div>
-        </div>
-        <div class="caption">{{ item.device_name }}</div>
+        <div class="caption">{{ item && item.device_name ? item.device_name : '—' }}</div>
       </el-col>
     </el-row>
   </div>
@@ -34,39 +36,41 @@ export default {
       timer: null
     };
   },
-
+  computed: {
+    paddedSlots() {
+      const rows = this.deviceImages.slice(0, 6)
+      while (rows.length < 6) {
+        rows.push(null)
+      }
+      return rows
+    }
+  },
   mounted() {
     this.fetchData()
     this.switper()
   },
-
   beforeDestroy() {
     this.clearData()
   },
-
   methods: {
+    isSleepType(name) {
+      return String(name || '').indexOf('睡岗') !== -1
+    },
     async fetchData() {
       try {
         const res = await getAlarmPhoto();
-        console.log(res, 'res')
         if (res.code != 200) throw new Error(res.msg);
-        this.deviceImages = res.data;
+        this.deviceImages = res.data || [];
       } catch (error) {
         console.error(error);
       }
     },
-
     switper() {
-      console.log(this.timer, 'timer')
       if (this.timer) {
         return
       }
-      // let looper = (a) => {
-      //   this.getData()
-      // };
       this.timer = setInterval(this.fetchData, 20000);
     },
-
     clearData() {
       if (this.timer) {
         clearInterval(this.timer)
@@ -77,54 +81,56 @@ export default {
 };
 </script>
 
-
 <style lang='scss' scoped>
 .avb {
-  width: 95%;
-  margin-left: 25px;
-  // margin-top: 15px;
+  width: 100%;
+  padding: 8px 16px 0;
+  box-sizing: border-box;
 }
 
 .img {
   width: 100%;
-  height: 201px;
+  height: 168px;
 }
 
 .image-container {
-  border: 3px solid rgb(52, 209, 234, 0.65);
-  border-radius: 5px;
+  border: 1px solid var(--sva-border);
+  border-radius: 8px;
   width: 100%;
-  height: 206px;
-  display: inline-block;
+  height: 168px;
+  display: block;
   position: relative;
-  margin-top: 10px;
+  overflow: hidden;
+  background: var(--sva-surface-2);
+  margin-top: 8px;
 }
 
-.alarm-type {
+.image-slot {
+  width: 100%;
+  height: 168px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--sva-text-muted);
+  font-size: 13px;
+  background: var(--sva-surface-2);
+}
+
+.alarm-type-badge {
   position: absolute;
-  width: 55%;
-  top: 0;
-  right: 0;
-  color: #00fdfa;
-  height: 30px;
-  line-height: 30px;
-  font-size: 14px;
-  background: rgba(9, 107, 167, 0.8);
+  top: 8px;
+  right: 8px;
   z-index: 1;
-  text-align: center;
 }
 
 .caption {
-  width: 94%;
-  position: absolute;
-  height: 36px;
-  line-height: 36px;
-  bottom: 4px;
-  background: red;
-  text-align: left;
-  text-indent: 1em;
-  background: linear-gradient(90deg, rgba(9, 107, 167, 1), rgba(9, 107, 167, 0.5), rgba(9, 107, 167, 0.1));
-  color: #FFFFFF;
-  font-size: 16px;
+  margin-top: 6px;
+  height: 24px;
+  line-height: 24px;
+  color: var(--sva-text-muted);
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 </style>

@@ -38,27 +38,24 @@
     <!--        </div>-->
     <!--      </el-col>-->
     <!--    </el-row>-->
-    <el-row>
+    <el-row :gutter="12" class="stat-row">
       <el-col :span="8">
-        <el-image style="margin: 20px 0 0 23px" :src="require('@/assets/images/tip.png')" fit="contain"></el-image>
-        <router-link :to="{ path: '/warning/warning', query: { withQue: 3 } }">
-          <div style="font-size: 18px; color: #30FBE5;text-align: center">{{ this.monthWarning.lastYear }}</div>
+        <router-link :to="{ path: '/warning/warning', query: { withQue: 3 } }" class="stat-card">
+          <div class="stat-value">{{ this.monthWarning.lastYear }}</div>
+          <div class="stat-label">年度报警</div>
         </router-link>
-        <div style="text-align: center;font-size: 14px;margin-top: 10px">年度报警</div>
       </el-col>
       <el-col :span="8">
-        <el-image style="margin: 20px 0 0 23px" :src="require('@/assets/images/warning.png')" fit="contain"></el-image>
-        <router-link :to="{ path: '/warning/warning', query: { withQue: 2 } }">
-          <div style="font-size: 18px; color: #30FBE5;text-align: center">{{ this.monthWarning.instant }}</div>
+        <router-link :to="{ path: '/warning/warning', query: { withQue: 2 } }" class="stat-card">
+          <div class="stat-value">{{ this.monthWarning.instant }}</div>
+          <div class="stat-label">月度报警</div>
         </router-link>
-        <div style="text-align: center;font-size: 14px;margin-top: 10px">月度报警</div>
       </el-col>
       <el-col :span="8">
-        <el-image style="margin: 20px 0 0 23px" :src="require('@/assets/images/serious.png')" fit="contain"></el-image>
-        <router-link :to="{ path: '/warning/warning', query: { withQue: 3, is_handle: 1 } }">
-          <div style="font-size: 18px; color: #30FBE5;text-align: center">{{ this.monthWarning.num }}</div>
+        <router-link :to="{ path: '/warning/warning', query: { withQue: 3, is_handle: 1 } }" class="stat-card">
+          <div class="stat-value">{{ this.monthWarning.num }}</div>
+          <div class="stat-label">处理报警</div>
         </router-link>
-        <div style="text-align: center;font-size: 14px;margin-top: 10px">处理报警</div>
       </el-col>
     </el-row>
     <!--    <el-row>-->
@@ -247,99 +244,29 @@ export default {
 }
 </script>
 
-<style lang='less' scoped>
-.col {
-  margin-top: 10px;
-  height: 46px;
-  text-align: center;
-  border-radius: 10px;
-  box-shadow: 0 4px 12px 0 rgba(0, 0, 0, 0.05);
+<style lang='scss' scoped>
+.stat-row {
+  padding: 24px 12px 0;
 }
 
-.font {
+.stat-card {
+  display: block;
+  text-align: center;
+  padding: 16px 8px;
+  border: 1px solid var(--sva-border);
+  border-radius: 8px;
+  background: var(--sva-surface-2);
+}
+
+.stat-value {
+  font-size: 22px;
   font-weight: 600;
-  font-size: 24px;
-  line-height: 20px;
-  text-align: left;
+  color: var(--sva-text);
 }
 
-.total-num {
-  display: flex;
-  background: url("~@/assets/images/totalBg.png") no-repeat;
-  background-size: 100% 100%;
-  background-attachment: fixed;
-}
-
-.col > div {
-  color: white;
-  font-weight: normal;
-  font-size: 14px;
-  line-height: 14px;
-  text-align: center;
-
-  .plan-pass {
-    color: #30FBE5;
-    font-size: 18px;
-  }
-
-  .plan-fail {
-    color: #252b3a;
-    .font();
-  }
-
-  .num {
-    color: #adb0b8;
-    font-size: 10px;
-    line-height: 10px;
-  }
-}
-
-
-.title {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  img {
-    padding-right: 10px;
-  }
-}
-
-.split-container {
-  margin-top: 18px;
-  border: 3px solid rgba(78, 104, 184, 0.8);
-  display: flex;
-  flex-direction: column;
-  height: 200px;
-  /* 根据需要调整高度 */
-  width: 80%;
-  align-items: center;
-  justify-content: center;
-}
-
-.upper-section {
-  background-color: rgba(252, 200, 74, 0.9);
-  height: 70%;
-  width: 100%;
-  /* 上半部分占据50%的高度 */
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.lower-section {
-  height: 30%;
-  /* 下半部分占据50%的高度 */
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.center-text {
-  text-align: center;
-  font-size: 20px;
-  color: white;
-  font-weight: bold;
-  margin: 0;
+.stat-label {
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--sva-text-muted);
 }
 </style>

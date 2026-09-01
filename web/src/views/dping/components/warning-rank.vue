@@ -59,7 +59,7 @@ export default {
               opacity: 0
             }
           },
-          formatter: '{b}: <span style="color: blue">{c}<span/>'
+          formatter: '{b}: {c}'
         },
         legend: {
           data: ['直接访问', '背景'],
@@ -82,12 +82,12 @@ export default {
           },
           axisLine: {
             lineStyle: {
-              color: '#0c3b71'
+              color: 'rgba(255,255,255,0.08)'
             }
           },
           axisLabel: {
             show: true,
-            color: '#ffffff',
+            color: '#e6edf3',
             fontSize: 12,
             rotate: -17,
             formatter: function (value) {
@@ -105,7 +105,7 @@ export default {
           splitLine: {
             show: true,
             lineStyle: {
-              color: '#0c3b71'
+              color: 'rgba(255,255,255,0.08)'
             }
           },
           axisTick: {
@@ -113,11 +113,11 @@ export default {
           },
           axisLine: {
             lineStyle: {
-              color: '#0c3b71'
+              color: 'rgba(255,255,255,0.08)'
             }
           },
           axisLabel: {
-            color: '#ffffff',
+            color: '#e6edf3',
             formatter: '{value}'
           }
         },
@@ -152,19 +152,15 @@ export default {
           yAxisIndex: 0,
           itemStyle: {
             normal: {
-              barBorderRadius: 30,
-              color: new echarts.graphic.LinearGradient(
+                  barBorderRadius: 2,
+                  color: new echarts.graphic.LinearGradient(
                 0, 0, 0, 1, [{
                   offset: 0,
-                  color: '#00feff'
+                  color: '#8fb4c9'
                 },
                   {
-                    offset: 0.5,
-                    color: '#027eff'
-                  },
-                  {
                     offset: 1,
-                    color: '#0286ff'
+                    color: '#6b9bb8'
                   }
                 ]
               )
@@ -184,7 +180,7 @@ export default {
             // data: this.orgData.xData.map(),
             itemStyle: {
               normal: {
-                barBorderRadius: 30,
+                    barBorderRadius: 2,
                 color: 'rgba(255,255,255,0.1)'
               }
             },

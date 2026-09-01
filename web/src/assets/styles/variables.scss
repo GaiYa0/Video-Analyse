@@ -8,33 +8,28 @@ $tiffany: #4AB7BD;
 $yellow:#FEC171;
 $panGreen: #30B08F;
 
-// 默认菜单主题风格
-$base-menu-color:#bfcbd9;
-$base-menu-color-active:#f4f4f5;
-$base-menu-background:#304156;
-$base-logo-title-color: #ffffff;
+// 克制深色监控台
+$sva-bg: #0e1116;
+$sva-surface: #161b22;
+$sva-surface-2: #1c2128;
+$sva-border: rgba(255, 255, 255, 0.08);
+$sva-text: #e6edf3;
+$sva-text-muted: #8b949e;
+$sva-accent: #6b9bb8;
+$sva-radius: 8px;
+
+// 默认菜单主题风格（与大屏同一套石墨）
+$base-menu-color:#8b949e;
+$base-menu-color-active:#e6edf3;
+$base-menu-background:#161b22;
+$base-logo-title-color: #e6edf3;
 
 $base-menu-light-color:rgba(0,0,0,.70);
 $base-menu-light-background:#ffffff;
 $base-logo-light-title-color: #001529;
 
-$base-sub-menu-background:#1f2d3d;
-$base-sub-menu-hover:#001528;
-
-// 自定义暗色菜单风格
-/**
-$base-menu-color:hsla(0,0%,100%,.65);
-$base-menu-color-active:#fff;
-$base-menu-background:#001529;
-$base-logo-title-color: #ffffff;
-
-$base-menu-light-color:rgba(0,0,0,.70);
-$base-menu-light-background:#ffffff;
-$base-logo-light-title-color: #001529;
-
-$base-sub-menu-background:#000c17;
-$base-sub-menu-hover:#001528;
-*/
+$base-sub-menu-background:#0e1116;
+$base-sub-menu-hover:#1c2128;
 
 $base-sidebar-width: 200px;
 

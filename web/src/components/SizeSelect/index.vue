@@ -16,10 +16,10 @@ export default {
   data() {
     return {
       sizeOptions: [
-        { label: 'Default', value: 'default' },
-        { label: 'Medium', value: 'medium' },
-        { label: 'Small', value: 'small' },
-        { label: 'Mini', value: 'mini' }
+        { label: '默认', value: 'default' },
+        { label: '中', value: 'medium' },
+        { label: '紧凑', value: 'small' },
+        { label: '更小', value: 'mini' }
       ]
     }
   },
@@ -34,7 +34,7 @@ export default {
       this.$store.dispatch('app/setSize', size)
       this.refreshView()
       this.$message({
-        message: 'Switch Size Success',
+        message: '已切换控件大小',
         type: 'success'
       })
     },

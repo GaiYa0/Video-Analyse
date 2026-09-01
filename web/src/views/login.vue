@@ -148,27 +148,29 @@ export default {
   justify-content: center;
   align-items: center;
   height: 100%;
-  background-image: url("../assets/images/login-background.jpg");
-  background-size: cover;
+  background: var(--sva-bg);
 }
 
 .title {
-  margin: 0px auto 30px auto;
+  margin: 0 auto 32px;
   text-align: center;
-  color: #707070;
+  color: var(--sva-text);
+  font-weight: 600;
+  letter-spacing: 1px;
 }
 
 .login-form {
-  border-radius: 6px;
-  background: #ffffff;
   width: 400px;
-  padding: 25px 25px 5px 25px;
+  padding: 32px 8px 8px;
 
-  .el-input {
-    height: 38px;
+  ::v-deep .el-input {
+    height: 40px;
 
-    input {
-      height: 38px;
+    .el-input__inner {
+      height: 40px;
+      background: var(--sva-surface);
+      border-color: var(--sva-border);
+      color: var(--sva-text);
     }
   }
 
@@ -182,7 +184,7 @@ export default {
 .login-tip {
   font-size: 13px;
   text-align: center;
-  color: #bfbfbf;
+  color: var(--sva-text-muted);
 }
 
 .login-code {
@@ -203,7 +205,7 @@ export default {
   bottom: 0;
   width: 100%;
   text-align: center;
-  color: #fff;
+  color: var(--sva-text-muted);
   font-family: Arial;
   font-size: 12px;
   letter-spacing: 1px;

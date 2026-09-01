@@ -367,16 +367,16 @@ export default {
   }
 
   ::v-deep .el-tabs__item {
-    color: #9fd9ff;
+    color: var(--sva-text-muted);
     font-size: 13px;
   }
 
   ::v-deep .el-tabs__item.is-active {
-    color: #30fbe5;
+    color: var(--sva-accent);
   }
 
   ::v-deep .el-tabs__active-bar {
-    background-color: #30fbe5;
+    background-color: var(--sva-accent);
   }
 
   ::v-deep .el-tabs__content {
@@ -400,8 +400,8 @@ export default {
 .history-card,
 .stream-card {
   position: relative;
-  border: 1px solid rgba(48, 251, 229, 0.35);
-  background: rgba(5, 29, 66, 0.78);
+  border: 1px solid var(--sva-border);
+  background: var(--sva-surface-2);
   border-radius: 4px;
   overflow: hidden;
 }
@@ -428,8 +428,8 @@ export default {
   font-size: 11px;
   line-height: 18px;
   padding: 0 8px;
-  color: #00fdfa;
-  background: rgba(9, 107, 167, 0.82);
+  color: var(--sva-text);
+  background: rgba(107, 155, 184, 0.35);
 }
 
 .history-name {
@@ -442,7 +442,7 @@ export default {
   padding: 0 8px;
   font-size: 12px;
   color: #ffffff;
-  background: linear-gradient(90deg, rgba(9, 107, 167, 0.95), rgba(9, 107, 167, 0.25));
+  background: var(--sva-surface);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -459,8 +459,8 @@ export default {
   align-items: center;
   justify-content: space-between;
   padding: 0 8px;
-  border-bottom: 1px solid rgba(48, 251, 229, 0.2);
-  background: rgba(8, 45, 102, 0.7);
+  border-bottom: 1px solid var(--sva-border);
+  background: var(--sva-surface);
 }
 
 .stream-name {
@@ -481,7 +481,7 @@ export default {
 }
 
 .status-playing {
-  color: #30fbe5;
+  color: var(--sva-accent);
 }
 
 .status-failed {
@@ -495,7 +495,7 @@ export default {
 .stream-body {
   position: relative;
   flex: 1;
-  background: rgba(1, 16, 41, 0.85);
+  background: var(--sva-bg);
 }
 
 .stream-video {
@@ -510,8 +510,8 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #9dd7f6;
+  color: var(--sva-text-muted);
   font-size: 12px;
-  background: rgba(2, 22, 50, 0.72);
+  background: rgba(14, 17, 22, 0.72);
 }
 </style>
