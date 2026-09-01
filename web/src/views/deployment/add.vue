@@ -1,12 +1,31 @@
 <template>
   <div class="app-container deployment-add-page">
-    <div class="page-title">布控管理</div>
-    <el-row :gutter="16">
-      <el-col :xs="24" :sm="24" :md="14" :lg="15">
-        <el-card shadow="never" class="left-card">
-          <div slot="header" class="card-header">实时流预览与区域绘制</div>
-          <div class="video-panel">
-            <div ref="videoWrapper" class="video-wrapper">
+    <header class="workspace-header">
+      <div class="workspace-title-wrap">
+        <div class="page-title">布控管理</div>
+          <div v-if="deploymentId" class="deployment-id-panel">
+            <span class="deployment-id-label">任务号</span>
+            <el-tag size="small" type="success" effect="plain">{{ deploymentId }}</el-tag>
+            <el-button size="mini" type="text" @click="handleCopyDeploymentId">复制</el-button>
+          </div>
+
+      </div>
+      <div class="workspace-actions">
+        <el-button size="mini" @click="handleCreateNew">新建布控</el-button>
+        <span
+          class="event-orchestration-entry"
+          :class="{ 'is-active': eventOrchestrationEntryEnabled }"
+          @click="handleOpenEventOrchestration"
+        >事件编排（可选）</span>
+        <el-button type="primary" size="mini" :loading="saveLoading" @click="handleSave">{{ saveButtonText }}</el-button>
+      </div>
+    </header>
+
+    <div class="workspace-body">
+      <section class="preview-pane">
+        <div class="card-header">实时流预览与区域绘制</div>
+        <div class="video-panel">
+          <div ref="videoWrapper" class="video-wrapper">
               <video
                 ref="previewVideo"
                 class="preview-video"
@@ -20,43 +39,9 @@
                 @click="handleCanvasClick"
                 @dblclick.prevent="handleCanvasDblClick"
               />
-              <div class="video-rule-overlay">
-                <div class="video-rule-overlay-title">行为识别规则</div>
-                <div v-if="behaviorRulePreviewList.length" class="video-rule-list">
-                  <div
-                    v-for="rule in behaviorRulePreviewList"
-                    :key="rule.id"
-                    class="video-rule-chip"
-                    :class="[`video-rule-chip--${rule.geometryType || 'region'}`]"
-                  >
-                    <span class="video-rule-chip-type">{{ getBehaviorTypeLabel(rule.behaviorType) }}</span>
-                    <span class="video-rule-chip-text">{{ getBehaviorRulePreviewText(rule) }}</span>
-                  </div>
-                </div>
-                <div v-else class="video-rule-overlay-empty">暂无监控规则</div>
-              </div>
-              <div class="video-event-overlay">
-                <div class="video-event-overlay-title">最近事件</div>
-                <div v-if="recentDetectEvents.length" class="video-event-list">
-                  <div
-                    v-for="item in recentDetectEvents"
-                    :key="item.key"
-                    class="video-event-item"
-                  >
-                    <div class="video-event-item-header">
-                      <span
-                        class="video-event-state"
-                        :class="[`video-event-state--${item.eventState || 'active'}`]"
-                      >{{ item.eventStateLabel }}</span>
-                      <span class="video-event-time">{{ item.timestampText }}</span>
-                    </div>
-                    <div class="video-event-item-text">{{ item.summary }}</div>
-                  </div>
-                </div>
-                <div v-else class="video-event-overlay-empty">{{ eventOverlayEmptyText }}</div>
-              </div>
-            </div>
-            <div class="video-toolbar">
+
+          </div>
+          <div class="video-toolbar">
               <el-radio-group v-model="geometryEditorMode" size="mini" class="geometry-mode-switch">
                 <el-radio-button label="region">区域</el-radio-button>
                 <el-radio-button label="line">线段</el-radio-button>
@@ -107,20 +92,52 @@
               <span class="geometry-state">统一几何配置：{{ geometryRegionCount }} 区域 / {{ geometryLineCount }} 线段</span>
               <span class="primary-region-state">主区域：{{ primaryRegionLabel }}</span>
               <span class="geometry-editor-hint">{{ geometryEditorHint }}</span>
-            </div>
           </div>
-        </el-card>
-      </el-col>
+          <div class="preview-meta">
+              <div class="video-rule-overlay">
+                <div class="video-rule-overlay-title">行为识别规则</div>
+                <div v-if="behaviorRulePreviewList.length" class="video-rule-list">
+                  <div
+                    v-for="rule in behaviorRulePreviewList"
+                    :key="rule.id"
+                    class="video-rule-chip"
+                    :class="[`video-rule-chip--${rule.geometryType || 'region'}`]"
+                  >
+                    <span class="video-rule-chip-type">{{ getBehaviorTypeLabel(rule.behaviorType) }}</span>
+                    <span class="video-rule-chip-text">{{ getBehaviorRulePreviewText(rule) }}</span>
+                  </div>
+                </div>
+                <div v-else class="video-rule-overlay-empty">暂无监控规则</div>
+              </div>
+              <div class="video-event-overlay">
+                <div class="video-event-overlay-title">最近事件</div>
+                <div v-if="recentDetectEvents.length" class="video-event-list">
+                  <div
+                    v-for="item in recentDetectEvents"
+                    :key="item.key"
+                    class="video-event-item"
+                  >
+                    <div class="video-event-item-header">
+                      <span
+                        class="video-event-state"
+                        :class="[`video-event-state--${item.eventState || 'active'}`]"
+                      >{{ item.eventStateLabel }}</span>
+                      <span class="video-event-time">{{ item.timestampText }}</span>
+                    </div>
+                    <div class="video-event-item-text">{{ item.summary }}</div>
+                  </div>
+                </div>
+                <div v-else class="video-event-overlay-empty">{{ eventOverlayEmptyText }}</div>
+              </div>
 
-      <el-col :xs="24" :sm="24" :md="10" :lg="9">
-        <el-card shadow="never" class="right-card">
-          <div slot="header" class="card-header">布控配置</div>
-          <div v-if="deploymentId" class="deployment-id-panel">
-            <span class="deployment-id-label">任务号</span>
-            <el-tag size="small" type="success" effect="plain">{{ deploymentId }}</el-tag>
-            <el-button size="mini" type="text" @click="handleCopyDeploymentId">复制</el-button>
           </div>
-          <el-form ref="deploymentForm" :model="form" :rules="rules" label-width="110px" size="small">
+        </div>
+      </section>
+
+      <section class="config-pane">
+        <el-form ref="deploymentForm" :model="form" :rules="rules" label-width="110px" size="small" class="config-form">
+          <el-tabs v-model="workspaceTab" class="config-tabs">
+            <el-tab-pane label="任务与算法" name="task">
             <el-form-item label="任务名称" prop="taskName">
               <el-input v-model="form.taskName" placeholder="请输入任务名称" maxlength="64" show-word-limit />
             </el-form-item>
@@ -207,7 +224,7 @@
                         :step="1"
                         :precision="0"
                         controls-position="right"
-                        style="width: 100%;"
+                        class="algorithm-number-input"
                       />
                     </el-col>
                     <el-col :xs="24" :sm="8">
@@ -218,14 +235,16 @@
                         </el-tooltip>
                       </div>
                       <el-input-number
+                        v-if="task.algorithmCode"
                         v-model="task.scoreThreshold"
                         :min="0"
                         :max="1"
                         :step="0.05"
                         :precision="2"
                         controls-position="right"
-                        style="width: 100%;"
+                        class="algorithm-number-input"
                       />
+                      <el-input v-else disabled placeholder="选择算法后自动带出" />
                     </el-col>
                     <el-col :xs="24" :sm="8">
                       <div class="algorithm-task-param-label">
@@ -235,14 +254,16 @@
                         </el-tooltip>
                       </div>
                       <el-input-number
+                        v-if="task.algorithmCode"
                         v-model="task.nmsThreshold"
                         :min="0"
                         :max="1"
                         :step="0.05"
                         :precision="2"
                         controls-position="right"
-                        style="width: 100%;"
+                        class="algorithm-number-input"
                       />
+                      <el-input v-else disabled placeholder="选择算法后自动带出" />
                     </el-col>
                   </el-row>
                 </div>
@@ -250,12 +271,33 @@
               <el-button size="mini" type="primary" plain icon="el-icon-plus" @click="handleAddAlgorithmTask">添加算法</el-button>
             </el-form-item>
 
+            </el-tab-pane>
+            <el-tab-pane label="行为规则" name="rules">
             <el-form-item label="行为规则">
               <div class="behavior-rule-toolbar">
                 <span class="behavior-rule-hint">可配置跨线、进区、出区、停留、低速、徘徊、睡觉、缺席、数量阈值、占用、区域运动、定向通行、逆向通行、目标接近、目标远离；区域类规则可绑定任一区域</span>
                 <el-button size="mini" type="primary" plain icon="el-icon-plus" @click="handleAddBehaviorRule">新增规则</el-button>
               </div>
-              <div v-if="behaviorRuleList.length" class="behavior-rule-list">
+              <div v-if="behaviorRuleList.length" class="rules-workspace">
+                <div class="rules-nav">
+                  <button
+                    v-for="rule in standaloneBehaviorRules"
+                    :key="rule.id"
+                    type="button"
+                    class="rules-nav-item"
+                    :class="{ 'is-active': activeRuleId === rule.id }"
+                    @click="selectStandaloneRule(rule.id)"
+                  >{{ getBehaviorTypeLabel(rule.behaviorType) || '未选类型' }}</button>
+                  <button
+                    v-for="(group, groupIndex) in sequenceRuleGroups"
+                    :key="group.sequenceId"
+                    type="button"
+                    class="rules-nav-item"
+                    :class="{ 'is-active': activeSequenceId === group.sequenceId }"
+                    @click="selectSequenceGroup(group.sequenceId)"
+                  >多阶段 {{ groupIndex + 1 }}</button>
+                </div>
+                <div class="behavior-rule-list">
                 <div v-if="standaloneBehaviorRules.length" class="behavior-rule-section">
                   <div class="behavior-rule-section-header">
                     <span class="behavior-rule-section-title">普通规则</span>
@@ -263,6 +305,7 @@
                   </div>
                   <div
                     v-for="rule in standaloneBehaviorRules"
+                    v-show="activeRuleId === rule.id"
                     :key="rule.id"
                     class="behavior-rule-item behavior-rule-item--standalone"
                   >
@@ -626,6 +669,7 @@
                   </div>
                   <div
                     v-for="(group, groupIndex) in sequenceRuleGroups"
+                    v-show="activeSequenceId === group.sequenceId"
                     :key="group.sequenceId"
                     :class="getSequenceGroupToneClass(groupIndex)"
                     class="behavior-sequence-group"
@@ -999,9 +1043,12 @@
                   </div>
                 </div>
               </div>
+              </div>
               <div v-else class="behavior-rule-empty">暂无行为规则，添加后会随 geometryConfig 一并保存</div>
             </el-form-item>
 
+            </el-tab-pane>
+            <el-tab-pane label="推流与其它" name="more">
             <el-form-item label="是否推流" prop="pushEnabled">
               <el-radio-group v-model="form.pushEnabled">
                 <el-radio :label="true">是</el-radio>
@@ -1056,19 +1103,11 @@
               />
             </el-form-item>
 
-            <el-form-item>
-              <el-button @click="handleCreateNew">新建布控</el-button>
-              <span
-                class="event-orchestration-entry"
-                :class="{ 'is-active': eventOrchestrationEntryEnabled }"
-                @click="handleOpenEventOrchestration"
-              >事件编排（可选）</span>
-              <el-button type="primary" :loading="saveLoading" @click="handleSave">{{ saveButtonText }}</el-button>
-            </el-form-item>
-          </el-form>
-        </el-card>
-      </el-col>
-    </el-row>
+            </el-tab-pane>
+          </el-tabs>
+        </el-form>
+      </section>
+    </div>
   </div>
 </template>
 
@@ -1162,7 +1201,10 @@ export default {
       detectFrameRenderTimer: null,
       pendingDetectFrame: null,
       overlayDelayMs: OVERLAY_DELAY_DEFAULT_MS,
-      recentDetectEvents: []
+      recentDetectEvents: [],
+      workspaceTab: 'task',
+      activeRuleId: '',
+      activeSequenceId: ''
     }
   },
   computed: {
@@ -1323,6 +1365,10 @@ export default {
     eventOverlayEmptyText() {
       return this.form.pushEnabled ? '推流模式下等待行为事件推送' : '等待行为事件推送'
     },
+    activeRuleLabel() {
+      const rule = this.standaloneBehaviorRules.find(item => item.id === this.activeRuleId)
+      return rule ? this.getBehaviorTypeLabel(rule.behaviorType) : ''
+    },
     activeRegionIsPrimary() {
       const activeRegion = this.getActiveRegion()
       return Boolean(activeRegion && activeRegion.primary)
@@ -1359,6 +1405,12 @@ export default {
     },
     geometryEditorMode() {
       this.drawPolygon()
+    },
+    behaviorRuleList: {
+      handler() {
+        this.ensureActiveRuleSelection()
+      },
+      immediate: true
     }
   },
   mounted() {
@@ -3433,6 +3485,42 @@ export default {
       geometryConfig.behaviorRules = [...(geometryConfig.behaviorRules || []), nextRule]
       this.form.geometryConfig = this.normalizeBehaviorRulesInGeometry(geometryConfig)
       this.syncGeometryEditorState()
+      this.activeRuleId = nextRule.id
+      this.activeSequenceId = ''
+      this.workspaceTab = 'rules'
+    },
+
+    ensureActiveRuleSelection() {
+      const standaloneIds = this.standaloneBehaviorRules.map(rule => rule.id)
+      if (this.activeRuleId && standaloneIds.indexOf(this.activeRuleId) !== -1) {
+        this.activeSequenceId = ''
+        return
+      }
+      const sequenceIds = this.sequenceRuleGroups.map(group => group.sequenceId)
+      if (this.activeSequenceId && sequenceIds.indexOf(this.activeSequenceId) !== -1) {
+        this.activeRuleId = ''
+        return
+      }
+      if (standaloneIds.length) {
+        this.activeRuleId = standaloneIds[0]
+        this.activeSequenceId = ''
+        return
+      }
+      if (sequenceIds.length) {
+        this.activeSequenceId = sequenceIds[0]
+        this.activeRuleId = ''
+        return
+      }
+      this.activeRuleId = ''
+      this.activeSequenceId = ''
+    },
+    selectStandaloneRule(ruleId) {
+      this.activeRuleId = ruleId
+      this.activeSequenceId = ''
+    },
+    selectSequenceGroup(sequenceId) {
+      this.activeSequenceId = sequenceId
+      this.activeRuleId = ''
     },
 
     handleUpgradeBehaviorRuleToSequence(ruleId) {
@@ -5028,20 +5116,147 @@ export default {
 
 <style scoped>
 .deployment-add-page {
-  min-width: 980px;
+  min-width: 0;
+  min-height: calc(100vh - 84px);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  color: var(--sva-text);
+}
+
+.workspace-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.workspace-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.workspace-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.workspace-body {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(420px, 520px);
+  gap: 16px;
+}
+
+.preview-pane,
+.config-pane {
+  min-width: 0;
+  min-height: 0;
+  border: 1px solid var(--sva-border);
+  border-radius: 8px;
+  background: var(--sva-surface);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+}
+
+.config-pane {
+  overflow: auto;
+}
+
+.preview-meta {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.preview-meta .video-rule-overlay,
+.preview-meta .video-event-overlay {
+  position: static;
+  left: auto;
+  right: auto;
+  top: auto;
+  width: auto;
+  max-width: none;
+  max-height: 168px;
+  overflow: auto;
+  pointer-events: auto;
+  background: var(--sva-surface-2);
+  border: 1px solid var(--sva-border);
+  color: var(--sva-text);
+}
+
+.algorithm-number-input {
+  width: 100%;
+  min-width: 128px;
+}
+
+.config-pane .algorithm-task-params-row .el-col {
+  width: 100%;
+  max-width: 100%;
+  margin-bottom: 8px;
+}
+
+
+.rules-workspace {
+  display: grid;
+  grid-template-columns: 168px minmax(0, 1fr);
+  gap: 12px;
+}
+
+.rules-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.rules-nav-item {
+  text-align: left;
+  padding: 8px 10px;
+  border: 1px solid var(--sva-border);
+  border-radius: 6px;
+  background: var(--sva-surface-2);
+  color: var(--sva-text);
+  cursor: pointer;
+}
+
+.rules-nav-item.is-active {
+  border-color: var(--sva-accent);
+  color: var(--sva-accent);
+}
+
+@media (max-width: 1439px) {
+  .workspace-body {
+    grid-template-columns: 1fr;
+  }
+
+  .video-wrapper {
+    max-height: 40vh;
+  }
+
+  .preview-meta,
+  .rules-workspace {
+    grid-template-columns: 1fr;
+  }
 }
 
 .page-title {
   font-size: 20px;
   font-weight: 600;
-  color: #303133;
+  color: var(--sva-text);
   margin-bottom: 16px;
 }
 
 .card-header {
   font-size: 14px;
   font-weight: 600;
-  color: #303133;
+  color: var(--sva-text);
 }
 
 .deployment-id-panel {
@@ -5050,14 +5265,14 @@ export default {
   gap: 8px;
   margin-bottom: 12px;
   padding: 8px 10px;
-  background: #f0f9eb;
-  border: 1px solid #e1f3d8;
+  background: var(--sva-surface-2);
+  border: 1px solid var(--sva-border);
   border-radius: 4px;
 }
 
 .deployment-id-label {
   font-size: 12px;
-  color: #606266;
+  color: var(--sva-text-muted);
 }
 
 .left-card,
@@ -5067,12 +5282,18 @@ export default {
 
 .video-panel {
   width: 100%;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .video-wrapper {
   position: relative;
   width: 100%;
-  aspect-ratio: 16 / 9;
+  flex: 1;
+  min-height: 240px;
+  max-height: calc(100vh - 380px);
   background: #0f1115;
   border-radius: 4px;
   overflow: hidden;
@@ -5098,17 +5319,10 @@ export default {
 }
 
 .video-rule-overlay {
-  position: absolute;
-  left: 12px;
-  top: 12px;
-  z-index: 3;
-  max-width: min(360px, calc(100% - 24px));
   padding: 10px 12px;
   border-radius: 8px;
-  background: rgba(15, 17, 21, 0.68);
-  backdrop-filter: blur(8px);
-  color: #f5f7fa;
-  pointer-events: none;
+  background: var(--sva-surface-2);
+  color: var(--sva-text);
 }
 
 .video-rule-overlay-title {
@@ -5165,19 +5379,10 @@ export default {
 }
 
 .video-event-overlay {
-  position: absolute;
-  right: 12px;
-  top: 12px;
-  z-index: 3;
-  width: min(320px, calc(100% - 24px));
-  max-height: calc(100% - 24px);
   padding: 10px 12px;
   border-radius: 8px;
-  background: rgba(15, 17, 21, 0.72);
-  backdrop-filter: blur(8px);
-  color: #f5f7fa;
-  pointer-events: none;
-  overflow: hidden;
+  background: var(--sva-surface-2);
+  color: var(--sva-text);
 }
 
 .video-event-overlay-title {
@@ -5260,7 +5465,7 @@ export default {
   flex-wrap: wrap;
   gap: 10px;
   margin-top: 12px;
-  color: #606266;
+  color: var(--sva-text-muted);
   font-size: 12px;
 }
 
@@ -5307,7 +5512,7 @@ export default {
 .algorithm-task-title {
   font-size: 12px;
   font-weight: 600;
-  color: #303133;
+  color: var(--sva-text);
 }
 
 .algorithm-task-params-row {
@@ -5320,12 +5525,12 @@ export default {
   margin-bottom: 6px;
   font-size: 12px;
   line-height: 1;
-  color: #606266;
+  color: var(--sva-text-muted);
 }
 
 .algorithm-task-param-icon {
   margin-left: 4px;
-  color: #909399;
+  color: var(--sva-text-muted);
   cursor: help;
 }
 
@@ -5335,7 +5540,7 @@ export default {
   margin: 0 10px;
   font-size: 12px;
   line-height: 1;
-  color: #909399;
+  color: var(--sva-text-muted);
   cursor: default;
   user-select: none;
 }
@@ -5361,7 +5566,7 @@ export default {
 .behavior-rule-hint {
   font-size: 12px;
   line-height: 1.5;
-  color: #909399;
+  color: var(--sva-text-muted);
 }
 
 .behavior-rule-list {
@@ -5405,7 +5610,7 @@ export default {
 
 .behavior-rule-item--standalone {
   border-color: #d9e2ec;
-  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  background: var(--sva-surface-2);
 }
 
 .behavior-rule-item--standalone::before {
@@ -5582,7 +5787,7 @@ export default {
   font-size: 14px;
   font-weight: 600;
   line-height: 1.5;
-  color: #303133;
+  color: var(--sva-text);
 }
 
 .behavior-rule-event-editor {
@@ -5626,7 +5831,7 @@ export default {
 .behavior-rule-action-icon {
   padding: 5px;
   font-size: 19px;
-  color: #909399;
+  color: var(--sva-text-muted);
 }
 
 .behavior-rule-action-icon:hover {
@@ -5741,7 +5946,7 @@ export default {
   margin-bottom: 4px;
   font-size: 12px;
   line-height: 1.5;
-  color: #909399;
+  color: var(--sva-text-muted);
 }
 
 .behavior-rule-field-label--compact {
@@ -5758,7 +5963,7 @@ export default {
 .behavior-rule-direction-hint {
   font-size: 12px;
   line-height: 1.5;
-  color: #909399;
+  color: var(--sva-text-muted);
 }
 
 .behavior-rule-summary {
@@ -5766,16 +5971,16 @@ export default {
   padding: 6px 10px;
   font-size: 12px;
   line-height: 20px;
-  color: #606266;
-  background: #f5f7fa;
+  color: var(--sva-text-muted);
+  background: var(--sva-surface-2);
   border-radius: 4px;
 }
 
 .behavior-rule-empty {
   padding: 10px 12px;
   font-size: 12px;
-  color: #909399;
-  background: #f5f7fa;
+  color: var(--sva-text-muted);
+  background: var(--sva-surface-2);
   border-radius: 4px;
 }
 

@@ -40,7 +40,14 @@
       <el-table-column type="selection" width="55"/>
       <el-table-column label="序号" type="index" width="55"/>
       <el-table-column label="报警类型" prop="alarm_type_name" :show-overflow-tooltip="true" width="200"
-                       align="center"/>
+                       align="center">
+        <template slot-scope="scope">
+          <span
+            class="alarm-type-badge"
+            :class="{ 'is-sleep': isSleepType(scope.row.alarm_type_name) }"
+          >{{ scope.row.alarm_type_name || '—' }}</span>
+        </template>
+      </el-table-column>
 
       <el-table-column label="设备通道名称" prop="device_name" :show-overflow-tooltip="true" width="300"/>
       <el-table-column label="组织名称" prop="org_name" :show-overflow-tooltip="true" width="180"/>
@@ -557,6 +564,10 @@ export default {
       this.ids = selection.map(item => item.w_id)
       this.single = selection.length != 1
       this.multiple = !selection.length
+    },
+
+    isSleepType(name) {
+      return String(name || '').indexOf('睡岗') !== -1
     },
 
     isHandled(value) {

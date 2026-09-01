@@ -26,6 +26,12 @@
 
       </template> -->
       <template>
+        <el-tooltip content="控件大小" effect="dark" placement="bottom">
+          <size-select id="size-select" class="right-menu-item hover-effect" />
+        </el-tooltip>
+        <el-tooltip content="页面字号" effect="dark" placement="bottom">
+          <ui-scale-select class="right-menu-item" />
+        </el-tooltip>
         <el-button type="text" icon="el-icon-data-line" @click="jump2DP"
                    class="right-menu-item hover-effect dping-nav-btn">大屏
         </el-button>
@@ -59,6 +65,7 @@ import TopNav from '@/components/TopNav'
 import Hamburger from '@/components/Hamburger'
 import Screenfull from '@/components/Screenfull'
 import SizeSelect from '@/components/SizeSelect'
+import UiScaleSelect from '@/components/UiScaleSelect'
 import Search from '@/components/HeaderSearch'
 import RuoYiGit from '@/components/RuoYi/Git'
 import RuoYiDoc from '@/components/RuoYi/Doc'
@@ -70,6 +77,7 @@ export default {
     Hamburger,
     Screenfull,
     SizeSelect,
+    UiScaleSelect,
     Search,
     RuoYiGit,
     RuoYiDoc

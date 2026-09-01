@@ -14,6 +14,7 @@
   --sva-text-muted: #8b949e;
   --sva-accent: #6b9bb8;
   --sva-radius: 8px;
+  --sva-ui-scale: 1;
 }
 
 body {
@@ -33,10 +34,12 @@ label {
 html {
   height: 100%;
   box-sizing: border-box;
+  font-size: 100%;
 }
 
 #app {
   height: 100%;
+  zoom: var(--sva-ui-scale, 1);
 }
 
 *,
