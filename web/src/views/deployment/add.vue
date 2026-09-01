@@ -4067,6 +4067,12 @@ export default {
           nmsThreshold: 0.00
         }
       }
+      if (code === 'on_sleep_pose') {
+        return {
+          scoreThreshold: 0.50,
+          nmsThreshold: 0.50
+        }
+      }
       return {
         scoreThreshold: 0.50,
         nmsThreshold: 0.50

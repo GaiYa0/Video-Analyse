@@ -26,12 +26,12 @@
 - `mediaServer/conf` 与 SIP 配置
 - `server/` 模型、推理、取流
 - A 的 `deploy-notes.md`、以及 `architecture.md` 里直连流媒体实测节（可改目录和错字，不改端口和路径结论）
-- 在未与 B 签字前「发明」一套睡岗告警字段
+- 睡岗告警字段已与 B 对齐：现网 `addFromSvaSimple`（`control_code` / `image_path`）叠加 `SLEEP_ON_DUTY` / `sleep_on_duty` / `睡岗`。按此改入库和页面，不要再另起一套协议
 
 ## 和谁对接
 
 - 和 A：你起草设备字段 `device_type` / `gb_device_id` / `gb_platform_id`；A 补 ZLM 同步字段并实现同步接口；你做列表页和「同步国标设备」**按钮与展示**。对接口径：同一 PR 或两个互相链接的 PR，A 必须 Approve 同步相关后端
-- 和 B：B 起草睡岗告警 JSON，你确认后改库和告警/布控页。未确认前不要建表
+- 和 B：睡岗 JSON 已确认（现网字段 + `SLEEP_ON_DUTY` 叠加）。按契约改告警入库和布控页，P2 不新建表
 - 协作职责（收窄）：PR 合并、每日打卡提醒、截稿。不包办演示操作
 
 ## 四个验收点
