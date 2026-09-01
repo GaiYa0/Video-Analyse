@@ -8,6 +8,9 @@ Thumbs.db
 .env
 .env.*
 !.env.example
+!web/.env.development
+!web/.env.production
+!web/.env.staging
 *.pem
 *.key
 
