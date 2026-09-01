@@ -2,6 +2,7 @@
 
 #include "Algorithm.h"
 #include "Control.h"
+#include "SleepPose.h"
 #include "Utils/GeometryUtils.h"
 
 #include <algorithm>
@@ -357,6 +358,26 @@ namespace SVAAnalyzer
         }
 
         /**
+         * @brief P2 sleep-on-duty: YOLO-Pose pitch held down long enough.
+         * Distinct from the box-aspect heuristic named "sleep".
+         */
+        bool isSleepOnDutyHit(const BehaviorRuleConfig &rule,
+                              const DetectObject &detect,
+                              const RegionTemporalState *regionState)
+        {
+            if (!detect.sleepOnDuty || detect.trackId < 0)
+            {
+                return false;
+            }
+            if (regionState && !regionState->inRegion)
+            {
+                return false;
+            }
+            const int64_t thresholdMs = std::max<int64_t>(1, rule.thresholdMs > 0 ? rule.thresholdMs : SleepPose::kDefaultSleepHoldMs);
+            return detect.headDownMs >= thresholdMs;
+        }
+
+        /**
          * @brief Check direction_move / direction_reverse hit.
          */
         bool isDirectionRuleHit(const BehaviorRuleConfig &rule,
@@ -600,13 +621,25 @@ namespace SVAAnalyzer
                     return decision;
                 }
 
-                // --- sleep ---
+                // --- sleep (legacy box aspect heuristic, not P2) ---
                 if (rule.behaviorType == "sleep" && isSleepHit(rule, detect, regionState))
                 {
                     decision.matched = true;
                     decision.ruleId = rule.id;
                     decision.customEventName = rule.customEventName;
                     decision.behaviorType = "sleep";
+                    decision.regionId = regionId;
+                    decision.regionName = regionName;
+                    return decision;
+                }
+
+                // --- sleep_on_duty (YOLO-Pose + multi-frame) ---
+                if (rule.behaviorType == "sleep_on_duty" && isSleepOnDutyHit(rule, detect, regionState))
+                {
+                    decision.matched = true;
+                    decision.ruleId = rule.id;
+                    decision.customEventName = rule.customEventName.empty() ? "睡岗" : rule.customEventName;
+                    decision.behaviorType = "sleep_on_duty";
                     decision.regionId = regionId;
                     decision.regionName = regionName;
                     return decision;

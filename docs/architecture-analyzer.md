@@ -81,8 +81,9 @@ CMake 说明：`server/CMakeLists.txt`。默认 `SVA_ONNXRUNTIME_GPU=ON`，依�
 |----------|------|------|
 | `on_yolo11n_80` | `{modelDir}/yolo11n.onnx` | YOLO11n |
 | `on_yolo26n_80`（别名 `ov_yolo26n_80`） | `{modelDir}/yolo26s.onnx` | 文件名是 yolo26**s** |
+| `on_sleep_pose` | `{modelDir}/yolo11n-pose.onnx` | 睡岗 Pose；文件缺失则跳过，原 YOLO 不受影响 |
 
-解析代号：`server/Analyzer/Core/Analyzer.cpp` 的 `resolveAlgorithm()`。推理实现：`server/Analyzer/Core/AlgorithmOnYolo.cpp`（GPU 构建时 TensorRT → CUDA → CPU 回退）。
+解析代号：`server/Analyzer/Core/Analyzer.cpp` 的 `resolveAlgorithm()`。推理实现：`server/Analyzer/Core/AlgorithmOnYolo.cpp`（GPU 构建时 TensorRT → CUDA → CPU 回退）。睡岗公式与多帧见 [algorithm-sleep.md](./algorithm-sleep.md)。
 
 本机 `Analyzer-lib/models/` 里有上述两个 ONNX，部署时应拷到虚拟机 `/opt/SVA/models/`。同目录的 `yolo26s_miner.onnx` 是矿用 8 类定制模型，**当前 Analyzer 不会自动加载**，验收点 1 不要接入。
 
@@ -198,7 +199,22 @@ backend 入库：
 
 无摄像头时用 [fixtures/README.md](./fixtures/README.md) 的 H.264 + 伪造 RTSP。
 
-建议在 A 的 Ubuntu 虚拟机上核对：
+**小组验收环境**以同学 A 的演示机为准（见 [deploy-notes.md](./deploy-notes.md)）：浏览器 `http://localhost/` 或局域网 `http://<IP>:8080/`。不要用 Cursor 内置 Browser，也不要打开随机端口（例如 8081）。
+
+同学 B 本机另有一套 **WSL2 Ubuntu 24.04、CPU** 联调栈（与 A 的 22.04 / GPU / :80 不是同一套）：
+
+| 项 | 本机 WSL24 |
+| --- | --- |
+| 网页 | **http://127.0.0.1:8088/**（Chrome / Edge，Ctrl+F5） |
+| 账号 | `admin` / `admin123` |
+| Analyzer | `/opt/SVA/server/Analyzer -f /opt/SVA/config.json` |
+| cmake | `-DCMAKE_BUILD_TYPE=Release -DSVA_ONNXRUNTIME_GPU=OFF` |
+| 模型 | `/opt/SVA/models/yolo11n.onnx`、`yolo26s.onnx` |
+| 源码检出 | `/opt/SVA-dev`（从本仓库 `.git` 拷到 ext4） |
+
+在本机 WSL 已核对：四服务可拉起；`curl http://127.0.0.1:9993/api/health` 返回 `code: 1000`；登录须走 `/prod-api`（打包时要有 `VUE_APP_BASE_API=/prod-api`，否则会出现 405）。
+
+建议在演示机或本机 WSL 再核：
 
 1. 进程在：`ps aux | grep Analyzer`，日志无「open model」失败
 2. `curl -s http://127.0.0.1:9993/api/health` 有响应
@@ -207,19 +223,21 @@ backend 入库：
 5. 布控选原 YOLO（如 `on_yolo11n_80`）、目标含 `person`、画区域后启动
 6. 告警列表出现记录，磁盘上有 `upload/alarm/.../main.jpg`
 
-本机 Windows **不要**当验收环境编译 Analyzer。phase 1 允许安装 Python + ultralytics，仅做后续睡岗原型环境，**不要**接到 `server/`。
+Windows **不要**当验收环境编译整套 Analyzer。phase 2 原型在 `algo/sleep-pose/`，公式见 [algorithm-sleep.md](./algorithm-sleep.md)。Analyzer 已认 `on_sleep_pose`（`yolo11n-pose.onnx`），缺模型时原 YOLO 仍启动。
 
 ```text
-python -m pip install ultralytics
+cd algo\sleep-pose
+python -m pip install -r requirements.txt
+python -m unittest discover -s tests -v
 ```
 
 ---
 
-## 9. 验收点 1 尚未在虚拟机闭环的部分
+## 9. 验收点 1 闭环情况
 
-以下必须等同学 A 的 Ubuntu 22.04 演示机就绪后，B 上去点一遍，不能用本文代替实测：
-
-- 官方脚本把 Analyzer 编过、四服务起来
-- 原 YOLO 布控真正打出告警截图
+- 文档已合入 `main`（PR #3）
+- 本机 WSL24：Analyzer **CPU 已编过**，四服务可启动，网页 **8088**
+- 同学 A 演示机：按 [deploy-notes.md](./deploy-notes.md) 的 80 / 8080 为准
+- **原 YOLO 布控打出告警截图**仍要在有人入画的 H.264 流上点一遍，不能用本文代替最后一次实测
 
 编过之后把 cmake 选项、二进制路径、一段日志摘要贴到对应 PR 评论（见角色手册）。

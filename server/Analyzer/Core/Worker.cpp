@@ -685,7 +685,8 @@ namespace SVAAnalyzer
              *     - dwell:           目标在区域内停留超过阈值？
              *     - low_speed:       目标在区域内移动速度低于阈值？
              *     - loitering:       目标在区域内小范围徘徊？
-             *     - sleep:           目标静止 + 宽高比异常（躺卧）？
+             *     - sleep:           目标静止 + 宽高比异常（躺卧，非P2）？
+             *     - sleep_on_duty:   YOLO-Pose 俯仰角连续低头 ≥ 阈值？
              *     - direction_move:  目标运动方向匹配指定角度？
              *   产出：
              *      BehaviorDecision { ruleId, behaviorType, regionId, lineId, ... }

@@ -5,11 +5,13 @@
 #include "Algorithm.h"
 #include "AlgorithmOnYolo.h"
 #include "GenerateAlarmVideo.h"
+#include <filesystem>
 #include "Utils/Common.h"
 #include "Utils/Log.h"
 #include "Utils/Request.h"
 #include <json/json.h>
 #include <fstream>
+#include <exception>
 #include <string>
 #include <cctype>
 #include <algorithm>
@@ -141,6 +143,10 @@ namespace SVAAnalyzer
             delete on_yolo26n_80;
             on_yolo26n_80 = nullptr;
         }
+        if (on_sleep_pose) {
+            delete on_sleep_pose;
+            on_sleep_pose = nullptr;
+        }
 
         clearAlarmQueue();
         clearDetectFrameQueue();
@@ -187,7 +193,31 @@ namespace SVAAnalyzer
         modelPath = mConfig->modelDir + "/yolo26s.onnx";
         on_yolo26n_80 = new AlgorithmOnYolo(mConfig, modelPath, classNames, "on_yolo26n_80");
 
-        LOGI("initAlgorithm() end - total ONNX models loaded: 2");
+        const std::string posePath = mConfig->modelDir + "/yolo11n-pose.onnx";
+        if (std::filesystem::exists(posePath))
+        {
+            try
+            {
+                std::vector<std::string> poseClassNames = {"person"};
+                std::string poseModelPath = posePath;
+                LOGI("初始化 on_sleep_pose (yolo11n-pose.onnx)");
+                on_sleep_pose = new AlgorithmOnYolo(mConfig, poseModelPath, poseClassNames, "on_sleep_pose");
+            }
+            catch (const std::exception &e)
+            {
+                LOGE("on_sleep_pose load failed: %s (original YOLO still available)", e.what());
+                on_sleep_pose = nullptr;
+            }
+        }
+        else
+        {
+            LOGI("skip on_sleep_pose, missing %s (original YOLO still available)", posePath.c_str());
+        }
+
+        LOGI("initAlgorithm() end - ONNX models loaded: yolo11n=%d yolo26s=%d sleep_pose=%d",
+             on_yolo11n_80 ? 1 : 0,
+             on_yolo26n_80 ? 1 : 0,
+             on_sleep_pose ? 1 : 0);
         return true;
     }
     void Scheduler::loop()

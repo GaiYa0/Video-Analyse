@@ -39,6 +39,10 @@ namespace SVAAnalyzer
         {
             return mScheduler->on_yolo26n_80;
         }
+        if (algorithmCode == "on_sleep_pose")
+        {
+            return mScheduler->on_sleep_pose;
+        }
         return nullptr;
     }
 

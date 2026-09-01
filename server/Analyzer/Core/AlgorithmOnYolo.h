@@ -15,6 +15,7 @@ namespace SVAAnalyzer
 	{
 		DenseWithNms,
 		DirectDetections,
+		PoseKeypoints,
 	};
 
 	/**
@@ -63,6 +64,7 @@ namespace SVAAnalyzer
 		void initPostprocessProfile(const std::string &algorithmCode);
 		bool decodeDenseOutputWithNms(const float *pdata, int imageWidth, int imageHeight, int paddedImageSize, std::vector<DetectObject> &detects);
 		bool decodeDirectDetections(const float *pdata, int imageWidth, int imageHeight, std::vector<DetectObject> &detects);
+		bool decodePoseKeypoints(const float *pdata, int imageWidth, int imageHeight, int paddedImageSize, std::vector<DetectObject> &detects);
 	};
 	class AlgorithmOnYolo : public Algorithm
 	{

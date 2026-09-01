@@ -1,5 +1,6 @@
 ﻿#ifndef ANALYZER_GENERATEALARMVIDEO_H
 #define ANALYZER_GENERATEALARMVIDEO_H
+#include <string>
 #include <vector>
 #include <queue>
 #include <mutex>

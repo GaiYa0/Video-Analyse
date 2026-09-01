@@ -290,6 +290,7 @@ namespace SVAAnalyzer
 		 */
 		Algorithm *on_yolo11n_80 = nullptr;
 		Algorithm *on_yolo26n_80 = nullptr;
+		Algorithm *on_sleep_pose = nullptr;
 		void loop();
 
 		void setState(bool state);

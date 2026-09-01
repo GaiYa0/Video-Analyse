@@ -591,6 +591,11 @@ namespace SVAAnalyzer
         param["desc"] = "";
         param["video_path"] = video_path;
         param["image_path"] = image_path;
+        if (mAlarm->behaviorType == "sleep_on_duty")
+        {
+            param["alarmType"] = "SLEEP_ON_DUTY";
+            param["customEventName"] = "睡岗";
+        }
 
         std::string data = param.toStyledString();
         Request request;
