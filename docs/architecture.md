@@ -63,7 +63,7 @@ flowchart TB
 | P2 当前 | Pose 睡岗 + 时序防误报；布控增加睡岗类型；告警页展示睡岗 |
 | P3 | SIP 5060、国标 IPC；backend 从 ZLM 同步设备；列表区分 RTSP/国标；Analyzer 向 ZLM 取播放 URL |
 
-P1 已过，正在做睡岗。国标仍禁止。已知布控详情可能 `live-output` 404，**以报警列表为准**；C 在改告警/布控页时可顺手修，不要顺手做国标。
+P1 已过，正在做睡岗。国标仍禁止。布控详情 `POST /deployments/{id}/live-output` 已补，返回已有 `algorithmStreamUrl`；同学访问演示机用 `http://<IP>:8080/`（先关 Clash/VPN）。
 
 ## 和课件图的差别
 
@@ -151,9 +151,9 @@ P2 只动布控选项和告警类型，**不要改国标设备字段**。
 
 **设备 `h_device`**（`HDevice.java`，`web/src/views/device/`）：`ape_id`、`name`、`stream_source_type`、`direct_source_url`、`play_url`、`zlm_proxy_key`、`zlm_server_id`、`sva_server_id`、`is_online`、`monitor_status`。P3 再加类型/国标 ID。
 
-**布控 `deployment_task`**（`DeploymentTask.java`，`web/src/views/deployment/`）：`deployment_id`、`device_id`、`algorithm_code`、`target_code`、`geometry_config`、`stream_url`、`status`。P2 再加睡岗选项。
+**布控 `deployment_task`**（`DeploymentTask.java`，`web/src/views/deployment/`）：`deployment_id`、`device_id`、`algorithm_code`、`target_code`、`geometry_config`、`stream_url`、`status`。P2 算法编码 `on_sleep_pose`（下拉仍读 `av_algorithm`，原 YOLO 不要改名）。
 
-**告警 `h_waring`**（`HWaring.java`，`web/src/views/warning/index.vue`）：`alarm_type`、`device_id`、`alarm_time`、`picture_url`、`is_handle`、`sva_behavior_type`。P2 再加睡岗类型。
+**告警 `h_waring`**（`HWaring.java`，`web/src/views/warning/index.vue`）：`alarm_type`、`device_id`、`alarm_time`、`picture_url`、`is_handle`、`sva_behavior_type`。P2 睡岗：`alarm_type=SLEEP_ON_DUTY`，`alarm_type_name=睡岗`，`sva_behavior_type=sleep_on_duty`。不改 `h_device` 国标字段。
 
 ## 验收走查
 
@@ -167,5 +167,38 @@ P2 只动布控选项和告警类型，**不要改国标设备字段**。
 
 ## 后面改哪里
 
-- 睡岗：B 改 `server/`（Pose + 时序）；C 改告警类型、布控选项、告警页。
+分析器取流、模型与现网告警 POST 见 [architecture-analyzer.md](./architecture-analyzer.md) §6.2。入口不变：`POST /waring/waring/addFromSvaSimple`。设备由 `control_code` 反查布控，不靠 `deviceId` 入库。
+
+现网字段（B 已写明）：
+
+```json
+{
+  "control_code": "<deploymentId>",
+  "behavior_type": "",
+  "rule_id": "",
+  "desc": "",
+  "video_path": "alarm/.../main.mp4",
+  "image_path": "alarm/.../main.jpg"
+}
+```
+
+睡岗叠加（命中任一即入库为睡岗；不要把 BehaviorEvaluator 里名为 `sleep` 的启发式当成 P2）：
+
+- `alarmType` / `alarm_type` = `SLEEP_ON_DUTY`
+- 或 `behavior_type` = `sleep_on_duty`
+- 或 `customEventName` / `alarm_type_name` = `睡岗`
+- `snapshotPath` 可作为 `image_path` 别名
+- 可选 `confidence`、`pitchDegree`、`durationFrames`（不新建列；`durationFrames` 写入已有 `duration_ms`）
+
+算法编码：`on_sleep_pose`，`object_str=person`。B 在 Analyzer `resolveAlgorithm` 认这个 code。A 在 MariaDB **3307** 执行一次（列不全时 `DESC av_algorithm` 再补 `sort`）：
+
+```sql
+INSERT INTO av_algorithm (code, name, state, sort, object_str)
+SELECT 'on_sleep_pose', '睡岗检测', 0, 99, 'person'
+WHERE NOT EXISTS (SELECT 1 FROM av_algorithm WHERE code = 'on_sleep_pose');
+```
+
+B 未合入 Pose 前，选睡岗启动会「不支持的算法」，这是预期。
+
+- 睡岗：B 改 `server/`（Pose + 时序）；C 已改告警类型映射、布控选项默认值、`live-output`。
 - 国标：A 改 SIP 与 ZLM 同步接口；C 改设备表与列表；B 让 Analyzer 取国标播放 URL。

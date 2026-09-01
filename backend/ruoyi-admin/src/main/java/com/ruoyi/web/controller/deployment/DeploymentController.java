@@ -359,6 +359,21 @@ public class DeploymentController
         return AjaxResult.success(toDataMap(record));
     }
 
+    @PostMapping("/{id}/live-output")
+    public AjaxResult updateLiveOutput(@PathVariable("id") String id)
+    {
+        DeploymentTask record = deploymentTaskService.selectDeploymentTaskById(id);
+        if (record == null)
+        {
+            return AjaxResult.error("布控任务不存在");
+        }
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("algorithmStreamUrl", record.getAlgorithmStreamUrl());
+        data.put("streamUrl", record.getStreamUrl());
+        data.put("pushStreamUrl", record.getPushStreamUrl());
+        return AjaxResult.success(data);
+    }
+
     @GetMapping
     public AjaxResult list(
         @RequestParam(value = "status", required = false) String status,
