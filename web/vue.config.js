@@ -1,5 +1,12 @@
 'use strict'
 const path = require('path')
+const crypto = require('crypto')
+
+// Node 17+ / OpenSSL 3 默认禁用 MD4；Vue CLI 4 与 compression-webpack-plugin 仍会调用它
+const origCreateHash = crypto.createHash
+crypto.createHash = function (algorithm, options) {
+  return origCreateHash.call(this, algorithm === 'md4' ? 'sha256' : algorithm, options)
+}
 
 function resolve(dir) {
   return path.join(__dirname, dir)
@@ -28,6 +35,10 @@ module.exports = {
   lintOnSave: process.env.NODE_ENV === 'development',
   // 如果你不需要生产环境的 source map，可以将其设置为 false 以加速生产环境构建。
   productionSourceMap: false,
+  // Vue CLI 4 默认不转译 node_modules；@opentiny 发布包含 ?? 等语法，不转译会 build 失败
+  transpileDependencies: [
+    /[\\/]node_modules[\\/]@opentiny[\\/]/
+  ],
   // webpack-dev-server 相关配置
   devServer: {
     host: '0.0.0.0',

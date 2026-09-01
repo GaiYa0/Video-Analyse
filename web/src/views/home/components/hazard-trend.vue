@@ -103,7 +103,9 @@
 </template>
 
 <script>
-import {Col as TinyCol, Layout as TinyLayout, Row as TinyRow,} from '@opentiny/vue';
+import TinyLayout from '@opentiny/vue-layout'
+import TinyRow from '@opentiny/vue-row'
+import TinyCol from '@opentiny/vue-col'
 
 import {getGrowth, getTrend} from '@/api/system/kanban';
 import * as echarts from "echarts";
