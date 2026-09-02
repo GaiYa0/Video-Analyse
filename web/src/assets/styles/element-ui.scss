@@ -125,6 +125,26 @@
   color: var(--sva-text);
 }
 
+.el-range-editor .el-range-input {
+  background: transparent;
+  color: var(--sva-text);
+}
+
+.el-range-editor .el-range-input::placeholder {
+  color: var(--sva-text-muted);
+}
+
+.el-range-editor .el-range-separator {
+  color: var(--sva-text-muted);
+}
+
+.el-input-group__append,
+.el-input-group__prepend {
+  background: var(--sva-surface-2);
+  border-color: var(--sva-border);
+  color: var(--sva-text);
+}
+
 .el-input__inner::placeholder,
 .el-textarea__inner::placeholder {
   color: var(--sva-text-muted);

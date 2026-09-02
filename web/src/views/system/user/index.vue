@@ -1,42 +1,36 @@
 <!-- 用户管理页面 -->
 <template>
   <div class="app-container">
-    <el-row :gutter="20">
-      <!--组织数据-->
-      <el-col :span="4" :xs="24">
-        <div class="head-container">
-          <el-input
-            v-model="deptName"
-            placeholder="请输入组织名称"
-            clearable
-            size="small"
-            prefix-icon="el-icon-search"
-            style="margin-bottom: 20px"
-          />
-        </div>
-        <div class="head-container">
-          <el-tree
-            :data="deptOptions"
-            :props="defaultProps"
-            :expand-on-click-node="false"
-            :filter-node-method="filterNode"
-            ref="tree"
-            node-key="id"
-            default-expand-all
-            highlight-current
-            @node-click="handleNodeClick"
-          />
-        </div>
-      </el-col>
-      <!--用户数据-->
-      <el-col :span="20" :xs="24">
-        <el-form :model="queryParams" ref="queryForm" size="small" :inline="true" v-show="showSearch" label-width="68px">
+    <div class="user-page">
+    <div class="user-dept">
+      <el-input
+        v-model="deptName"
+        placeholder="请输入组织名称"
+        clearable
+        size="small"
+        prefix-icon="el-icon-search"
+        class="user-dept-search"
+      />
+      <el-tree
+        :data="deptOptions"
+        :props="defaultProps"
+        :expand-on-click-node="false"
+        :filter-node-method="filterNode"
+        ref="tree"
+        node-key="id"
+        default-expand-all
+        highlight-current
+        @node-click="handleNodeClick"
+      />
+    </div>
+    <section class="user-main">
+        <el-form :model="queryParams" ref="queryForm" size="small" :inline="true" v-show="showSearch" label-width="68px" class="user-query">
           <el-form-item label="用户名称" prop="userName">
             <el-input
               v-model="queryParams.userName"
               placeholder="请输入用户名称"
               clearable
-              style="width: 240px"
+              class="user-query-field"
               @keyup.enter.native="handleQuery"
             />
           </el-form-item>
@@ -45,7 +39,7 @@
               v-model="queryParams.phonenumber"
               placeholder="请输入手机号码"
               clearable
-              style="width: 240px"
+              class="user-query-field"
               @keyup.enter.native="handleQuery"
             />
           </el-form-item> -->
@@ -54,7 +48,7 @@
               v-model="queryParams.status"
               placeholder="用户状态"
               clearable
-              style="width: 240px"
+              class="user-query-field"
             >
               <el-option
                 v-for="dict in dict.type.sys_normal_disable"
@@ -67,7 +61,7 @@
           <el-form-item label="创建时间">
             <el-date-picker
               v-model="dateRange"
-              style="width: 240px"
+              class="user-date-range"
               value-format="yyyy-MM-dd"
               type="daterange"
               range-separator="-"
@@ -165,7 +159,9 @@
             width="160"
             class-name="small-padding fixed-width"
           >
-            <template slot-scope="scope" v-if="scope.row.userId !== 1">
+            <template slot-scope="scope">
+              <span v-if="scope.row.userId === 1" class="admin-op">—</span>
+              <template v-else>
               <el-button
                 size="mini"
                 type="text"
@@ -189,6 +185,7 @@
                     v-hasPermi="['system:user:edit']">分配角色</el-dropdown-item>
                 </el-dropdown-menu>
               </el-dropdown>
+              </template>
             </template>
           </el-table-column>
         </el-table>
@@ -200,8 +197,8 @@
           :limit.sync="queryParams.pageSize"
           @pagination="getList"
         />
-      </el-col>
-    </el-row>
+    </section>
+    </div>
 
     <!-- 添加或修改用户配置对话框 -->
     <el-dialog :title="title" :visible.sync="open" width="600px" append-to-body>
@@ -669,3 +666,62 @@ export default {
   }
 };
 </script>
+
+<style scoped lang="scss">
+.user-page {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.user-dept {
+  background: var(--sva-surface);
+  border: 1px solid var(--sva-border);
+  border-radius: var(--sva-radius);
+  padding: 12px;
+  min-height: calc(100vh - 124px);
+  min-width: 0;
+}
+
+.user-dept-search {
+  margin-bottom: 12px;
+}
+
+.user-main {
+  min-width: 0;
+}
+
+.user-query {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.user-query .el-form-item {
+  margin-bottom: 12px;
+}
+
+.user-query-field {
+  width: 180px;
+}
+
+.user-date-range {
+  width: 260px;
+  min-width: 260px;
+}
+
+.admin-op {
+  color: var(--sva-text-muted);
+}
+
+@media (max-width: 992px) {
+  .user-page {
+    grid-template-columns: 1fr;
+  }
+
+  .user-dept {
+    min-height: 0;
+  }
+}
+</style>

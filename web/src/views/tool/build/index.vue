@@ -427,7 +427,7 @@ export default {
 }
 .reg-item{
   padding: 12px 6px;
-  background: #f8f8f8;
+  background: var(--sva-surface-2);
   position: relative;
   border-radius: 4px;
   .close-btn{
@@ -494,13 +494,15 @@ export default {
   line-height: 1.2;
 }
 
-$selectedColor: #f6f7ff;
-$lighterBlue: #409EFF;
+$selectedColor: var(--sva-surface-2);
+$lighterBlue: var(--sva-accent);
 
 .container {
   position: relative;
   width: 100%;
   height: 100%;
+  background: var(--sva-bg);
+  color: var(--sva-text);
 }
 
 .components-list {
@@ -519,10 +521,10 @@ $lighterBlue: #409EFF;
 }
 .components-title{
   font-size: 14px;
-  color: #222;
+  color: var(--sva-text);
   margin: 6px 2px;
   .svg-icon{
-    color: #666;
+    color: var(--sva-text-muted);
     font-size: 18px;
   }
 }
@@ -530,12 +532,13 @@ $lighterBlue: #409EFF;
 .components-body {
   padding: 8px 10px;
   background: $selectedColor;
+  color: var(--sva-text);
   font-size: 12px;
   cursor: move;
-  border: 1px dashed $selectedColor;
+  border: 1px dashed var(--sva-border);
   border-radius: 3px;
   .svg-icon{
-    color: #777;
+    color: var(--sva-text-muted);
     font-size: 15px;
   }
   &:hover {
@@ -553,6 +556,7 @@ $lighterBlue: #409EFF;
   left: 0;
   top: 0;
   height: 100vh;
+  background: var(--sva-bg);
 }
 .left-scrollbar{
   height: calc(100vh - 42px);
@@ -561,9 +565,10 @@ $lighterBlue: #409EFF;
 .center-scrollbar {
   height: calc(100vh - 42px);
   overflow: hidden;
-  border-left: 1px solid #f1e8e8;
-  border-right: 1px solid #f1e8e8;
+  border-left: 1px solid var(--sva-border);
+  border-right: 1px solid var(--sva-border);
   box-sizing: border-box;
+  background: var(--sva-bg);
 }
 .center-board {
   height: 100vh;
@@ -578,7 +583,7 @@ $lighterBlue: #409EFF;
   right: 0;
   text-align: center;
   font-size: 18px;
-  color: #ccb1ea;
+  color: var(--sva-text-muted);
   letter-spacing: 4px;
 }
 .action-bar{
@@ -587,9 +592,10 @@ $lighterBlue: #409EFF;
   text-align: right;
   padding: 0 15px;
   box-sizing: border-box;;
-  border: 1px solid #f1e8e8;
+  border: 1px solid var(--sva-border);
   border-top: none;
   border-left: none;
+  background: var(--sva-surface);
   .delete-btn{
     color: #F56C6C;
   }
@@ -597,8 +603,8 @@ $lighterBlue: #409EFF;
 .logo-wrapper{
   position: relative;
   height: 42px;
-  background: #fff;
-  border-bottom: 1px solid #f1e8e8;
+  background: var(--sva-surface);
+  border-bottom: 1px solid var(--sva-border);
   box-sizing: border-box;
 }
 .logo{
@@ -675,13 +681,14 @@ $lighterBlue: #409EFF;
   }
   .el-form-item{
     margin-bottom: 15px;
+    color: var(--sva-text);
   }
 }
 .drawing-item{
   position: relative;
   cursor: move;
   &.unfocus-bordered:not(.activeFromItem) > div:first-child  {
-    border: 1px dashed #ccc;
+    border: 1px dashed var(--sva-border);
   }
   .el-form-item{
     padding: 12px 10px;
@@ -691,7 +698,7 @@ $lighterBlue: #409EFF;
   position: relative;
   cursor: move;
   box-sizing: border-box;
-  border: 1px dashed #ccc;
+  border: 1px dashed var(--sva-border);
   border-radius: 3px;
   padding: 0 2px;
   margin-bottom: 15px;
@@ -715,7 +722,7 @@ $lighterBlue: #409EFF;
     top: 0;
     left: 0;
     font-size: 12px;
-    color: #bbb;
+    color: var(--sva-text-muted);
     display: inline-block;
     padding: 0 6px;
   }
@@ -748,7 +755,7 @@ $lighterBlue: #409EFF;
     right: 56px;
     border-color: $lighterBlue;
     color: $lighterBlue;
-    background: #fff;
+    background: var(--sva-surface);
     &:hover{
       background: $lighterBlue;
       color: #fff;
@@ -758,7 +765,7 @@ $lighterBlue: #409EFF;
     right: 24px;
     border-color: #F56C6C;
     color: #F56C6C;
-    background: #fff;
+    background: var(--sva-surface);
     &:hover{
       background: #F56C6C;
       color: #fff;

@@ -1,87 +1,54 @@
 <template>
-  <div>
-    <tiny-layout>
-      <tiny-row :flex="true" justify="center">
-        <tiny-col :span="7">
-          <div style="display: flex; align-items: center; justify-content: space-between;">
-            <h3>
-              报警类型统计
-            </h3>
-            <div>
-              <span class="clickable" @click="selectTime('1', 1)" :style="timeStyle('1', 1)">周</span>
-              <span class="time-sep"> | </span>
-              <span class="clickable" @click="selectTime('2', 1)" :style="timeStyle('2', 1)">月</span>
-              <span class="time-sep"> | </span>
-              <span class="clickable" @click="selectTime('3', 1)" :style="timeStyle('3', 1)">季度</span>
-              <span class="time-sep"> | </span>
-              <span class="clickable" @click="selectTime('4', 1)" :style="timeStyle('4', 1)">年</span>
-            </div>
-          </div>
-          <div class="col">
-            <div class="left">
-              <div class="left-content">
-                <div class="echart" id="domainDis" :style="domainStyle"></div>
-              </div>
-            </div>
-          </div>
-        </tiny-col>
-        <!--        <tiny-col :span="3">-->
-        <!--          <div style="display: flex; align-items: center; justify-content: space-between;">-->
-        <!--            <h3 style="color: black">处置情况</h3>-->
-        <!--            <div>-->
-        <!--              <span class="clickable" @click="selectTime('1', 2)" :style="timeStyle('1', 2)">周</span>-->
-        <!--              <span class="time-sep"> | </span>-->
-        <!--              <span class="clickable" @click="selectTime('2', 2)" :style="timeStyle('2', 2)">月</span>-->
-        <!--              <span class="time-sep"> | </span>-->
-        <!--              <span class="clickable" @click="selectTime('3', 2)" :style="timeStyle('3', 2)">季度</span>-->
-        <!--              <span class="time-sep"> | </span>-->
-        <!--              <span class="clickable" @click="selectTime('4', 2)" :style="timeStyle('4', 2)">年</span>-->
-        <!--            </div>-->
-        <!--          </div>-->
-        <!--          <div class="col">-->
-        <!--            <div class="left">-->
-        <!--              <div class="echart" id="levelDis" :style="levelStyle"></div>-->
-        <!--            </div>-->
-        <!--          </div>-->
-        <!--        </tiny-col>-->
-        <tiny-col :span="6">
-          <div style="display: flex; align-items: center; justify-content: space-between;">
-            <h3>报警类型分布</h3>
-            <div>
-              <span class="clickable" @click="selectTime('1', 3)" :style="timeStyle('1', 3)">周</span>
-              <span class="time-sep"> | </span>
-              <span class="clickable" @click="selectTime('2', 3)" :style="timeStyle('2', 3)">月</span>
-              <span class="time-sep"> | </span>
-              <span class="clickable" @click="selectTime('3', 3)" :style="timeStyle('3', 3)">季度</span>
-              <span class="time-sep"> | </span>
-              <span class="clickable" @click="selectTime('4', 3)" :style="timeStyle('4', 3)">年</span>
-            </div>
-          </div>
-          <div class="col">
-            <div class="left">
-              <div class="echart" id="typeDis" :style="typeStyle"></div>
-            </div>
-          </div>
-        </tiny-col>
-      </tiny-row>
-    </tiny-layout>
+  <div class="dist-page">
+    <section>
+      <div class="section-head">
+        <h3>报警类型统计</h3>
+        <div>
+          <span class="clickable" @click="selectTime('1', 1)" :style="timeStyle('1', 1)">周</span>
+          <span class="time-sep"> | </span>
+          <span class="clickable" @click="selectTime('2', 1)" :style="timeStyle('2', 1)">月</span>
+          <span class="time-sep"> | </span>
+          <span class="clickable" @click="selectTime('3', 1)" :style="timeStyle('3', 1)">季度</span>
+          <span class="time-sep"> | </span>
+          <span class="clickable" @click="selectTime('4', 1)" :style="timeStyle('4', 1)">年</span>
+        </div>
+      </div>
+      <div class="col">
+        <div ref="domainDis" class="echart"></div>
+      </div>
+    </section>
+    <section>
+      <div class="section-head">
+        <h3>报警类型分布</h3>
+        <div>
+          <span class="clickable" @click="selectTime('1', 3)" :style="timeStyle('1', 3)">周</span>
+          <span class="time-sep"> | </span>
+          <span class="clickable" @click="selectTime('2', 3)" :style="timeStyle('2', 3)">月</span>
+          <span class="time-sep"> | </span>
+          <span class="clickable" @click="selectTime('3', 3)" :style="timeStyle('3', 3)">季度</span>
+          <span class="time-sep"> | </span>
+          <span class="clickable" @click="selectTime('4', 3)" :style="timeStyle('4', 3)">年</span>
+        </div>
+      </div>
+      <div class="col">
+        <div ref="typeDis" class="echart"></div>
+      </div>
+    </section>
   </div>
 </template>
 
 <script>
-import TinyLayout from '@opentiny/vue-layout'
-import TinyRow from '@opentiny/vue-row'
-import TinyCol from '@opentiny/vue-col'
 import {getColumn, getTypeSpread} from '@/api/system/kanban';
 import * as echarts from "echarts";
+import {
+  SVA_CHART_BAR,
+  svaCategoryAxis,
+  svaGrid,
+  svaTooltip,
+  svaValueAxis
+} from '../chartTheme';
 
 export default {
-  components: {
-    TinyLayout,
-    TinyRow,
-    TinyCol
-  },
-
   props: {
     orgIndex: {
       type: String,
@@ -91,25 +58,19 @@ export default {
 
   data() {
     return {
-      domainStyle: {
-        float: "left", width: "500px", height: "270px"
-      },
-      typeStyle: {
-        float: "left", width: "400px", height: "350px"
-      },
-      // 1. 报警专业整体分布
       domainData: {
-        xData: [],
-        yData: []
+        names: [],
+        values: []
       },
-      // 2. 报警类型分布
       typeData: {
-        type: [],
-        value: []
+        names: [],
+        values: []
       },
       selectedTime1: '2',
       selectedTime3: '2',
-      time: ['时间', '周', '月', '季度', '年']
+      time: ['时间', '周', '月', '季度', '年'],
+      domainChart: null,
+      typeChart: null
     };
   },
 
@@ -123,127 +84,92 @@ export default {
   },
 
   methods: {
-    initDomainEcharts() {
-      const option = {
-        tooltip: {
+    onChartResize() {
+      if (this.domainChart) this.domainChart.resize();
+      if (this.typeChart) this.typeChart.resize();
+    },
+
+    horizontalBarOption(names, values) {
+      return {
+        tooltip: Object.assign({
           trigger: "axis",
-          axisPointer: {
-            type: "shadow"
-          },
-        },
-        xAxis: {
-          data: this.domainData.xData,
-          axisTick: {
-            alignWithLabel: true
-          },
-        },
-        yAxis: {
-          type: "value",
+          axisPointer: { type: "shadow" }
+        }, svaTooltip),
+        grid: svaGrid({ left: 12, right: 24 }),
+        xAxis: svaValueAxis(),
+        yAxis: svaCategoryAxis({
+          data: names,
           axisLabel: {
-            color: "black"
+            color: '#e6edf3',
+            fontSize: 12,
+            width: 88,
+            overflow: 'truncate'
           }
-        },
+        }),
         series: [
           {
             type: "bar",
-            barWidth: "70%",
-            data: this.domainData.yData,
+            barMaxWidth: 18,
+            data: values,
+            itemStyle: { color: SVA_CHART_BAR }
           }
         ]
       };
+    },
 
-      const domainDis = echarts.init(document.getElementById("domainDis"));
-      domainDis.on('click', (params) => {
+    ensureChart(refName, chartKey) {
+      const el = this.$refs[refName];
+      if (!el) return null;
+      if (!this[chartKey]) {
+        this[chartKey] = echarts.init(el);
+      }
+      return this[chartKey];
+    },
+
+    initDomainEcharts() {
+      const chart = this.ensureChart('domainDis', 'domainChart');
+      if (!chart) return;
+      chart.setOption(this.horizontalBarOption(this.domainData.names, this.domainData.values), true);
+      chart.off('click');
+      chart.on('click', (params) => {
         this.$router.push({
           path: "/warning/warning",
           query: {withQue: 8, time: this.time[this.selectedTime1], alarm_type_name: params.name}
         });
-        console.log(this.selectedTime1)
-        console.log(this.time[this.selectedTime1]);
-        console.log(params.name);
-      });
-      domainDis.setOption(option);
-      // 随着屏幕大小调节图表
-      window.addEventListener("resize", () => {
-        domainDis.resize();
       });
     },
 
     async fetchDomain() {
-      this.domainData.xData = [];
-      this.domainData.yData = [];
+      this.domainData = { names: [], values: [] };
       const domainRes = await getColumn(this.orgIndex, this.selectedTime1);
-      domainRes.data.forEach(item => {
-        this.domainData.xData.push({
-          value: item.alarm_type_name,
-          textStyle: {
-            color: "black"
-          },
-          fontSize: 22
-        });
-        this.domainData.yData.push({
-          value: item.num,
-          itemStyle: {
-            color: "rgba(65,160,227, 1)"
-          }
-        });
+      (domainRes.data || []).forEach(item => {
+        this.domainData.names.push(item.alarm_type_name);
+        this.domainData.values.push(item.num);
       });
-      this.initDomainEcharts();
+      this.$nextTick(() => this.initDomainEcharts());
     },
 
     initTypeEcharts() {
-      const option = {
-        tooltip: {
-          trigger: 'axis'
-        },
-        radar: {
-          indicator: this.typeData.type,
-          center: ['60%', '50%'],
-          radius: 80
-        },
-        series: [
-          {
-            tooltip: {
-              trigger: 'item'
-            },
-            type: 'radar',
-            areaStyle: {},
-            data: [
-              {
-                value: this.typeData.value,
-                name: '报警类型分布'
-              }
-            ]
-          }
-        ]
-      };
-
-      const typeDis = echarts.init(document.getElementById("typeDis"));
-      typeDis.on('click', (params) => {
-        this.$router.push({path: "/warning/warning", query: {withQue: 8, time: this.time[this.selectedTime3]}});
+      const chart = this.ensureChart('typeDis', 'typeChart');
+      if (!chart) return;
+      chart.setOption(this.horizontalBarOption(this.typeData.names, this.typeData.values), true);
+      chart.off('click');
+      chart.on('click', (params) => {
+        this.$router.push({
+          path: "/warning/warning",
+          query: {withQue: 8, time: this.time[this.selectedTime3], alarm_type_name: params.name}
+        });
       });
-      typeDis.setOption(option);
-      // 随着屏幕大小调节图表
-      window.addEventListener("resize", () => {
-        typeDis.resize();
-      });
-
     },
 
     async fetchTypeSpread() {
-      this.typeData = {
-        type: [],
-        value: []
-      };
+      this.typeData = { names: [], values: [] };
       const typeRes = await getTypeSpread(this.orgIndex, this.selectedTime3);
-      typeRes.data.forEach((item) => {
-        this.typeData.type.push({
-          name: item.alarm_type_name,
-          color: "black"
-        });
-        this.typeData.value.push(item.num);
+      (typeRes.data || []).forEach((item) => {
+        this.typeData.names.push(item.alarm_type_name);
+        this.typeData.values.push(item.num);
       });
-      this.initTypeEcharts();
+      this.$nextTick(() => this.initTypeEcharts());
     },
 
     async fetchData() {
@@ -264,17 +190,29 @@ export default {
 
   mounted() {
     this.fetchData();
+    window.addEventListener("resize", this.onChartResize);
+  },
 
+  beforeDestroy() {
+    window.removeEventListener("resize", this.onChartResize);
+    if (this.domainChart) {
+      this.domainChart.dispose();
+      this.domainChart = null;
+    }
+    if (this.typeChart) {
+      this.typeChart.dispose();
+      this.typeChart = null;
+    }
   },
 
   watch: {
-    orgIndex(newVal, oldVal) {
+    orgIndex() {
       this.fetchData();
     },
-    selectedTime1(newVal, oldVal) {
+    selectedTime1() {
       this.fetchDomain();
     },
-    selectedTime3(newVal, oldVal) {
+    selectedTime3() {
       this.fetchTypeSpread();
     },
   }
@@ -282,6 +220,19 @@ export default {
 </script>
 
 <style scoped lang="less">
+.dist-page {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 16px;
+  min-width: 0;
+}
+
+.section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
 h3 {
   margin: 0 0 8px;
   color: var(--sva-text);
@@ -295,47 +246,15 @@ h3 {
 
 .col {
   background-color: var(--sva-surface);
-  display: flex;
-  justify-content: space-around;
-  height: 250px;
-  text-align: center;
+  min-height: 250px;
   border-radius: 10px;
   border: 1px solid var(--sva-border);
-  box-shadow: none;
+  min-width: 0;
 }
 
-.col:hover {
-  box-shadow: none;
-}
-
-.left {
+.echart {
   width: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-}
-
-
-.left-content {
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  padding-bottom: 15px;
-}
-
-.data-container {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  /* 两列等宽 */
-  grid-gap: 15px;
-  /* 列与列之间的间距 */
-}
-
-.item {
-  color: var(--sva-text);
-  padding: 6px;
-  text-align: left;
+  height: 250px;
 }
 
 .clickable {
@@ -344,5 +263,11 @@ h3 {
   transition: color 0.3s ease;
   color: var(--sva-text-muted);
   font-size: small;
+}
+
+@media (max-width: 1100px) {
+  .dist-page {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

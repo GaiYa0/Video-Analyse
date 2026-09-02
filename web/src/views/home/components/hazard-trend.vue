@@ -1,122 +1,99 @@
 <template>
-  <div>
-    <tiny-layout>
-      <tiny-row :flex="true" justify="center">
-        <tiny-col :span="9">
-          <div style="display: flex; align-items: center; justify-content: space-between;">
-            <h3>报警趋势分析</h3>
-            <div>
-              <span class="clickable" @click="selectTime('周')" :style="timeStyle('周')">周</span>
-              <span class="time-sep"> | </span>
-              <span class="clickable" @click="selectTime('月')" :style="timeStyle('月')">月</span>
-              <span class="time-sep"> | </span>
-              <span class="clickable" @click="selectTime('季度')" :style="timeStyle('季度')">季度</span>
-              <span class="time-sep"> | </span>
-              <span class="clickable" @click="selectTime('年')" :style="timeStyle('年')">年</span>
+  <div class="trend-page">
+    <section class="trend-block">
+      <div class="section-head">
+        <h3>报警趋势分析</h3>
+        <div>
+          <span class="clickable" @click="selectTime('周')" :style="timeStyle('周')">周</span>
+          <span class="time-sep"> | </span>
+          <span class="clickable" @click="selectTime('月')" :style="timeStyle('月')">月</span>
+          <span class="time-sep"> | </span>
+          <span class="clickable" @click="selectTime('季度')" :style="timeStyle('季度')">季度</span>
+          <span class="time-sep"> | </span>
+          <span class="clickable" @click="selectTime('年')" :style="timeStyle('年')">年</span>
+        </div>
+      </div>
+      <div class="col">
+        <router-link class="chart-link" :to="{ path: '/warning/warning', query: { withQue: 8, time: selectedTime} }">
+          <div ref="trend" class="echart"></div>
+        </router-link>
+      </div>
+    </section>
+    <section class="growth-block">
+      <h3>增长率分析</h3>
+      <div class="col growth-panel">
+        <div class="growth-grid">
+          <div class="growth-col">
+            <div class="growth-item">
+              <span class="growth-label">月度增长率</span>
+              <span class="growth-value">
+                <img v-if="growthData.monthGrowthRate > 0" src="@/assets/images/home-up.png" class="trend-icon" alt=""/>
+                <img v-else-if="growthData.monthGrowthRate < 0" src="@/assets/images/home-down.png" class="trend-icon" alt=""/>
+                {{ growthData.monthGrowthRate }}%
+              </span>
+            </div>
+            <div class="growth-item">
+              <span class="growth-label">季度增长率</span>
+              <span class="growth-value">
+                <img v-if="growthData.quarteGrowthRate > 0" src="@/assets/images/home-up.png" class="trend-icon" alt=""/>
+                <img v-else-if="growthData.quarteGrowthRate < 0" src="@/assets/images/home-down.png" class="trend-icon" alt=""/>
+                {{ growthData.quarteGrowthRate }}%
+              </span>
+            </div>
+            <div class="growth-item">
+              <span class="growth-label">年度增长率</span>
+              <span class="growth-value">
+                <img v-if="growthData.yearGrowthRate > 0" src="@/assets/images/home-up.png" class="trend-icon" alt=""/>
+                <img v-else-if="growthData.yearGrowthRate < 0" src="@/assets/images/home-down.png" class="trend-icon" alt=""/>
+                {{ growthData.yearGrowthRate }}%
+              </span>
             </div>
           </div>
-          <div class="col">
-            <div class="left">
-              <router-link :to="{ path: '/warning/warning', query: { withQue: 8, time: this.selectedTime} }">
-                <div class="left-content">
-                  <div class="echart" id="trend" :style="trendStyle"></div>
-                </div>
-              </router-link>
+          <div class="growth-col">
+            <div class="growth-item">
+              <span class="growth-label">月度处置率</span>
+              <span class="growth-value">
+                <img v-if="growthData.monthRectification > 0" src="@/assets/images/home-up.png" class="trend-icon" alt=""/>
+                <img v-else-if="growthData.monthRectification < 0" src="@/assets/images/home-down.png" class="trend-icon" alt=""/>
+                {{ growthData.monthRectification }}%
+              </span>
+            </div>
+            <div class="growth-item">
+              <span class="growth-label">季度处置率</span>
+              <span class="growth-value">
+                <img v-if="growthData.quarterRectification > 0" src="@/assets/images/home-up.png" class="trend-icon" alt=""/>
+                <img v-else-if="growthData.quarterRectification < 0" src="@/assets/images/home-down.png" class="trend-icon" alt=""/>
+                {{ growthData.quarterRectification }}%
+              </span>
+            </div>
+            <div class="growth-item">
+              <span class="growth-label">年度处置率</span>
+              <span class="growth-value">
+                <img v-if="growthData.yearRectification > 0" src="@/assets/images/home-up.png" class="trend-icon" alt=""/>
+                <img v-else-if="growthData.yearRectification < 0" src="@/assets/images/home-down.png" class="trend-icon" alt=""/>
+                {{ growthData.yearRectification }}%
+              </span>
             </div>
           </div>
-        </tiny-col>
-        <tiny-col :span="7">
-          <h3>增长率分析</h3>
-          <div class="col">
-            <div class="left">
-              <el-row :gutter="12">
-                <el-col :span="12">
-                  <div class="grid-content bg-purple">
-                    <el-col class="growthitem">
-                      月度增长率：
-                      <span v-if="growthData.monthGrowthRate > 0"><img src="@/assets/images/home-up.png"
-                                                                       class="image"/></span>
-                      <span v-else-if="growthData.monthGrowthRate < 0"><img src="@/assets/images/home-down.png"
-                                                                            class="image"/></span>
-                      <span v-else> </span>
-                      <span>{{ growthData.monthGrowthRate }}%</span>
-                    </el-col>
-                    <el-col class="growthitem">
-                      季度增长率：
-                      <span v-if="growthData.quarteGrowthRate > 0"><img src="@/assets/images/home-up.png"
-                                                                        class="image"/></span>
-                      <span v-else-if="growthData.quarteGrowthRate < 0"><img src="@/assets/images/home-down.png"
-                                                                             class="image"/></span>
-                      <span v-else> </span>
-                      <span>{{ growthData.quarteGrowthRate }}%</span>
-                    </el-col>
-                    <el-col class="growthitem">
-                      年度增长率：
-                      <span v-if="growthData.yearGrowthRate > 0"><img src="@/assets/images/home-up.png"
-                                                                      class="image"/></span>
-                      <span v-else-if="growthData.yearGrowthRate < 0"><img src="@/assets/images/home-down.png"
-                                                                           class="image"/></span>
-                      <span v-else> </span>
-                      <span>{{ growthData.yearGrowthRate }}%</span>
-                    </el-col>
-                  </div>
-                </el-col>
-                <el-col :span="12">
-                  <div class="grid-content bg-purple-light">
-                    <el-col class="growthitem">
-                      月度处置率:
-                      <span v-if="growthData.monthRectification > 0"><img src="@/assets/images/home-up.png"
-                                                                          class="image"/></span>
-                      <span v-else-if="growthData.monthRectification < 0"><img src="@/assets/images/home-down.png"
-                                                                               class="image"/></span>
-                      <span v-else> </span>
-                      <span>{{ growthData.monthRectification }}%</span>
-                    </el-col>
-                    <el-col class="growthitem">
-                      季度处置率：
-                      <span v-if="growthData.quarterRectification > 0"><img src="@/assets/images/home-up.png"
-                                                                            class="image"/></span>
-                      <span v-else-if="growthData.quarterRectification < 0"><img src="@/assets/images/home-down.png"
-                                                                                 class="image"/></span>
-                      <span v-else> </span>
-                      <span>{{ growthData.quarterRectification }}%</span>
-                    </el-col>
-                    <el-col class="growthitem">
-                      年度处置率：
-                      <span v-if="growthData.yearRectification > 0"><img src="@/assets/images/home-up.png"
-                                                                         class="image"/></span>
-                      <span v-else-if="growthData.yearRectification < 0"><img src="@/assets/images/home-down.png"
-                                                                              class="image"/></span>
-                      <span v-else> </span>
-                      <span>{{ growthData.yearRectification }}%</span>
-                    </el-col>
-                  </div>
-                </el-col>
-              </el-row>
-
-            </div>
-          </div>
-        </tiny-col>
-      </tiny-row>
-    </tiny-layout>
+        </div>
+      </div>
+    </section>
   </div>
 </template>
 
 <script>
-import TinyLayout from '@opentiny/vue-layout'
-import TinyRow from '@opentiny/vue-row'
-import TinyCol from '@opentiny/vue-col'
-
 import {getGrowth, getTrend} from '@/api/system/kanban';
 import * as echarts from "echarts";
+import {
+  SVA_CHART_AREA,
+  SVA_CHART_LINE,
+  svaCategoryAxis,
+  svaGrid,
+  svaTooltip,
+  svaValueAxis
+} from '../chartTheme';
 
 export default {
-  components: {
-    TinyLayout,
-    TinyRow,
-    TinyCol
-  },
-
   props: {
     orgIndex: {
       type: String,
@@ -126,44 +103,17 @@ export default {
 
   data() {
     return {
-      like: true,
-      value1: 4154.564,
-      value2: 1314,
-      title: "增长人数",
-      trendStyle: {
-        float: "left", width: "600px", height: "250px"
-      },
-      options: [
-        {label: '周'},
-        {label: '月'},
-        {label: '季度'},
-        {label: '年'}
-      ],
       selectedTime: '周',
       chartData: {
         xData: [],
         yData: []
       },
-
       trendData: {
-        week: {
-          xData: [],
-          yData: []
-        },
-        month: {
-          xData: [],
-          yData: []
-        },
-        quarter: {
-          xData: [],
-          yData: []
-        },
-        year: {
-          xData: [],
-          yData: []
-        }
+        week: { xData: [], yData: [] },
+        month: { xData: [], yData: [] },
+        quarter: { xData: [], yData: [] },
+        year: { xData: [], yData: [] }
       },
-
       growthData: {
         quarteGrowthRate: 0.0,
         yearRectification: 0.0,
@@ -171,7 +121,8 @@ export default {
         monthGrowthRate: 0.0,
         yearGrowthRate: 0.0,
         quarterRectification: 0.0
-      }
+      },
+      trendChart: null
     };
   },
 
@@ -189,37 +140,44 @@ export default {
       this.selectedTime = time;
     },
 
+    onTrendResize() {
+      if (this.trendChart) this.trendChart.resize();
+    },
+
     initTrendEcharts() {
-      const option = {
-        tooltip: {
-          trigger: 'axis'
-        },
-        xAxis: {
-          type: 'category',
+      const el = this.$refs.trend;
+      if (!el) return;
+      if (!this.trendChart) {
+        this.trendChart = echarts.init(el);
+        window.addEventListener("resize", this.onTrendResize);
+      }
+      this.trendChart.setOption({
+        tooltip: Object.assign({ trigger: 'axis' }, svaTooltip),
+        grid: svaGrid(),
+        xAxis: svaCategoryAxis({
           boundaryGap: false,
-          data: this.chartData.xData
-        },
-        yAxis: {
-          type: 'value',
+          data: this.chartData.xData,
           axisLabel: {
-            color: "black"
+            color: '#e6edf3',
+            fontSize: 11,
+            interval: 'auto',
+            hideOverlap: true
           }
-        },
+        }),
+        yAxis: svaValueAxis(),
         series: [
           {
             data: this.chartData.yData,
             type: 'line',
-            areaStyle: {}
+            smooth: true,
+            symbol: 'circle',
+            symbolSize: 6,
+            itemStyle: { color: SVA_CHART_LINE },
+            lineStyle: { color: SVA_CHART_LINE, width: 2 },
+            areaStyle: { color: SVA_CHART_AREA }
           }
         ]
-      };
-
-      const trend = echarts.init(document.getElementById("trend"));
-      trend.setOption(option);
-      // 随着屏幕大小调节图表
-      window.addEventListener("resize", () => {
-        trend.resize();
-      });
+      }, true);
     },
 
     async fetchData() {
@@ -230,71 +188,32 @@ export default {
         ]);
 
         this.trendData = {
-          week: {
-            xData: [],
-            yData: []
-          },
-          month: {
-            xData: [],
-            yData: []
-          },
-          quarter: {
-            xData: [],
-            yData: []
-          },
-          year: {
-            xData: [],
-            yData: []
-          }
+          week: { xData: [], yData: [] },
+          month: { xData: [], yData: [] },
+          quarter: { xData: [], yData: [] },
+          year: { xData: [], yData: [] }
         };
 
-        trendDataRes.data.week.map(item => {
-          this.trendData.week.xData.push({
-            value: `${item.weeks}周`,
-            textStyle: {
-              color: "black"
-            },
-            fontSize: 22
-          });
+        (trendDataRes.data.week || []).forEach(item => {
+          this.trendData.week.xData.push(`${item.weeks}周`);
           this.trendData.week.yData.push(item.total);
         });
-
-        trendDataRes.data.month.map(item => {
-          this.trendData.month.xData.push({
-            value: `${item.months}月`,
-            textStyle: {
-              color: "black"
-            },
-            fontSize: 22
-          });
+        (trendDataRes.data.month || []).forEach(item => {
+          this.trendData.month.xData.push(`${item.months}月`);
           this.trendData.month.yData.push(item.total);
         });
-
-        trendDataRes.data.quarter.map(item => {
-          this.trendData.quarter.xData.push({
-            value: `第${item.quarters}季度`,
-            textStyle: {
-              color: "black"
-            },
-            fontSize: 22
-          });
+        (trendDataRes.data.quarter || []).forEach(item => {
+          this.trendData.quarter.xData.push(`第${item.quarters}季度`);
           this.trendData.quarter.yData.push(item.total);
         });
-
-        trendDataRes.data.year.map(item => {
-          this.trendData.year.xData.push({
-            value: `${item.years}年`,
-            textStyle: {
-              color: "black"
-            },
-            fontSize: 22
-          });
+        (trendDataRes.data.year || []).forEach(item => {
+          this.trendData.year.xData.push(`${item.years}年`);
           this.trendData.year.yData.push(item.total);
         });
 
         this.chartData = this.trendData.week;
         this.growthData = growthRes.data;
-        this.initTrendEcharts();
+        this.$nextTick(() => this.initTrendEcharts());
       } catch (error) {
         console.error(error);
       }
@@ -305,8 +224,16 @@ export default {
     this.fetchData();
   },
 
+  beforeDestroy() {
+    window.removeEventListener("resize", this.onTrendResize);
+    if (this.trendChart) {
+      this.trendChart.dispose();
+      this.trendChart = null;
+    }
+  },
+
   watch: {
-    selectedTime(newVal, oldVal) {
+    selectedTime(newVal) {
       if (newVal === '周') {
         this.chartData = this.trendData.week;
       } else if (newVal === '月') {
@@ -319,7 +246,7 @@ export default {
       this.initTrendEcharts();
     },
 
-    orgIndex(newVal, oldVal) {
+    orgIndex() {
       this.fetchData();
     }
   },
@@ -327,6 +254,19 @@ export default {
 </script>
 
 <style scoped lang="less">
+.trend-page {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(240px, 0.8fr);
+  gap: 16px;
+  min-width: 0;
+}
+
+.section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
 h3 {
   margin: 0 0 8px;
   color: var(--sva-text);
@@ -340,47 +280,19 @@ h3 {
 
 .col {
   background-color: var(--sva-surface);
-  display: flex;
-  justify-content: space-around;
-  height: 250px;
-  text-align: center;
+  min-height: 250px;
   border-radius: 10px;
   border: 1px solid var(--sva-border);
-  box-shadow: none;
+  min-width: 0;
 }
 
-.col:hover {
-  box-shadow: none;
-}
-
-.left {
+.echart {
   width: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
+  height: 250px;
 }
 
-
-.left-content {
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  padding-bottom: 15px;
-}
-
-.data-container {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  /* 两列等宽 */
-  grid-gap: 15px;
-  /* 列与列之间的间距 */
-}
-
-.item {
-  color: white;
-  padding: 6px;
-  text-align: left;
+.chart-link {
+  display: block;
 }
 
 .clickable {
@@ -390,9 +302,56 @@ h3 {
   font-size: small;
 }
 
-.growthitem {
+.growth-panel {
+  display: flex;
+  align-items: stretch;
+}
+
+.growth-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 24px;
+  width: 100%;
+  padding: 16px 20px;
+  box-sizing: border-box;
+}
+
+.growth-col {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-evenly;
+  gap: 12px;
+}
+
+.growth-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.growth-label {
+  color: var(--sva-text-muted);
+  font-size: 12px;
+}
+
+.growth-value {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   color: var(--sva-text);
-  padding: 8px;
-  font-size: 14px;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.trend-icon {
+  width: 12px;
+  height: 12px;
+}
+
+@media (max-width: 1100px) {
+  .trend-page {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

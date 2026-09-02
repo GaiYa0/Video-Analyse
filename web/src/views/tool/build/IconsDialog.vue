@@ -88,11 +88,11 @@ export default {
     cursor: pointer;
     overflow: hidden;
     &:hover {
-      background: #f2f2f2;
+      background: var(--sva-surface-2);
     }
     &.active-item{
-      background: #e1f3fb;
-      color: #7a6df0
+      background: var(--sva-surface-2);
+      color: var(--sva-accent)
     }
     > i {
       font-size: 30px;

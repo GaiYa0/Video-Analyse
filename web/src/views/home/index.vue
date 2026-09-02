@@ -2,39 +2,30 @@
   <div class="container-work" ref="kanban">
     <div class="content">
       <div class="left">
-        <!-- 最上方的报警数量展示 -->
         <div class="card" style="padding-top: 10px;">
-          <div>
-            <hazardcount :org-index="orgIndex"></hazardcount>
-          </div>
+          <hazardcount :org-index="orgIndex"></hazardcount>
         </div>
-
-        <!-- 报警趋势分析以及报警治理增长率分析 -->
         <div class="card">
-          <div>
-            <hazardtrend :org-index="orgIndex"></hazardtrend>
-          </div>
+          <hazardtrend :org-index="orgIndex"></hazardtrend>
         </div>
-
-        <!-- 报警专业整体分布/报警等级分布/报警类型分布 -->
         <div class="card">
-          <div>
-            <hazarddistribution :org-index="orgIndex"></hazarddistribution>
-          </div>
+          <hazarddistribution :org-index="orgIndex"></hazarddistribution>
         </div>
       </div>
 
-      <!-- 右边 -->
       <div class="right">
-        <div class="card right-card more announcement-card">
+        <div class="card right-card announcement-card">
           <div class="section-title">报警挂牌公示</div>
           <div class="section-body">
-            <tiny-grid class="announcement-grid" :data="handleData" border :edit-config="{ trigger: 'click', mode: 'cell', showStatus: true }"
-                       highlight-current-row @current-change="handleClick" style="cursor: pointer;">
-              <tiny-grid-column field="handleEvent" title="报警事件" min-width="120"></tiny-grid-column>
-              <tiny-grid-column field="handleLoc" title="事件位置" min-width="160"></tiny-grid-column>
-              <tiny-grid-column field="handleOrg" title="处置人" width="90"></tiny-grid-column>
-            </tiny-grid>
+            <el-table
+              :data="handleData"
+              class="announcement-table"
+              @row-click="handleClick"
+            >
+              <el-table-column prop="handleEvent" label="报警事件" show-overflow-tooltip />
+              <el-table-column prop="handleLoc" label="事件位置" show-overflow-tooltip />
+              <el-table-column prop="handleOrg" label="处置人" show-overflow-tooltip />
+            </el-table>
           </div>
         </div>
       </div>
@@ -47,20 +38,18 @@ import hazardcount from "./components/hazard-count.vue"
 import hazardtrend from "./components/hazard-trend.vue"
 import hazarddistribution from "./components/hazard-distribution.vue"
 import store from "@/store"
-import TinyGrid, { GridColumn as TinyGridColumn } from '@opentiny/vue-grid'
 import {getDeptList, getHandleData} from '@/api/system/kanban';
 
 export default {
   name: "Index",
   components: {
-    hazardcount, hazardtrend, hazarddistribution, TinyGrid, TinyGridColumn
+    hazardcount, hazardtrend, hazarddistribution
   },
   data() {
     return {
       handleData: [],
       orgOptions: [],
       orgIndex: "",
-      wids: [],
       divApp: document.documentElement,
     };
   },
@@ -72,7 +61,6 @@ export default {
   },
 
   methods: {
-    // 获取报警挂牌公示数据以及组织列表
     async fetchData() {
       try {
         const permissions = store.getters && store.getters.permissions;
@@ -95,22 +83,19 @@ export default {
           ];
         }
         const HandleDataRes = await getHandleData(this.orgIndex);
-        this.handleData = HandleDataRes.data.map((item, index) => {
-          this.wids.push(item.w_id);
-          return {
-            id: index,
-            handleEvent: item.alarm_type_name,
-            handleLoc: item.device_name,
-            handleOrg: item.h_org_name,
-          };
-        });
+        this.handleData = (HandleDataRes.data || []).map((item) => ({
+          wid: item.w_id,
+          handleEvent: item.alarm_type_name,
+          handleLoc: item.device_name,
+          handleOrg: item.h_org_name,
+        }));
       } catch (error) {
         console.error(error);
       }
     },
 
-    handleClick(event) {
-      this.$router.push({path: "/warning/warning", query: {withQue: 7, wid: this.wids[event.rowIndex]}});
+    handleClick(row) {
+      this.$router.push({path: "/warning/warning", query: {withQue: 7, wid: row.wid}});
     }
   },
   mounted() {
@@ -126,192 +111,84 @@ export default {
 .container-work {
   width: 100%;
   height: auto;
-  //min-height: 1200px;
   margin: 0 auto;
   overflow: hidden;
   background-color: var(--sva-bg);
-
-  .work-image {
-    width: 99%;
-    margin: 0 auto;
-
-    img {
-      width: 100%;
-      min-height: 50px;
-    }
-  }
 }
 
 .content {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 32%);
+  gap: 12px;
   align-items: stretch;
   padding-bottom: 10px;
-
-  .font {
-    padding: 12px 8px;
-    color: var(--sva-text-muted);
-    font-size: 16px;
-    line-height: 14px;
-  }
-
-  .left {
-    width: 70%;
-
-    .card {
-      display: flex;
-      flex-direction: column;
-      min-height: 150px;
-    }
-  }
-
-  .right {
-    display: flex;
-    flex-direction: column;
-    width: 30%;
-    padding-right: 10px;
-
-    .right-card {
-      padding: 16px;
-    }
-
-    .section-title {
-      margin: 0 0 12px;
-      color: var(--sva-text);
-      font-size: 16px;
-      font-weight: 600;
-      line-height: 22px;
-    }
-
-    .section-body {
-      flex: 1;
-    }
-
-    .announcement-card {
-      flex: 1;
-      height: 100%;
-      border: 1px solid var(--sva-border);
-      box-shadow: none;
-    }
-
-    .announcement-card.more {
-      min-height: auto;
-    }
-
-
-    .more {
-      min-height: 750px;
-    }
-
-    .less {
-      min-height: 156px;
-    }
-
-    .card {
-      display: flex;
-      flex-direction: column;
-      // justify-content: space-evenly;
-      padding: 20px;
-      color: var(--sva-text);
-      background: var(--sva-surface);
-      border-radius: 10px;
-      box-shadow: 0 4px 12px 0 rgba(0, 0, 0, 0.05);
-
-      dl {
-        dt {
-          margin-top: 10px;
-          margin-left: 10px;
-          font-weight: bolder;
-          font-size: 16px;
-          font-family: PingFang SC, PingFang SC-PingFang SC;
-          line-height: 15px;
-          text-align: left;
-        }
-
-        dd {
-          padding: 10px;
-
-          a {
-            color: #999;
-            text-decoration: none;
-          }
-        }
-      }
-    }
-
-    .card:hover {
-      box-shadow: none;
-    }
-
-    .announcement-card:hover {
-      box-shadow: none;
-    }
-  }
+  min-width: 0;
 }
 
-.col > span {
+.left {
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  padding: 10px 10px;
-  text-align: center;
+  gap: 12px;
+
+  .card {
+    display: flex;
+    flex-direction: column;
+    min-height: 150px;
+    min-width: 0;
+  }
 }
 
-.col > span:first-child {
-  color: var(--sva-text);
-  font-weight: 500;
+.right {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding-right: 10px;
+
+  .right-card {
+    padding: 16px;
+  }
+
+  .section-title {
+    margin: 0 0 12px;
+    color: var(--sva-text);
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 22px;
+  }
+
+  .section-body {
+    flex: 1;
+    min-width: 0;
+    overflow-x: hidden;
+  }
+
+  .announcement-card {
+    flex: 1;
+    min-height: 0;
+    border: 1px solid var(--sva-border);
+    box-shadow: none;
+  }
+
+  .card {
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+    color: var(--sva-text);
+    background: var(--sva-surface);
+    border-radius: 10px;
+    box-shadow: none;
+  }
 }
 
-.col > span:last-child {
-  font-weight: 900;
-  font-size: large;
+.announcement-table {
+  width: 100%;
+  cursor: pointer;
 }
 
-/deep/ .announcement-grid.tiny-grid__border {
-  --ti-grid-border-color: var(--sva-border);
-}
-
-/deep/ .announcement-grid.tiny-grid__border .tiny-grid-body__column,
-.announcement-grid.tiny-grid__border .tiny-grid-footer__column,
-.announcement-grid.tiny-grid__border .tiny-grid-header__column {
-  background-image: -webkit-gradient(linear, right top, left top, from(var(--ti-grid-border-color)), to(var(--ti-grid-border-color))), -webkit-gradient(linear, left top, left bottom, from(var(--ti-grid-border-color)), to(var(--ti-grid-border-color)));
-  background-image: linear-gradient(-90deg, var(--ti-grid-border-color), var(--ti-grid-border-color)), linear-gradient(-180deg, var(--ti-grid-border-color), var(--ti-grid-border-color));
-  background-repeat: no-repeat;
-  background-size: 1px 100%, 100% 1px;
-  background-position: 100% 0, 100% 100%;
-  border-width: 1px;
-  font-size: 14px;
-  border-style: solid;
-}
-
-/deep/ .announcement-grid .tiny-grid-header__column {
-  height: 46px;
-  color: var(--sva-text-muted);
-  font-size: 14px;
-  font-weight: 500;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  background-color: var(--sva-surface-2);
-}
-
-/deep/ .announcement-grid .tiny-grid-body__column {
-  height: 46px;
-  color: var(--sva-text);
-  font-size: 14px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  background-color: var(--sva-surface);
-}
-
-/deep/ .el-input--medium .el-input__inner {
-  height: 36px;
-  line-height: 36px;
-}
-
-/deep/ .announcement-grid .tiny-grid-header__column:not(.fixed__column) {
-  left: unset !important;
-  right: unset !important;
-  font-size: 14px;
+@media (max-width: 1200px) {
+  .content {
+    grid-template-columns: 1fr;
+  }
 }
 </style>
