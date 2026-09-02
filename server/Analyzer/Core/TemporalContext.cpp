@@ -1,6 +1,7 @@
 #include "TemporalContext.h"
 #include "Algorithm.h"
 #include "Control.h"
+#include "SleepPose.h"
 #include "Utils/GeometryUtils.h"
 
 #include <algorithm>
@@ -179,6 +180,59 @@ namespace SVAAnalyzer
          * @brief Copy temporal fields from track state to detection object.
          * This enriches detection output with tracking metadata for downstream behavior analysis.
          */
+        static void resolveSleepPoseThresholds(const Control &control, float &downDeg, float &recoverDeg, int64_t &holdMs)
+        {
+            downDeg = SleepPose::kDefaultPitchDownDeg;
+            recoverDeg = SleepPose::kDefaultPitchRecoverDeg;
+            holdMs = SleepPose::kDefaultSleepHoldMs;
+            for (size_t i = 0; i < control.behaviorRules.size(); ++i)
+            {
+                const BehaviorRuleConfig &rule = control.behaviorRules[i];
+                if (!rule.enabled || rule.behaviorType != "sleep_on_duty")
+                {
+                    continue;
+                }
+                if (rule.thresholdMs > 0)
+                {
+                    holdMs = rule.thresholdMs;
+                }
+                if (rule.distanceThresholdPx > 0.0)
+                {
+                    downDeg = static_cast<float>(rule.distanceThresholdPx);
+                }
+                if (rule.directionToleranceDeg > 0.0)
+                {
+                    recoverDeg = std::max(1.0f, downDeg - static_cast<float>(rule.directionToleranceDeg));
+                }
+                break;
+            }
+        }
+
+        static void updateSleepPoseState(TemporalTrackState &track, DetectObject &detect, const Control &control, int64_t timestampMs)
+        {
+            float downDeg = SleepPose::kDefaultPitchDownDeg;
+            float recoverDeg = SleepPose::kDefaultPitchRecoverDeg;
+            int64_t holdMs = SleepPose::kDefaultSleepHoldMs;
+            resolveSleepPoseThresholds(control, downDeg, recoverDeg, holdMs);
+
+            int64_t headDownMs = 0;
+            const SleepPose::FrameLabel label = SleepPose::updateTemporal(
+                track.sleepPose,
+                detect.hasPose && detect.pitchValid,
+                detect.pitchDegree,
+                timestampMs,
+                downDeg,
+                recoverDeg,
+                holdMs,
+                SleepPose::kDefaultRecoverHoldMs,
+                headDownMs);
+            track.headDownMs = headDownMs;
+            track.sleepOnDuty = (label == SleepPose::FrameLabel::Sleep);
+            detect.headDownMs = headDownMs;
+            detect.durationFrames = track.sleepPose.headDownFrames;
+            detect.sleepOnDuty = track.sleepOnDuty;
+        }
+
         static void writeTemporalFields(const TemporalTrackState &track, DetectObject &detect,
                                         int64_t /*timestampMs*/, bool trackNew)
         {
@@ -196,6 +250,12 @@ namespace SVAAnalyzer
             detect.trackNew = trackNew;
             detect.regionStates = track.regionStates;
             detect.trail.assign(track.trail.begin(), track.trail.end());
+            if (!detect.hasPose)
+            {
+                detect.headDownMs = track.headDownMs;
+                detect.durationFrames = track.sleepPose.headDownFrames;
+                detect.sleepOnDuty = track.sleepOnDuty;
+            }
         }
 
         /**
@@ -259,6 +319,7 @@ namespace SVAAnalyzer
 
             appendTrail(track, detect.x1, detect.y1, detect.x2, detect.y2, timestampMs);
             updateRegionStates(track, control, timestampMs);
+            updateSleepPoseState(track, detect, control, timestampMs);
             writeTemporalFields(track, detect, timestampMs, trackNew);
         }
 
@@ -294,6 +355,7 @@ namespace SVAAnalyzer
 
             appendTrail(track, detect.x1, detect.y1, detect.x2, detect.y2, timestampMs);
             updateRegionStates(track, control, timestampMs);
+            updateSleepPoseState(track, detect, control, timestampMs);
             writeTemporalFields(track, detect, timestampMs, true);
             return track;
         }

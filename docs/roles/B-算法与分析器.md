@@ -8,7 +8,7 @@
 
 ## 机器
 
-- 自己的电脑：Windows，做 Python 原型（建议 Python + ultralytics）
+- 自己的电脑：Windows，做 Python 原型（建议 Python + ultralytics）。本机 WSL24 联调开机清单见 [architecture-analyzer.md 第 10 节](../architecture-analyzer.md)
 - **不要**在自己电脑上当验收环境编译整套 easySVA
 - C++ / Analyzer 只在同学 A 的 Ubuntu 22.04 x86_64 虚拟机编译
 - 源码和 ONNX 必须推进 GitHub，再让 A 在 `/opt/SVA-dev` pull

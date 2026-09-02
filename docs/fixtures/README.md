@@ -2,6 +2,12 @@
 
 当前平台**预览不支持 H.265**。无摄像头时，用一段 **H.264** 工位或人物视频伪造 RTSP，供加设备 → 预览 → 原 YOLO 布控。
 
+打开网页：
+
+- 同学 A 演示机：`http://localhost/` 或 `http://<局域网IP>:8080/`（见 [deploy-notes.md](../deploy-notes.md)）
+- 同学 B 本机 WSL24 联调：`http://127.0.0.1:8088/`（Chrome / Edge，**不要**用 Cursor Browser，也**不要**用 8081）。重启后先看 [architecture-analyzer.md 第 10 节](../architecture-analyzer.md)
+- 账号均为 `admin` / `admin123`
+
 ## 文件放哪
 
 把转好的文件放到本目录，例如：
@@ -52,6 +58,10 @@ ffmpeg -re -stream_loop -1 -i /path/to/workplace-h264.mp4 \
 3. 预览走 ZLM 转出的 FLV；Analyzer 拉 `rtsp://{zlm}/live/{apeId}`
 
 YOLO 要出「人」的框，画面里需要能看清人体；纯色条或空办公室很难稳定告警。
+
+验收点 2 再准备两段（或同一段里两段动作）：**趴桌睡岗**应报，**短低头看键盘**不应报。Windows 原型命令见 [algorithm-sleep.md](../algorithm-sleep.md)。
+
+工位摄像头请从 ZLM 的 RTMP 再录，不要和第二路 ffmpeg 抢同一只 dshow 设备。成品例如 `docs/fixtures/desk-sleep.mp4`，**不要 git add**（根目录已忽略 `docs/fixtures/*.mp4`）。
 
 ## 本机模型（不要提交）
 

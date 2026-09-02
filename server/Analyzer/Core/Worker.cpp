@@ -72,6 +72,10 @@ namespace SVAAnalyzer
             dst->setData(src->getBuf(), src->getWidth(), src->getHeight(), src->getChannels());
             dst->happen = src->happen;
             dst->happenScore = src->happenScore;
+            dst->confidence = src->confidence;
+            dst->pitchDegree = src->pitchDegree;
+            dst->durationFrames = src->durationFrames;
+            dst->durationMs = src->durationMs;
             return dst;
         }
     }
@@ -332,7 +336,9 @@ namespace SVAAnalyzer
 
         int64_t last_alarm_timestamp = 0;
         bool happening = false;
-        const int prefix_size = 30;
+        // Sleep-on-duty already waits on pose hold; keep a short preroll so the first
+        // alarm is not delayed by ~30 extra decoded frames.
+        const int prefix_size = control->usesSleepPoseAlgorithm() ? 10 : 30;
         const int max_alarm_seconds = 12;
         const int max_happen_frames = std::max(prefix_size,
                                                std::max(1, control->videoFps) * max_alarm_seconds);
@@ -347,24 +353,27 @@ namespace SVAAnalyzer
             alarm->controlCode = control->code;
             alarm->width = control->videoWidth;
             alarm->height = control->videoHeight;
-            alarm->fps = control->videoFps;
+            alarm->fps = std::max(8, control->videoFps);
             alarm->happenImageIndex = 0;
             alarm->frames.reserve(happenV.size());
+            if (control->usesSleepPoseAlgorithm())
+            {
+                alarm->behaviorType = "sleep_on_duty";
+            }
 
             int firstHappenIndex = -1;
-            int frameIndex = 0;
 
             while (!happenV.empty())
             {
                 Frame *p = happenV.front();
                 happenV.pop();
-                if (firstHappenIndex < 0 && p->happen)
-                {
-                    firstHappenIndex = frameIndex;
-                }
                 Frame *alarmFrame = cloneFrameForAlarm(p);
                 if (alarmFrame)
                 {
+                    if (firstHappenIndex < 0 && alarmFrame->happen)
+                    {
+                        firstHappenIndex = static_cast<int>(alarm->frames.size());
+                    }
                     alarm->frames.push_back(alarmFrame);
                 }
                 if (framePool)
@@ -375,16 +384,26 @@ namespace SVAAnalyzer
                 {
                     delete p;
                 }
-                ++frameIndex;
             }
 
-            if (firstHappenIndex < 0)
+            if (alarm->frames.empty() || firstHappenIndex < 0)
             {
                 delete alarm;
                 return;
             }
 
             alarm->happenImageIndex = firstHappenIndex;
+            for (Frame *alarmFrame : alarm->frames)
+            {
+                if (!alarmFrame || !alarmFrame->happen)
+                {
+                    continue;
+                }
+                alarm->confidence = std::max(alarm->confidence, alarmFrame->confidence);
+                alarm->pitchDegree = std::max(alarm->pitchDegree, alarmFrame->pitchDegree);
+                alarm->durationFrames = std::max(alarm->durationFrames, alarmFrame->durationFrames);
+                alarm->durationMs = std::max(alarm->durationMs, alarmFrame->durationMs);
+            }
 
             const int64_t nowTs = getCurTimestamp();
             alarm->happenTimestamp = nowTs;
@@ -685,7 +704,8 @@ namespace SVAAnalyzer
              *     - dwell:           目标在区域内停留超过阈值？
              *     - low_speed:       目标在区域内移动速度低于阈值？
              *     - loitering:       目标在区域内小范围徘徊？
-             *     - sleep:           目标静止 + 宽高比异常（躺卧）？
+             *     - sleep:           目标静止 + 宽高比异常（躺卧，非P2）？
+             *     - sleep_on_duty:   YOLO-Pose 俯仰角连续低头 ≥ 阈值？
              *     - direction_move:  目标运动方向匹配指定角度？
              *   产出：
              *      BehaviorDecision { ruleId, behaviorType, regionId, lineId, ... }
@@ -879,6 +899,24 @@ namespace SVAAnalyzer
                             event->checkFps = currentCheckFps;
                             event->happen = happen;
                             event->happenScore = happenScore;
+                            event->confidence = 0;
+                            event->pitchDegree = 0;
+                            event->durationFrames = 0;
+                            event->durationMs = 0;
+                            for (const DetectObject &det : happenDetects)
+                            {
+                                if (!det.happen)
+                                {
+                                    continue;
+                                }
+                                event->confidence = std::max(event->confidence, det.class_score);
+                                if (det.pitchValid)
+                                {
+                                    event->pitchDegree = std::max(event->pitchDegree, det.pitchDegree);
+                                }
+                                event->durationFrames = std::max(event->durationFrames, det.durationFrames);
+                                event->durationMs = std::max(event->durationMs, det.headDownMs);
+                            }
                             event->aggregateBehaviors = aggMatches;
                             if (!aggMatches.empty())
                             {
@@ -1001,6 +1039,19 @@ namespace SVAAnalyzer
                                     char classScoreBuf[16];
                                     std::snprintf(classScoreBuf, sizeof(classScoreBuf), "%.2f", det.class_score);
                                     std::string title = det.class_name + " " + classScoreBuf;
+                                    if (det.happen && det.behaviorType == "sleep_on_duty")
+                                    {
+                                        if (det.pitchValid)
+                                        {
+                                            char sleepBuf[32];
+                                            std::snprintf(sleepBuf, sizeof(sleepBuf), "SLEEP %.0f", det.pitchDegree);
+                                            title = sleepBuf;
+                                        }
+                                        else
+                                        {
+                                            title = "SLEEP";
+                                        }
+                                    }
 
                                     cv::rectangle(image, cv::Rect(x1, y1, x2 - x1, y2 - y1), boxColor, boxThickness, cv::LINE_AA);
 
@@ -1038,6 +1089,28 @@ namespace SVAAnalyzer
                             dst->setData(image.data, image.cols, image.rows, image.channels());
                             dst->happen = happen;
                             dst->happenScore = happenScore;
+                            dst->confidence = 0;
+                            dst->pitchDegree = 0;
+                            dst->durationFrames = 0;
+                            dst->durationMs = 0;
+                            for (const DetectObject &det : happenDetects)
+                            {
+                                if (!det.happen)
+                                {
+                                    continue;
+                                }
+                                if (det.behaviorType != "sleep_on_duty" && !control.usesSleepPoseAlgorithm())
+                                {
+                                    continue;
+                                }
+                                dst->confidence = std::max(dst->confidence, det.class_score);
+                                if (det.pitchValid)
+                                {
+                                    dst->pitchDegree = std::max(dst->pitchDegree, det.pitchDegree);
+                                }
+                                dst->durationFrames = std::max(dst->durationFrames, det.durationFrames);
+                                dst->durationMs = std::max(dst->durationMs, det.headDownMs);
+                            }
                         };
 
                         if (control.pushStream && runtime->pushStream)

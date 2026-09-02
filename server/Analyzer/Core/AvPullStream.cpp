@@ -37,7 +37,12 @@ namespace SVAAnalyzer
         av_dict_set(&fmt_options, "rtsp_transport", "tcp", 0); // 设置rtsp底层网络协议 tcp or udp
         av_dict_set(&fmt_options, "stimeout", "10000000", 0);  // 设置rtsp连接超时（单位 us）1秒=1000000
         av_dict_set(&fmt_options, "rw_timeout", "1000000", 0); // 设置rtmp/http-flv连接超时（单位 us）
-        // av_dict_set(&fmt_options, "timeout", "1000000", 0);//设置udp/http超时（单位 us）
+        // Live overlay: prefer the latest frame over a smooth 1s backlog.
+        av_dict_set(&fmt_options, "fflags", "nobuffer+discardcorrupt", 0);
+        av_dict_set(&fmt_options, "flags", "low_delay", 0);
+        av_dict_set(&fmt_options, "max_delay", "100000", 0);
+        av_dict_set(&fmt_options, "probesize", "327680", 0);
+        av_dict_set(&fmt_options, "analyzeduration", "200000", 0);
 
         int ret = avformat_open_input(&mFmtCtx, streamUrl.data(), NULL, &fmt_options);
 
@@ -101,12 +106,14 @@ namespace SVAAnalyzer
             }
             // ========== 结束硬件解码支持 ==========
 
+            mVideoCodecCtx->flags |= AV_CODEC_FLAG_LOW_DELAY;
+            mVideoCodecCtx->thread_count = 1;
+
             if (avcodec_open2(mVideoCodecCtx, videoCodec, nullptr) < 0)
             {
                 LOGE("avcodec_open2 error");
                 return false;
             }
-            // mVideoCodecCtx->thread_count = 1;
 
             mVideoStream = mFmtCtx->streams[mWorker->mControl->videoIndex];
             if (0 == mVideoStream->avg_frame_rate.den)

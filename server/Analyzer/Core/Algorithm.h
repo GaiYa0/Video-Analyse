@@ -5,9 +5,11 @@
 #include <vector>
 #include <deque>
 #include <unordered_map>
+#include <array>
 #include <cstdint>
 #include <opencv2/opencv.hpp> //opencv header file
 #include "TrackMetadata.h"
+#include "SleepPose.h"
 
 namespace SVAAnalyzer
 {
@@ -68,6 +70,15 @@ namespace SVAAnalyzer
         bool trackNew = false;
         std::vector<TrackTrailPoint> trail;
         std::unordered_map<std::string, RegionTemporalState> regionStates;
+
+        // YOLO-Pose sleep-on-duty (on_sleep_pose only; original YOLO leaves these unset)
+        bool hasPose = false;
+        std::array<SleepPose::Keypoint, SleepPose::kKeypointCount> poseKeypoints{};
+        float pitchDegree = 0.0f;
+        bool pitchValid = false;
+        int64_t headDownMs = 0;
+        int durationFrames = 0;
+        bool sleepOnDuty = false;
 
         // Behavior analysis (from BehaviorEvaluator)
         std::string ruleId;

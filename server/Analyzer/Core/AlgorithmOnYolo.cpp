@@ -1,5 +1,6 @@
 ﻿#include "AlgorithmOnYolo.h"
 #include "Config.h"
+#include "SleepPose.h"
 #include "Utils/Log.h"
 #include "Utils/Common.h"
 #include <algorithm>
@@ -155,7 +156,15 @@ namespace SVAAnalyzer
         mOutputDims = output_dims;
         mOutputDim = static_cast<int>(output_dims[1]);
         mOutputRow = static_cast<int>(output_dims[2]);
-        if (mOutputDims.back() == 6)
+        if (mDecoder == YoloOutputDecoder::PoseKeypoints)
+        {
+            LOGI("AlgorithmOnYolo output dims=[%lld,%lld,%lld] decoder=pose_keypoints provider=%s",
+                 static_cast<long long>(mOutputDims[0]),
+                 static_cast<long long>(mOutputDims[1]),
+                 static_cast<long long>(mOutputDims[2]),
+                 mActiveProvider.c_str());
+        }
+        else if (mOutputDims.back() == 6)
         {
             mDecoder = YoloOutputDecoder::DirectDetections;
             LOGI("AlgorithmOnYolo output dims=[%lld,%lld,%lld] decoder=direct_detections provider=%s",
@@ -194,6 +203,12 @@ namespace SVAAnalyzer
     void OnnxRuntimeEngine::initPostprocessProfile(const std::string &algorithmCode)
     {
         mDecoder = YoloOutputDecoder::DenseWithNms;
+        if (algorithmCode == "on_sleep_pose")
+        {
+            mDecoder = YoloOutputDecoder::PoseKeypoints;
+            LOGI("AlgorithmOnYolo profile=%s decoder=pose_keypoints preprocess=square_rgb score=0.40", algorithmCode.data());
+            return;
+        }
         if (algorithmCode == "on_yolo26n_80" || algorithmCode == "ov_yolo26n_80")
         {
             mDecoder = YoloOutputDecoder::DirectDetections;
@@ -372,6 +387,117 @@ namespace SVAAnalyzer
         return true;
     }
 
+    bool OnnxRuntimeEngine::decodePoseKeypoints(const float *pdata, int imageWidth, int imageHeight, int paddedImageSize, std::vector<DetectObject> &detects)
+    {
+        if (mOutputDim <= 0 || mOutputRow <= 0)
+        {
+            LOGE("AlgorithmOnYolo pose invalid output dims %dx%d", mOutputDim, mOutputRow);
+            return false;
+        }
+
+        const int channelsFirst = (mOutputDim == 56 || mOutputDim == 57) ? mOutputDim : 0;
+        const int channelsLast = (mOutputRow == 56 || mOutputRow == 57) ? mOutputRow : 0;
+        cv::Mat det_output;
+        if (channelsFirst > 0)
+        {
+            cv::Mat dout(mOutputDim, mOutputRow, CV_32F, const_cast<float *>(pdata));
+            det_output = dout.t();
+        }
+        else if (channelsLast > 0)
+        {
+            det_output = cv::Mat(mOutputDim, mOutputRow, CV_32F, const_cast<float *>(pdata));
+        }
+        else
+        {
+            LOGE("AlgorithmOnYolo pose unexpected output %dx%d, expect 56-wide pose tensor", mOutputDim, mOutputRow);
+            return false;
+        }
+
+        if (det_output.cols < 5 + SleepPose::kKeypointCount * 3)
+        {
+            LOGE("AlgorithmOnYolo pose det_output cols=%d", det_output.cols);
+            return false;
+        }
+
+        const float score_threshold = 0.40f;
+        const float nms_threshold = 0.50f;
+        const float x_factor = static_cast<float>(paddedImageSize) / static_cast<float>(mInputWidth);
+        const float y_factor = static_cast<float>(paddedImageSize) / static_cast<float>(mInputHeight);
+
+        std::vector<cv::Rect> boxes;
+        std::vector<float> confidences;
+        std::vector<int> rows;
+        for (int i = 0; i < det_output.rows; ++i)
+        {
+            const float score = det_output.at<float>(i, 4);
+            if (!std::isfinite(score) || score < score_threshold)
+            {
+                continue;
+            }
+            const float cx = det_output.at<float>(i, 0);
+            const float cy = det_output.at<float>(i, 1);
+            const float ow = det_output.at<float>(i, 2);
+            const float oh = det_output.at<float>(i, 3);
+            if (!std::isfinite(cx) || !std::isfinite(cy) || !std::isfinite(ow) || !std::isfinite(oh) || ow <= 0.0f || oh <= 0.0f)
+            {
+                continue;
+            }
+            int left = static_cast<int>((cx - 0.5f * ow) * x_factor);
+            int top = static_cast<int>((cy - 0.5f * oh) * y_factor);
+            int right = static_cast<int>((cx + 0.5f * ow) * x_factor);
+            int bottom = static_cast<int>((cy + 0.5f * oh) * y_factor);
+            left = std::max(0, std::min(left, imageWidth - 1));
+            top = std::max(0, std::min(top, imageHeight - 1));
+            right = std::max(0, std::min(right, imageWidth));
+            bottom = std::max(0, std::min(bottom, imageHeight));
+            if (right <= left || bottom <= top)
+            {
+                continue;
+            }
+            boxes.emplace_back(left, top, right - left, bottom - top);
+            confidences.push_back(score);
+            rows.push_back(i);
+        }
+
+        std::vector<int> indexes;
+        if (!boxes.empty())
+        {
+            cv::dnn::NMSBoxes(boxes, confidences, score_threshold, nms_threshold, indexes);
+        }
+
+        const std::string className = mClassNames.empty() ? "person" : mClassNames[0];
+        for (size_t n = 0; n < indexes.size(); ++n)
+        {
+            const int pick = indexes[n];
+            const int row = rows[pick];
+            DetectObject detect;
+            detect.x1 = boxes[pick].x;
+            detect.y1 = boxes[pick].y;
+            detect.x2 = boxes[pick].x + boxes[pick].width;
+            detect.y2 = boxes[pick].y + boxes[pick].height;
+            detect.class_id = 0;
+            detect.class_name = className;
+            detect.class_score = confidences[pick];
+            detect.hasPose = true;
+            for (int k = 0; k < SleepPose::kKeypointCount; ++k)
+            {
+                const int base = 5 + k * 3;
+                SleepPose::Keypoint kp;
+                kp.x = det_output.at<float>(row, base) * x_factor;
+                kp.y = det_output.at<float>(row, base + 1) * y_factor;
+                kp.conf = det_output.at<float>(row, base + 2);
+                detect.poseKeypoints[static_cast<size_t>(k)] = kp;
+            }
+            detect.pitchValid = SleepPose::tryComputePitchDeg(
+                detect.poseKeypoints.data(),
+                SleepPose::kKeypointCount,
+                SleepPose::kMinKeypointConf,
+                detect.pitchDegree);
+            detects.push_back(detect);
+        }
+        return true;
+    }
+
     bool OnnxRuntimeEngine::runInference(cv::Mat &image, std::vector<DetectObject> &detects)
     {
         detects.clear();
@@ -423,6 +549,10 @@ namespace SVAAnalyzer
         if (mDecoder == YoloOutputDecoder::DirectDetections)
         {
             return decodeDirectDetections(pdata, image_w, image_h, detects);
+        }
+        if (mDecoder == YoloOutputDecoder::PoseKeypoints)
+        {
+            return decodePoseKeypoints(pdata, image_w, image_h, paddedImageSize, detects);
         }
         return decodeDenseOutputWithNms(pdata, image_w, image_h, paddedImageSize, detects);
     }

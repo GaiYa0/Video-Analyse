@@ -23,8 +23,18 @@ namespace SVAAnalyzer
     {
         std::string resolveAlarmCallbackUrl(const std::string &configuredUrl, const std::string &adminHost, bool hasAlarmId)
         {
+            // No alarmId: create the row via addFromSvaSimple (detect websocket is noop).
+            // With alarmId: only patch media paths on the existing row.
             if (!hasAlarmId)
             {
+                if (!configuredUrl.empty())
+                {
+                    return configuredUrl;
+                }
+                if (!adminHost.empty())
+                {
+                    return adminHost + "/waring/waring/addFromSvaSimple";
+                }
                 return "";
             }
 
@@ -456,17 +466,32 @@ namespace SVAAnalyzer
         int ret = -1;
         int receive_packet_count = -1;
 
+        int coverIndex = mAlarm->happenImageIndex;
+        if (coverIndex < 0 || coverIndex >= static_cast<int>(mAlarm->frames.size()))
+        {
+            coverIndex = 0;
+            for (size_t i = 0; i < mAlarm->frames.size(); ++i)
+            {
+                if (mAlarm->frames[i] && mAlarm->frames[i]->happen)
+                {
+                    coverIndex = static_cast<int>(i);
+                    break;
+                }
+            }
+        }
+
         for (size_t i = 0; i < mAlarm->frames.size(); i++)
         {
             Frame *frame = mAlarm->frames[i];
             // LOGI("----%d,%d,%d,%d----", i, image->getWidth(), image->getHeight(), image->getSize());
 
-            // 解压缩成功
-            if (i == mAlarm->happenImageIndex)
+            if (static_cast<int>(i) == coverIndex)
             {
-                // 封面图
                 cv::Mat happenImage_cvmat(height, width, CV_8UC3, frame->getBuf());
-                cv::imwrite(image_path_abs, happenImage_cvmat);
+                if (!cv::imwrite(image_path_abs, happenImage_cvmat))
+                {
+                    LOGE("genAlarmVideo() cover imwrite failed: %s", image_path_abs.c_str());
+                }
             }
 
             const uint8_t *src_slice[4] = {frame->getBuf(), nullptr, nullptr, nullptr};
@@ -591,6 +616,26 @@ namespace SVAAnalyzer
         param["desc"] = "";
         param["video_path"] = video_path;
         param["image_path"] = image_path;
+        if (mAlarm->behaviorType == "sleep_on_duty")
+        {
+            param["alarmType"] = "SLEEP_ON_DUTY";
+            param["customEventName"] = "睡岗";
+            param["confidence"] = mAlarm->confidence;
+            param["pitchDegree"] = mAlarm->pitchDegree;
+            param["durationFrames"] = mAlarm->durationFrames;
+            if (mAlarm->durationMs > 0)
+            {
+                param["duration_ms"] = static_cast<Json::Int64>(mAlarm->durationMs);
+            }
+        }
+
+        const bool detectEventPreset = video_path.find("/evt-") != std::string::npos;
+        if (!hasAlarmId && detectEventPreset)
+        {
+            // detect.event start already inserted this row with the same path.
+            LOGI("wrote detect-event video without duplicate insert: %s", video_path.c_str());
+            return true;
+        }
 
         std::string data = param.toStyledString();
         Request request;

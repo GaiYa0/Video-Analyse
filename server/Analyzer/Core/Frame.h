@@ -1,5 +1,6 @@
 ﻿#ifndef ANALYZER_FRAME_H
 #define ANALYZER_FRAME_H
+#include <cstdint>
 #include <vector>
 #include <queue>
 #include <mutex>
@@ -24,6 +25,10 @@ namespace SVAAnalyzer
 
 		bool happen = false;   // 是否发生事件
 		float happenScore = 0; // 发生事件的分数
+		float confidence = 0;
+		float pitchDegree = 0;
+		int durationFrames = 0;
+		int64_t durationMs = 0;
 
 	private:
 		int mBufInitSize = 0; // buf初始化时的长度

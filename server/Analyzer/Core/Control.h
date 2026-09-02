@@ -12,6 +12,7 @@
 #include <json/json.h>
 #include <opencv2/opencv.hpp>
 #include "Utils/Common.h"
+#include "SleepPose.h"
 
 namespace SVAAnalyzer
 {
@@ -308,7 +309,7 @@ namespace SVAAnalyzer
 				return static_cast<char>(std::tolower(c));
 			});
 			if (value == "cross_line" || value == "enter_region" || value == "exit_region" || value == "dwell" ||
-				value == "low_speed" || value == "loitering" || value == "sleep" || value == "absence" || value == "count_threshold" || value == "occupancy" || value == "region_motion" ||
+				value == "low_speed" || value == "loitering" || value == "sleep" || value == "sleep_on_duty" || value == "absence" || value == "count_threshold" || value == "occupancy" || value == "region_motion" ||
 				value == "direction_move" || value == "direction_reverse" || value == "relation_near" || value == "relation_apart" || value == "relation_not_contains" || value == "fight")
 			{
 				return value;
@@ -423,6 +424,7 @@ namespace SVAAnalyzer
 				   behaviorType == "low_speed" ||
 				   behaviorType == "loitering" ||
 				   behaviorType == "sleep" ||
+				   behaviorType == "sleep_on_duty" ||
 				   behaviorType == "direction_move" ||
 				   behaviorType == "direction_reverse" ||
 				   behaviorType == "relation_near" ||
@@ -1054,6 +1056,18 @@ namespace SVAAnalyzer
 						rule.maxDisplacementPx = std::max(1.0, std::min(10000.0, rule.maxDisplacementPx > 0.0 ? rule.maxDisplacementPx : 48.0));
 						rule.distanceThresholdPx = std::max(0.5, std::min(8.0, rule.distanceThresholdPx > 0.0 ? rule.distanceThresholdPx : 1.2));
 					}
+					else if (rule.behaviorType == "sleep_on_duty")
+					{
+						rule.thresholdMs = std::max<int64_t>(500, std::min<int64_t>(3600000,
+							rule.thresholdMs > 0 ? rule.thresholdMs : SleepPose::kDefaultSleepHoldMs));
+						rule.thresholdCount = 0;
+						rule.maxSpeedPxPerSec = 0.0;
+						rule.maxDisplacementPx = 0.0;
+						rule.distanceThresholdPx = std::max(5.0, std::min(90.0,
+							rule.distanceThresholdPx > 0.0 ? rule.distanceThresholdPx : static_cast<double>(SleepPose::kDefaultPitchDownDeg)));
+						rule.directionToleranceDeg = std::max(1.0, std::min(40.0,
+							rule.directionToleranceDeg > 0.0 ? rule.directionToleranceDeg : static_cast<double>(SleepPose::kDefaultPitchDownDeg - SleepPose::kDefaultPitchRecoverDeg)));
+					}
 					else if (rule.behaviorType == "count_threshold")
 					{
 						rule.thresholdMs = std::max<int64_t>(0, std::min<int64_t>(3600000, rule.thresholdMs));
@@ -1244,6 +1258,54 @@ namespace SVAAnalyzer
 			recognitionRegion = joinNormalizedPoints(primaryRegion->normalizedPoints);
 			return true;
 		}
+
+		bool usesSleepPoseAlgorithm() const
+		{
+			if (algorithmCode == "on_sleep_pose")
+			{
+				return true;
+			}
+			for (size_t i = 0; i < algorithmTasks.size(); ++i)
+			{
+				if (algorithmTasks[i].algorithmCode == "on_sleep_pose")
+				{
+					return true;
+				}
+			}
+			return false;
+		}
+
+		void ensureDefaultSleepOnDutyRule()
+		{
+			if (!usesSleepPoseAlgorithm())
+			{
+				return;
+			}
+			for (size_t i = 0; i < behaviorRules.size(); ++i)
+			{
+				if (behaviorRules[i].behaviorType == "sleep_on_duty")
+				{
+					return;
+				}
+			}
+			BehaviorRuleConfig rule;
+			rule.id = "sleep_on_duty_default";
+			rule.name = "sleep_on_duty";
+			rule.customEventName = "睡岗";
+			rule.behaviorType = "sleep_on_duty";
+			rule.enabled = true;
+			rule.geometryType = "region";
+			rule.thresholdMs = SleepPose::kDefaultSleepHoldMs;
+			rule.distanceThresholdPx = static_cast<double>(SleepPose::kDefaultPitchDownDeg);
+			rule.directionToleranceDeg = static_cast<double>(SleepPose::kDefaultPitchDownDeg - SleepPose::kDefaultPitchRecoverDeg);
+			const RegionConfig *primaryRegion = findPrimaryRegion();
+			if (primaryRegion)
+			{
+				rule.geometryId = primaryRegion->id;
+			}
+			behaviorRules.push_back(rule);
+		}
+
 		bool validateAdd(std::string &result_msg)
 		{
 			normalizeGeometryConfig();
@@ -1407,6 +1469,7 @@ namespace SVAAnalyzer
 			}
 
 			normalizeBehaviorRulesConfig();
+			ensureDefaultSleepOnDutyRule();
 
 			if (wsEventRuleMode != "any" && wsEventRuleMode != "all_algorithms_per_class" && wsEventRuleMode != "all_algorithms_any_class")
 			{

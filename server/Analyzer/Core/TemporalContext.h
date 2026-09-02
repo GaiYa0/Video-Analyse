@@ -2,6 +2,7 @@
 #define ANALYZER_TEMPORALCONTEXT_H
 
 #include "TrackMetadata.h"
+#include "SleepPose.h"
 
 #include <array>
 #include <cstdint>
@@ -55,6 +56,9 @@ namespace SVAAnalyzer
         std::unordered_map<std::string, RegionTemporalState> regionStates;
         TemporalTrackLifecycleState lifeState = TemporalTrackLifecycleState::New;
         std::deque<TrackTrailPoint> trail;
+        SleepPose::TemporalState sleepPose;
+        int64_t headDownMs = 0;
+        bool sleepOnDuty = false;
     };
 
     /**

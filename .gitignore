@@ -35,6 +35,9 @@ mediaServer/build/
 log.out
 
 easySVA-lib.zip
+/easySVA/
+/Analyzer-lib/
+scripts/wsl-*.sh
 *.iso
 *.vmdk
 *.vdi
@@ -42,3 +45,11 @@ easySVA-lib.zip
 *.onnx
 *.engine
 *.trt
+*.pt
+docs/fixtures/*.mp4
+docs/fixtures/*.mkv
+docs/fixtures/*.avi
+docs/fixtures/*-events.json
+**/__pycache__/
+*.pyc
+*.pyo

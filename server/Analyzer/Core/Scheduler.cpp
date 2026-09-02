@@ -5,11 +5,13 @@
 #include "Algorithm.h"
 #include "AlgorithmOnYolo.h"
 #include "GenerateAlarmVideo.h"
+#include <filesystem>
 #include "Utils/Common.h"
 #include "Utils/Log.h"
 #include "Utils/Request.h"
 #include <json/json.h>
 #include <fstream>
+#include <exception>
 #include <string>
 #include <cctype>
 #include <algorithm>
@@ -141,6 +143,10 @@ namespace SVAAnalyzer
             delete on_yolo26n_80;
             on_yolo26n_80 = nullptr;
         }
+        if (on_sleep_pose) {
+            delete on_sleep_pose;
+            on_sleep_pose = nullptr;
+        }
 
         clearAlarmQueue();
         clearDetectFrameQueue();
@@ -187,7 +193,31 @@ namespace SVAAnalyzer
         modelPath = mConfig->modelDir + "/yolo26s.onnx";
         on_yolo26n_80 = new AlgorithmOnYolo(mConfig, modelPath, classNames, "on_yolo26n_80");
 
-        LOGI("initAlgorithm() end - total ONNX models loaded: 2");
+        const std::string posePath = mConfig->modelDir + "/yolo11n-pose.onnx";
+        if (std::filesystem::exists(posePath))
+        {
+            try
+            {
+                std::vector<std::string> poseClassNames = {"person"};
+                std::string poseModelPath = posePath;
+                LOGI("初始化 on_sleep_pose (yolo11n-pose.onnx)");
+                on_sleep_pose = new AlgorithmOnYolo(mConfig, poseModelPath, poseClassNames, "on_sleep_pose");
+            }
+            catch (const std::exception &e)
+            {
+                LOGE("on_sleep_pose load failed: %s (original YOLO still available)", e.what());
+                on_sleep_pose = nullptr;
+            }
+        }
+        else
+        {
+            LOGI("skip on_sleep_pose, missing %s (original YOLO still available)", posePath.c_str());
+        }
+
+        LOGI("initAlgorithm() end - ONNX models loaded: yolo11n=%d yolo26s=%d sleep_pose=%d",
+             on_yolo11n_80 ? 1 : 0,
+             on_yolo26n_80 ? 1 : 0,
+             on_sleep_pose ? 1 : 0);
         return true;
     }
     void Scheduler::loop()
@@ -506,7 +536,12 @@ namespace SVAAnalyzer
                 }
 
                 GenerateAlarmVideo gen(mConfig, alarm);
-                gen.genAlarmVideo();
+                if (!gen.genAlarmVideo())
+                {
+                    LOGE("genAlarmVideo failed: control=%s eventId=%s",
+                         alarm->controlCode.c_str(),
+                         alarm->eventId.c_str());
+                }
 
                 delete alarm;
                 alarm = nullptr;
@@ -523,18 +558,18 @@ namespace SVAAnalyzer
         attachAlarmMediaBinding(alarm);
 
         mAlarmQ_mtx.lock();
-        if (mAlarmQ.size() > 0)
+        // Sleep events used to drop every extra clip while one encode was in
+        // flight, so detect.event rows were stored with a snapshot and no mp4.
+        const size_t kMaxQueuedAlarms = 16;
+        if (mAlarmQ.size() >= kMaxQueuedAlarms)
         {
-            // 扔掉
-            delete alarm;
-            alarm = nullptr;
+            Alarm *old = mAlarmQ.front();
+            mAlarmQ.pop();
+            delete old;
+            LOGI("alarm queue full, dropped oldest pending clip");
         }
-        else
-        {
-            mAlarmQ.push(alarm);
-            mAlarmQ_cv.notify_one(); // 唤醒等待的报警处理线程
-        }
-
+        mAlarmQ.push(alarm);
+        mAlarmQ_cv.notify_one();
         mAlarmQ_mtx.unlock();
     }
 
@@ -1000,7 +1035,29 @@ namespace SVAAnalyzer
         root["streamCode"] = event.streamCode;
         root["streamApp"] = event.streamApp;
         root["streamName"] = event.streamName;
-        root["image_path"] = state.imagePath;
+        // Only the start snapshot is the cover. Update/end are often the sit-up frame.
+        if (eventState == "start")
+        {
+            root["image_path"] = state.imagePath;
+        }
+        if (!state.videoPath.empty())
+        {
+            root["video_path"] = state.videoPath;
+        }
+        if (state.behaviorType == "sleep_on_duty" || event.behaviorType == "sleep_on_duty")
+        {
+            const float confidence = std::max(state.confidence, event.confidence);
+            const float pitchDegree = std::max(state.pitchDegree, event.pitchDegree);
+            const int durationFrames = std::max(state.durationFrames, event.durationFrames);
+            const int64_t durationMs = std::max(state.durationMs, event.durationMs);
+            root["confidence"] = confidence;
+            root["pitchDegree"] = pitchDegree;
+            root["durationFrames"] = durationFrames;
+            if (durationMs > 0)
+            {
+                root["duration_ms"] = static_cast<Json::Int64>(durationMs);
+            }
+        }
         root["timestampMs"] = static_cast<Json::Int64>(event.timestampMs);
         root["startTimestampMs"] = static_cast<Json::Int64>(state.startTimestampMs);
         root["eventClass"] = state.eventClass;
@@ -1631,6 +1688,10 @@ namespace SVAAnalyzer
                 state.startHitCount = state.pendingHitCount;
                 state.pendingHitCount = 0;
                 state.pendingWindowStartMs = 0;
+                state.confidence = event->confidence;
+                state.pitchDegree = event->pitchDegree;
+                state.durationFrames = event->durationFrames;
+                state.durationMs = event->durationMs;
                 if (saveAlarmMedia)
                 {
                     bindAlarmMedia(state.controlCode, "", state.eventId, state.behaviorType, state.ruleId, state.videoPath, state.imagePath);
@@ -1642,6 +1703,10 @@ namespace SVAAnalyzer
 
             state.lastSeenTimestampMs = eventTimestampMs;
             state.maxScore = std::max(state.maxScore, mergedScore);
+            state.confidence = std::max(state.confidence, event->confidence);
+            state.pitchDegree = std::max(state.pitchDegree, event->pitchDegree);
+            state.durationFrames = std::max(state.durationFrames, event->durationFrames);
+            state.durationMs = std::max(state.durationMs, event->durationMs);
             if (!event->imagePath.empty())
             {
                 state.imagePath = event->imagePath;
