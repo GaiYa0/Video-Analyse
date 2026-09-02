@@ -289,6 +289,6 @@ export default {
 }
 
 ::v-deep .operation-column .el-button--text {
-  padding: 0;
+  padding: 4px 2px;
 }
 </style>

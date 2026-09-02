@@ -136,17 +136,9 @@ export default {
 </script>
 
 <style lang="scss" scoped>
-.tiny-modal__wrapper.is__visible:not(.type__message) .tiny-modal__box:not(.is__drag) {
-  left: 817px;
-  position: fixed;
-  top: 400px;
-  -webkit-transition: top 0s ease-in, opacity .4s ease-in;
-  transition: top 0s ease-in, opacity .4s ease-in;
-}
-
 .app-breadcrumb.el-breadcrumb {
   cursor: text;
-  font-size: 18px;
+  font-size: 14px;
 }
 
 .navbar {

@@ -5164,7 +5164,7 @@ export default {
   min-height: 0;
   min-width: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(260px, clamp(280px, 38%, 560px));
+  grid-template-columns: minmax(0, 1.4fr) minmax(360px, 420px);
   gap: 12px;
   overflow: hidden;
 }
@@ -5337,9 +5337,7 @@ export default {
   position: relative;
   width: 100%;
   flex: 1 1 auto;
-  min-height: 160px;
-  max-height: min(52dvh, 720px);
-  aspect-ratio: 16 / 9;
+  min-height: 200px;
   background: #0f1115;
   border-radius: 4px;
   overflow: hidden;
@@ -5376,7 +5374,7 @@ export default {
   font-size: 12px;
   font-weight: 600;
   line-height: 1.4;
-  color: #ffffff;
+  color: var(--sva-text);
 }
 
 .video-rule-list {
@@ -5408,7 +5406,7 @@ export default {
 .video-rule-chip-type {
   flex-shrink: 0;
   font-weight: 600;
-  color: #ffffff;
+  color: var(--sva-text);
 }
 
 .video-rule-chip-text {
@@ -5436,7 +5434,7 @@ export default {
   font-size: 12px;
   font-weight: 600;
   line-height: 1.4;
-  color: #ffffff;
+  color: var(--sva-text);
 }
 
 .video-event-list {
@@ -5531,7 +5529,9 @@ export default {
 .geometry-state,
 .primary-region-state,
 .geometry-editor-hint {
-  line-height: 28px;
+  line-height: 22px;
+  font-size: 12px;
+  color: var(--sva-text-muted);
 }
 
 .algorithm-task-list {
@@ -5543,9 +5543,9 @@ export default {
 
 .algorithm-task-item {
   padding: 10px;
-  border: 1px solid #e4e7ed;
+  border: 1px solid var(--sva-border);
   border-radius: 4px;
-  background: #fafafa;
+  background: var(--sva-surface-2);
 }
 
 .algorithm-task-header {
@@ -5571,7 +5571,7 @@ export default {
   margin-bottom: 6px;
   font-size: 12px;
   line-height: 1;
-  color: var(--sva-text-muted);
+  color: var(--sva-text);
 }
 
 .algorithm-task-param-icon {
@@ -5642,20 +5642,20 @@ export default {
 
 .behavior-rule-section-meta {
   font-size: 12px;
-  color: #94a3b8;
+  color: var(--sva-text-muted);
 }
 
 .behavior-rule-item {
   position: relative;
   padding: 12px;
-  border: 1px solid #e7edf5;
+  border: 1px solid var(--sva-border);
   border-radius: 8px;
-  background: linear-gradient(180deg, #fcfdff 0%, #f8fafc 100%);
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  background: var(--sva-surface-2);
+  box-shadow: none;
 }
 
 .behavior-rule-item--standalone {
-  border-color: #d9e2ec;
+  border-color: var(--sva-border);
   background: var(--sva-surface-2);
 }
 
@@ -5667,36 +5667,24 @@ export default {
   left: 0;
   width: 3px;
   border-radius: 999px;
-  background: linear-gradient(180deg, #94a3b8 0%, #cbd5e1 100%);
+  background: var(--sva-accent);
 }
 
 .behavior-sequence-group {
-  --behavior-sequence-border: #dbe7f3;
-  --behavior-sequence-background: linear-gradient(180deg, rgba(248, 250, 252, 0.94) 0%, rgba(241, 245, 249, 0.94) 100%);
+  --behavior-sequence-border: var(--sva-border);
+  --behavior-sequence-background: var(--sva-surface-2);
   padding: 12px;
   border: 1px solid var(--behavior-sequence-border);
-  border-radius: 12px;
+  border-radius: 8px;
   background: var(--behavior-sequence-background);
 }
 
-.behavior-sequence-group--tone-1 {
-  --behavior-sequence-border: #d8e5f2;
-  --behavior-sequence-background: linear-gradient(180deg, rgba(245, 249, 255, 0.96) 0%, rgba(236, 244, 252, 0.96) 100%);
-}
-
-.behavior-sequence-group--tone-2 {
-  --behavior-sequence-border: #dde6da;
-  --behavior-sequence-background: linear-gradient(180deg, rgba(247, 251, 246, 0.96) 0%, rgba(239, 246, 237, 0.96) 100%);
-}
-
-.behavior-sequence-group--tone-3 {
-  --behavior-sequence-border: #eadfd3;
-  --behavior-sequence-background: linear-gradient(180deg, rgba(252, 248, 243, 0.96) 0%, rgba(248, 241, 233, 0.96) 100%);
-}
-
+.behavior-sequence-group--tone-1,
+.behavior-sequence-group--tone-2,
+.behavior-sequence-group--tone-3,
 .behavior-sequence-group--tone-4 {
-  --behavior-sequence-border: #e1dced;
-  --behavior-sequence-background: linear-gradient(180deg, rgba(249, 247, 252, 0.96) 0%, rgba(241, 237, 247, 0.96) 100%);
+  --behavior-sequence-border: var(--sva-border);
+  --behavior-sequence-background: var(--sva-surface-2);
 }
 
 .behavior-sequence-group-header {
@@ -5751,7 +5739,7 @@ export default {
 .behavior-sequence-group-meta {
   font-size: 12px;
   line-height: 1.5;
-  color: #64748b;
+  color: var(--sva-text-muted);
 }
 
 .behavior-sequence-group-meta--inline {
@@ -5759,7 +5747,7 @@ export default {
 }
 
 .behavior-sequence-group-meta--summary {
-  color: #475569;
+  color: var(--sva-text-muted);
 }
 
 .behavior-rule-header {

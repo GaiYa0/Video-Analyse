@@ -12,6 +12,7 @@
 
 <script>
 import {getRealAlarm} from '@/api/system/kanban';
+import {parseTime} from '@/utils/ruoyi';
 
 export default {
   components: {},
@@ -43,7 +44,7 @@ export default {
       // const data = res.data.map(item => [item.device_name, item.alarm_time, item.alarm_type_name, item.picture_absolute_url]);
       const data = res.data.map(item => {
         this.imgList.push(item.picture_absolute_url);
-        return [item.device_name, item.alarm_time, item.alarm_type_name];
+        return [item.device_name, parseTime(item.alarm_time) || item.alarm_time, item.alarm_type_name];
       });
       this.config = {
         ...this.config,

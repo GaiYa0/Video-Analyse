@@ -219,14 +219,16 @@ export default {
 .col {
   height: 200px;
   text-align: center;
-  background-color: white;
+  background-color: var(--sva-surface);
   cursor: pointer;
   border-radius: 10px;
-  box-shadow: 0 4px 12px 0 rgba(0, 0, 0, 0.05);
+  border: 1px solid var(--sva-border);
+  box-shadow: none;
 }
 
 .col:hover {
-  box-shadow: 0 3px 10px 0 rgb(64, 98, 225, 0.45);
+  box-shadow: none;
+  border-color: var(--sva-accent);
 }
 
 .increase {
@@ -238,31 +240,31 @@ export default {
 
 .font {
   font-weight: 600;
-  font-size: 24px;
-  line-height: 20px;
+  font-size: 20px;
+  line-height: 24px;
   text-align: left;
 }
 
 .col > div {
   padding: 15px 0;
-  color: black;
+  color: var(--sva-text-muted);
   font-weight: normal;
   font-size: 14px;
   line-height: 14px;
   text-align: center;
 
   .plan-pass {
-    color: rgba(65, 160, 227, 1);
+    color: var(--sva-accent);
     .font();
   }
 
   .plan-fail {
-    color: #252b3a;
+    color: var(--sva-text);
     .font();
   }
 
   .num {
-    color: #adb0b8;
+    color: var(--sva-text-muted);
     font-size: 10px;
     line-height: 10px;
   }
@@ -285,13 +287,13 @@ export default {
 
     .plan-pass,
     .plan-fail {
-      font-size: 24px;
+      font-size: 20px;
     }
   }
 }
 
 /deep/ .tiny-progress__text {
   font-size: 13px !important;
-  color: black;
+  color: var(--sva-text);
 }
 </style>

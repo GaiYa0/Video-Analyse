@@ -13,6 +13,7 @@ import router from './router'
 import directive from './directive' // directive
 import plugins from './plugins' // plugins
 import { download } from '@/utils/request'
+import { showMessage } from '@/utils/svaMessage'
 
 import './assets/icons' // icon
 import './permission' // permission control
@@ -80,6 +81,7 @@ DictData.install()
 Vue.use(Element, {
   size: Cookies.get('size') || 'small' // set element-ui default size
 })
+Vue.prototype.$message = showMessage
 
 Vue.config.productionTip = false
 

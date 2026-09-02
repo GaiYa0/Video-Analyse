@@ -7,11 +7,11 @@
             <h3>报警趋势分析</h3>
             <div>
               <span class="clickable" @click="selectTime('周')" :style="timeStyle('周')">周</span>
-              <span style="color: grey;"> | </span>
+              <span class="time-sep"> | </span>
               <span class="clickable" @click="selectTime('月')" :style="timeStyle('月')">月</span>
-              <span style="color: grey;"> | </span>
+              <span class="time-sep"> | </span>
               <span class="clickable" @click="selectTime('季度')" :style="timeStyle('季度')">季度</span>
-              <span style="color: grey;"> | </span>
+              <span class="time-sep"> | </span>
               <span class="clickable" @click="selectTime('年')" :style="timeStyle('年')">年</span>
             </div>
           </div>
@@ -178,7 +178,7 @@ export default {
   computed: {
     timeStyle() {
       return (time) => ({
-        'color': this.selectedTime === time ? 'blue' : 'black',
+        'color': this.selectedTime === time ? 'var(--sva-accent)' : 'var(--sva-text-muted)',
         'font-weight': this.selectedTime === time ? 'bold' : 'normal'
       });
     }
@@ -327,18 +327,30 @@ export default {
 </script>
 
 <style scoped lang="less">
+h3 {
+  margin: 0 0 8px;
+  color: var(--sva-text);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.time-sep {
+  color: var(--sva-text-muted);
+}
+
 .col {
-  background-color: white;
+  background-color: var(--sva-surface);
   display: flex;
   justify-content: space-around;
   height: 250px;
   text-align: center;
   border-radius: 10px;
-  box-shadow: 0 4px 12px 0 rgba(0, 0, 0, 0.05);
+  border: 1px solid var(--sva-border);
+  box-shadow: none;
 }
 
 .col:hover {
-  box-shadow: 0 3px 10px 0 rgb(64, 98, 225, 0.45);
+  box-shadow: none;
 }
 
 .left {
@@ -379,8 +391,8 @@ export default {
 }
 
 .growthitem {
-  color: black;
+  color: var(--sva-text);
   padding: 8px;
-  font-size: large;
+  font-size: 14px;
 }
 </style>
