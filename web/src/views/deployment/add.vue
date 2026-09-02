@@ -21,7 +21,7 @@
       </div>
     </header>
 
-    <div class="workspace-body">
+    <div class="workspace-body" :class="{ 'is-rules-tab': workspaceTab === 'rules' }">
       <section class="preview-pane">
         <div class="card-header">实时流预览与区域绘制</div>
           <div class="video-panel">
@@ -235,7 +235,8 @@
 
             </el-tab-pane>
             <el-tab-pane label="行为规则" name="rules">
-            <el-form-item label="行为规则">
+            <el-form-item label-width="0" class="behavior-rule-form-item">
+              <div class="config-block-title">行为规则</div>
               <behavior-rule-panel :host="behaviorRulePanelHost" />
             </el-form-item>
 
@@ -4158,6 +4159,10 @@ export default {
   overflow: hidden;
 }
 
+.workspace-body.is-rules-tab {
+  grid-template-columns: minmax(0, 1fr) minmax(420px, 560px);
+}
+
 .preview-pane,
 .config-pane {
   min-width: 0;
@@ -4174,6 +4179,22 @@ export default {
 .config-form,
 .config-tabs {
   min-width: 0;
+  width: 100%;
+}
+
+.config-block-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--sva-text);
+  margin-bottom: 8px;
+}
+
+.behavior-rule-form-item {
+  margin-bottom: 0;
+}
+
+.behavior-rule-form-item /deep/ .el-form-item__content {
+  margin-left: 0 !important;
   width: 100%;
 }
 
@@ -4218,7 +4239,8 @@ export default {
 }
 
 @media (max-width: 1100px) {
-  .workspace-body {
+  .workspace-body,
+  .workspace-body.is-rules-tab {
     grid-template-columns: 1fr;
     overflow: auto;
   }

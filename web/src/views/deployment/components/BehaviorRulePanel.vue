@@ -792,18 +792,22 @@ export default {
 }
 
 .rules-workspace {
-  display: grid;
-  grid-template-columns: minmax(120px, 168px) minmax(0, 1fr);
+  display: flex;
+  flex-direction: column;
   gap: 12px;
+  min-width: 0;
 }
 
 .rules-nav {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  flex-wrap: wrap;
   gap: 6px;
 }
 
 .rules-nav-item {
+  flex: 0 0 auto;
+  white-space: nowrap;
   text-align: left;
   padding: 8px 10px;
   border: 1px solid var(--sva-border);
@@ -818,21 +822,11 @@ export default {
   color: var(--sva-accent);
 }
 
-@media (max-width: 1100px) {
-  .rules-workspace {
-    grid-template-columns: 1fr;
-  }
-
-  .rules-nav {
-    flex-direction: row;
-    flex-wrap: wrap;
-  }
-}
-
 .behavior-rule-toolbar {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 12px;
   margin-bottom: 8px;
 }
@@ -933,7 +927,7 @@ export default {
 }
 
 .behavior-sequence-group-row--second {
-  grid-template-columns: minmax(0, 1fr) minmax(180px, 220px);
+  grid-template-columns: 1fr;
 }
 
 .behavior-sequence-group-row--third {
@@ -988,7 +982,7 @@ export default {
 
 .behavior-rule-grid-row {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: 1fr;
   align-items: start;
   gap: 12px;
 }
@@ -1004,7 +998,7 @@ export default {
 }
 
 .behavior-rule-grid-row--sequence {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: 1fr;
 }
 
 .behavior-rule-grid-row .el-select,
@@ -1118,7 +1112,7 @@ export default {
 
 .behavior-rule-output-mode-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: 1fr;
   align-items: start;
   gap: 10px;
 }
@@ -1176,7 +1170,7 @@ export default {
 
 .behavior-rule-subrow {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: 1fr;
   gap: 12px;
   margin-top: 8px;
 }

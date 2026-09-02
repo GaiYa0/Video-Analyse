@@ -56,3 +56,11 @@ export function getDeploymentDetail(id) {
     method: 'get'
   })
 }
+
+export function deleteDeployment(id) {
+  return request({
+    url: `/deployments/${id}`,
+    method: 'delete',
+    timeout: 25000
+  })
+}

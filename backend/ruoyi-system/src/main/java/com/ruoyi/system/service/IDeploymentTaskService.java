@@ -19,4 +19,6 @@ public interface IDeploymentTaskService
     public int startDeploymentTask(String deploymentId);
 
     public int stopDeploymentTask(String deploymentId);
+
+    public int deleteDeploymentTask(String deploymentId);
 }

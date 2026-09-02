@@ -171,4 +171,9 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
          where deployment_id = #{deploymentId}
     </update>
 
+    <delete id="deleteDeploymentTaskById" parameterType="String">
+        delete from deployment_task
+         where deployment_id = #{deploymentId}
+    </delete>
+
 </mapper>
