@@ -91,7 +91,7 @@ import {
   svaGrid,
   svaTooltip,
   svaValueAxis
-} from '../chartTheme';
+} from '@/utils/chartTheme';
 
 export default {
   props: {

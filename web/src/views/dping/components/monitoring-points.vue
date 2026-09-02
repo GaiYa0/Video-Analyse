@@ -28,6 +28,7 @@
 <script>
 import { getDeviceNum } from '@/api/system/kanban';
 import BarChart from '@/views/dping/components/templateChart.vue'
+import { SVA_CHART_ACCENT, SVA_CHART_TEXT } from '@/utils/chartTheme'
 let style = {
   fontSize: 24
 }
@@ -93,7 +94,7 @@ const option =  {
         length: "60%",
         radius: "50%",
         itemStyle: {
-          color: '#ffffff'
+          color: SVA_CHART_TEXT
         },
         width: 3, //指针粗细
         offsetCenter: [0, 0],
@@ -164,7 +165,7 @@ export default {
             detail: {
               show: true,
               offsetCenter: [0, "30%"],
-              color: "#6b9bb8",
+              color: SVA_CHART_ACCENT,
               formatter: function (params) {
                 return '监测点：' + params;
               },
@@ -184,7 +185,7 @@ export default {
             detail: {
               show: true,
               offsetCenter: [0, "30%"],
-              color: "#6b9bb8",
+              color: SVA_CHART_ACCENT,
               formatter: function (params) {
                 return '在线：' + params;
               },
@@ -204,7 +205,7 @@ export default {
             detail: {
               show: true,
               offsetCenter: [0, "30%"],
-              color: "#6b9bb8",
+              color: SVA_CHART_ACCENT,
               formatter: function (params) {
                 return '离线：' + params;
               },
@@ -222,7 +223,7 @@ export default {
         style: {
           ...style,
           // stroke: "#00fdfa",
-          fill: "#6b9bb8",
+          fill: SVA_CHART_ACCENT,
         },
       },
       onlineconfig: {
