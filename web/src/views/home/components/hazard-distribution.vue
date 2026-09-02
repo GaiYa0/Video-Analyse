@@ -42,9 +42,11 @@ import {getColumn, getTypeSpread} from '@/api/system/kanban';
 import * as echarts from "echarts";
 import {
   SVA_CHART_BAR,
+  SVA_CHART_BAR_MAX_WIDTH,
+  SVA_CHART_BAR_RADIUS,
   svaCategoryAxis,
+  svaCountTooltip,
   svaGrid,
-  svaTooltip,
   svaValueAxis
 } from '@/utils/chartTheme';
 
@@ -91,10 +93,10 @@ export default {
 
     horizontalBarOption(names, values) {
       return {
-        tooltip: Object.assign({
+        tooltip: svaCountTooltip({
           trigger: "axis",
           axisPointer: { type: "shadow" }
-        }, svaTooltip),
+        }),
         grid: svaGrid({ left: 12, right: 24 }),
         xAxis: svaValueAxis(),
         yAxis: svaCategoryAxis({
@@ -109,9 +111,12 @@ export default {
         series: [
           {
             type: "bar",
-            barMaxWidth: 18,
+            barMaxWidth: SVA_CHART_BAR_MAX_WIDTH,
             data: values,
-            itemStyle: { color: SVA_CHART_BAR }
+            itemStyle: {
+              color: SVA_CHART_BAR,
+              borderRadius: SVA_CHART_BAR_RADIUS
+            }
           }
         ]
       };
