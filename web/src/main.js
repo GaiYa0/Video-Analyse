@@ -81,6 +81,7 @@ Vue.use(Element, {
   size: Cookies.get('size') || 'small' // set element-ui default size
 })
 Vue.prototype.$message = showMessage
+Vue.prototype.$Message = showMessage
 
 Vue.config.productionTip = false
 
