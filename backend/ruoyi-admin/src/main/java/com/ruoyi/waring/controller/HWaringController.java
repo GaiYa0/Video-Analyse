@@ -506,6 +506,10 @@ public class HWaringController extends BaseController implements SvaDetectEventC
                 update.setPicture_url(imagePath);
                 update.setPicture_absolute_url(resolveMediaAbsoluteUrl(deploymentTask, device, imagePath));
             }
+            if (!videoPath.isEmpty()) {
+                update.setVideo_url(videoPath);
+                update.setVideo_absolute_url(resolveMediaAbsoluteUrl(deploymentTask, device, videoPath));
+            }
             if (!mediaStatus.isEmpty()) {
                 update.setSva_media_status(mediaStatus);
             }

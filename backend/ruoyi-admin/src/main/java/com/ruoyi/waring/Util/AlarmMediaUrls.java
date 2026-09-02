@@ -8,8 +8,8 @@ import com.ruoyi.waring.domain.Details;
 import com.ruoyi.waring.domain.HWaring;
 
 /**
- * 浏览器侧告警截图 URL。Nginx 用 {@code /alarm/} 提供文件；库里常拼成 127.0.0.1，局域网打不开。
- * 不改 zlm_server / sva_server 的 host。
+ * 浏览器侧告警媒体 URL。Nginx 用 {@code /alarm/}、{@code /zlm/} 提供文件；
+ * 库里常拼成 127.0.0.1，局域网打不开。不改 zlm_server / sva_server 的 host。
  */
 public final class AlarmMediaUrls
 {
@@ -29,8 +29,8 @@ public final class AlarmMediaUrls
             return "";
         }
 
-        String alarmPath = extractAlarmPath(trimmed);
-        if (alarmPath == null)
+        String publicPath = extractPublicMediaPath(trimmed);
+        if (publicPath == null)
         {
             return trimmed;
         }
@@ -38,7 +38,7 @@ public final class AlarmMediaUrls
         {
             return trimmed;
         }
-        return alarmPath;
+        return publicPath;
     }
 
     public static void rewrite(HWaring waring)
@@ -49,6 +49,11 @@ public final class AlarmMediaUrls
         }
         waring.setPicture_absolute_url(toBrowserUrl(waring.getPicture_absolute_url()));
         waring.setVideo_absolute_url(toBrowserUrl(waring.getVideo_absolute_url()));
+        if ((waring.getVideo_absolute_url() == null || waring.getVideo_absolute_url().trim().isEmpty())
+            && waring.getVideo_url() != null && !waring.getVideo_url().trim().isEmpty())
+        {
+            waring.setVideo_absolute_url(toBrowserUrl(waring.getVideo_url()));
+        }
     }
 
     public static List<HWaring> rewrite(List<HWaring> list)
@@ -94,7 +99,7 @@ public final class AlarmMediaUrls
         }
     }
 
-    private static String extractAlarmPath(String value)
+    private static String extractPublicMediaPath(String value)
     {
         String path = value;
         if (isHttpUrl(value))
@@ -118,11 +123,11 @@ public final class AlarmMediaUrls
         {
             normalized = normalized.substring(1);
         }
-        if (!normalized.startsWith("alarm/"))
+        if (normalized.startsWith("alarm/") || normalized.startsWith("zlm/"))
         {
-            return null;
+            return "/" + normalized;
         }
-        return "/" + normalized;
+        return null;
     }
 
     private static boolean isHttpUrl(String value)
