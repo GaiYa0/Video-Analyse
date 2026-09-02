@@ -876,6 +876,8 @@ export default {
   right: 0;
   top: 0;
   padding-top: 3px;
+  background: var(--sva-bg);
+  color: var(--sva-text);
   .field-box {
     position: relative;
     height: calc(100vh - 42px);
@@ -885,10 +887,13 @@ export default {
   .el-scrollbar {
     height: 100%;
   }
+  ::v-deep .el-input-group__append .el-button {
+    padding: 7px 8px;
+  }
 }
 .select-item {
   display: flex;
-  border: 1px dashed #fff;
+  border: 1px dashed var(--sva-border);
   box-sizing: border-box;
   & .close-btn {
     cursor: pointer;
@@ -908,7 +913,7 @@ export default {
   line-height: 32px;
   font-size: 22px;
   padding: 0 4px;
-  color: #777;
+  color: var(--sva-text-muted);
 }
 .option-drag {
   cursor: move;
@@ -929,18 +934,18 @@ export default {
   top: 0;
   left: 0;
   cursor: pointer;
-  background: #409eff;
+  background: var(--sva-accent);
   z-index: 1;
   border-radius: 0 0 6px 0;
   text-align: center;
   line-height: 26px;
-  color: #fff;
+  color: var(--sva-text);
   font-size: 18px;
 }
 .node-label{
   font-size: 14px;
 }
 .node-icon{
-  color: #bebfc3;
+  color: var(--sva-text-muted);
 }
 </style>

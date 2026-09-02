@@ -1,143 +1,85 @@
 <template>
-  <tiny-layout>
-    <tiny-row :flex="true" justify="center">
-      <!-- 本月报警排查数量 -->
-      <tiny-col>
-        <router-link :to="{ path: '/warning/warning', query: { withQue: 2 } }">
-          <div class="col">
-            <div class="title" style="margin: 0px auto 0px auto;">
-              <img src="@/assets/images/plan-1.png"/>
-              <span>本月报警数量</span>
-            </div>
-            <div>
-              <span class="plan-pass">{{ monthWarning.instant }}</span>
-              <span class="num">&nbsp;/ 条</span>
-            </div>
-            <div>
-              <span class="increase">
-                环比增长
-                <span v-if="monthWarning.QOQ > 0"><img src="@/assets/images/home-up.png" class="image"/></span>
-                <span v-else-if="monthWarning.QOQ  < 0"><img src="@/assets/images/home-down.png" class="image"/></span>
-                <span v-else> </span>
-                <span>{{ monthWarning.QOQ }}%</span>
-              </span>
-
-              <span class="increase">
-                同比增长
-                <span v-if="monthWarning.YOY > 0"><img src="@/assets/images/home-up.png" class="image"/></span>
-                <span v-else-if="monthWarning.YOY  < 0"><img src="@/assets/images/home-down.png" class="image"/></span>
-                <span v-else> </span>
-                <span>{{ monthWarning.YOY }}%</span>
-              </span>
-            </div>
-            <div>
-              年度累计报警数量：{{ monthWarning.lastYear }}
-              <span class="num">&nbsp;/ 条</span>
-            </div>
-          </div>
-        </router-link>
-
-      </tiny-col>
-
-      <!--      &lt;!&ndash; 本月重大报警数量 &ndash;&gt;-->
-      <!--      <tiny-col>-->
-      <!--        <router-link :to="{ path: '/warning/warning', query: { withQue: 6 } }">-->
-      <!--          <div class="col">-->
-      <!--            <div class="title" style="margin: 0px auto 0px auto;">-->
-      <!--              <img src="@/assets/images/plan-1.png"/>-->
-      <!--              <span>本月重大报警数量</span>-->
-      <!--            </div>-->
-      <!--            <div>-->
-      <!--              <span class="plan-pass">{{ monthMajorWaring.instant }}</span>-->
-      <!--              <span class="num">&nbsp;/ 条</span>-->
-      <!--            </div>-->
-      <!--            <div>-->
-      <!--              <span class="increase">-->
-      <!--                环比增长-->
-      <!--                <img src="@/assets/images/home-up.png" class="image"/>-->
-      <!--                <span>{{ monthMajorWaring.QOQ }}%</span>-->
-      <!--              </span>-->
-
-      <!--              <span class="increase">-->
-      <!--                同比增长-->
-      <!--                <img src="@/assets/images/home-up.png" class="image"/>-->
-      <!--                <span>{{ monthMajorWaring.YOY }}%</span>-->
-      <!--              </span>-->
-      <!--            </div>-->
-      <!--            <div>-->
-      <!--              年度重大报警数量：{{ monthMajorWaring.lastYear }}-->
-      <!--              <span class="num">&nbsp;/ 条</span>-->
-      <!--            </div>-->
-      <!--          </div>-->
-      <!--        </router-link>-->
-      <!--      </tiny-col>-->
-
-      <!-- 本月报警逾期数量 -->
-      <tiny-col>
-        <div class="col">
-          <div class="title" style="margin: 0px auto 0px auto;">
-            <img src="@/assets/images/plan-1.png"/>
-            <span>本月报警处置逾期数量</span>
-          </div>
-          <div>
-            <span class="plan-pass">{{ monthOverdueWaring.instant }}</span>
-            <span class="num">&nbsp;/ 条</span>
-          </div>
-          <div>
-            <span class="increase">
-              环比增长
-              <span v-if="monthOverdueWaring.QOQ > 0"><img src="@/assets/images/home-up.png" class="image"/></span>
-              <span v-else-if="monthOverdueWaring.QOQ  < 0"><img src="@/assets/images/home-down.png"
-                                                                 class="image"/></span>
-              <span v-else> </span>
-              <span>{{ monthOverdueWaring.QOQ }}%</span>
-            </span>
-
-            <span class="increase">
-              同比增长
-              <span v-if="monthOverdueWaring.YOY > 0"><img src="@/assets/images/home-up.png" class="image"/></span>
-              <span v-else-if="monthOverdueWaring.YOY  < 0"><img src="@/assets/images/home-down.png"
-                                                                 class="image"/></span>
-              <span v-else> </span>
-              <span>{{ monthOverdueWaring.YOY }}%</span>
-            </span>
-          </div>
-          <div>
-            本年逾期报警数：{{ monthOverdueWaring.lastYear }}
-            <span class="num">&nbsp;/ 条</span>
-          </div>
+  <div class="count-grid">
+    <router-link :to="{ path: '/warning/warning', query: { withQue: 2 } }">
+      <div class="col">
+        <div class="title">
+          <img src="@/assets/images/plan-1.png"/>
+          <span>本月报警数量</span>
         </div>
-      </tiny-col>
-
-      <!-- 卡片 4 -->
-      <tiny-col>
-        <div class="col">
-          <div class="title" style="margin: 0px auto 0px auto;">
-            <img src="@/assets/images/plan-1.png"/>
-            <span>本月处置报警数量及处置率</span>
-          </div>
-          <div>
-            <span class="plan-pass">{{ monthHandle.rectificationNum }}</span>
-            <span class="num">&nbsp;/ 条</span>
-          </div>
-          <tiny-progress type="dashboard" :percentage="monthHandle.rate" :color="customColors" :width="70"
-                         style="color: red;">
-          </tiny-progress>
+        <div class="metric">
+          <span class="plan-pass">{{ monthWarning.instant }}</span>
+          <span class="num"> / 条</span>
         </div>
-      </tiny-col>
-    </tiny-row>
-  </tiny-layout>
+        <div class="rates">
+          <span class="increase">
+            环比增长
+            <img v-if="monthWarning.QOQ > 0" src="@/assets/images/home-up.png" class="trend-icon" alt=""/>
+            <img v-else-if="monthWarning.QOQ < 0" src="@/assets/images/home-down.png" class="trend-icon" alt=""/>
+            <span>{{ monthWarning.QOQ }}%</span>
+          </span>
+          <span class="increase">
+            同比增长
+            <img v-if="monthWarning.YOY > 0" src="@/assets/images/home-up.png" class="trend-icon" alt=""/>
+            <img v-else-if="monthWarning.YOY < 0" src="@/assets/images/home-down.png" class="trend-icon" alt=""/>
+            <span>{{ monthWarning.YOY }}%</span>
+          </span>
+        </div>
+        <div class="footer">
+          年度累计报警数量：{{ monthWarning.lastYear }}
+          <span class="num"> / 条</span>
+        </div>
+      </div>
+    </router-link>
+
+    <div class="col">
+      <div class="title">
+        <img src="@/assets/images/plan-1.png"/>
+        <span>本月报警处置逾期数量</span>
+      </div>
+      <div class="metric">
+        <span class="plan-pass">{{ monthOverdueWaring.instant }}</span>
+        <span class="num"> / 条</span>
+      </div>
+      <div class="rates">
+        <span class="increase">
+          环比增长
+          <img v-if="monthOverdueWaring.QOQ > 0" src="@/assets/images/home-up.png" class="trend-icon" alt=""/>
+          <img v-else-if="monthOverdueWaring.QOQ < 0" src="@/assets/images/home-down.png" class="trend-icon" alt=""/>
+          <span>{{ monthOverdueWaring.QOQ }}%</span>
+        </span>
+        <span class="increase">
+          同比增长
+          <img v-if="monthOverdueWaring.YOY > 0" src="@/assets/images/home-up.png" class="trend-icon" alt=""/>
+          <img v-else-if="monthOverdueWaring.YOY < 0" src="@/assets/images/home-down.png" class="trend-icon" alt=""/>
+          <span>{{ monthOverdueWaring.YOY }}%</span>
+        </span>
+      </div>
+      <div class="footer">
+        本年逾期报警数：{{ monthOverdueWaring.lastYear }}
+        <span class="num"> / 条</span>
+      </div>
+    </div>
+
+    <div class="col">
+      <div class="title">
+        <img src="@/assets/images/plan-1.png"/>
+        <span>本月处置报警数量及处置率</span>
+      </div>
+      <div class="metric">
+        <span class="plan-pass">{{ monthHandle.rectificationNum }}</span>
+        <span class="num"> / 条</span>
+      </div>
+      <tiny-progress type="dashboard" :percentage="monthHandle.rate" :color="customColors" :width="70" />
+    </div>
+  </div>
 </template>
 
 <script>
 import {getMonthHandle, getMonthMajorWaring, getMonthOverdueWaring, getMonthWaring} from '@/api/system/kanban';
-import TinyLayout from '@opentiny/vue-layout'
-import TinyRow from '@opentiny/vue-row'
-import TinyCol from '@opentiny/vue-col'
 import TinyProgress from '@opentiny/vue-progress'
 
 export default {
-  components: {TinyLayout, TinyRow, TinyCol, TinyProgress},
+  components: {TinyProgress},
   props: {
     orgIndex: {
       type: String,
@@ -208,7 +150,7 @@ export default {
   },
 
   watch: {
-    orgIndex(newVal, oldVal) {
+    orgIndex() {
       this.fetchData();
     }
   }
@@ -216,58 +158,70 @@ export default {
 </script>
 
 <style scoped lang="less">
+.count-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.count-grid > a {
+  display: block;
+  min-width: 0;
+  color: inherit;
+}
+
 .col {
-  height: 200px;
+  height: 100%;
+  min-height: 200px;
+  padding: 12px 8px;
   text-align: center;
   background-color: var(--sva-surface);
   cursor: pointer;
   border-radius: 10px;
   border: 1px solid var(--sva-border);
   box-shadow: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  color: var(--sva-text-muted);
+  font-size: 13px;
 }
 
 .col:hover {
-  box-shadow: none;
   border-color: var(--sva-accent);
 }
 
-.increase {
-  display: inline-block;
-  /* 或者 flex，根据布局需求 */
-  margin-right: 13px;
-  /* 这里设置你想要的间距大小 */
-}
-
-.font {
+.plan-pass {
+  color: var(--sva-accent);
   font-weight: 600;
   font-size: 20px;
   line-height: 24px;
-  text-align: left;
 }
 
-.col > div {
-  padding: 15px 0;
+.num {
   color: var(--sva-text-muted);
-  font-weight: normal;
-  font-size: 14px;
-  line-height: 14px;
-  text-align: center;
+  font-size: 10px;
+}
 
-  .plan-pass {
-    color: var(--sva-accent);
-    .font();
-  }
+.rates {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 12px;
+  width: 100%;
+}
 
-  .plan-fail {
-    color: var(--sva-text);
-    .font();
-  }
+.increase {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
 
-  .num {
-    color: var(--sva-text-muted);
-    font-size: 10px;
-    line-height: 10px;
-  }
+.trend-icon {
+  width: 12px;
+  height: 12px;
 }
 
 .title {
@@ -276,19 +230,17 @@ export default {
   justify-content: center;
 
   img {
-    padding-right: 10px;
+    padding-right: 8px;
   }
 }
 
-// responsive
-@media (max-width: 1600px) {
-  .col > div {
-    font-size: 10px;
+.footer {
+  margin-top: auto;
+}
 
-    .plan-pass,
-    .plan-fail {
-      font-size: 20px;
-    }
+@media (max-width: 1100px) {
+  .count-grid {
+    grid-template-columns: 1fr;
   }
 }
 
