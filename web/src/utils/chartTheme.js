@@ -1,4 +1,4 @@
-/** 首页 ECharts 深色主题。数值写死，避免 canvas 读不到 CSS 变量。 */
+/** 深色 ECharts 主题。数值写死，避免 canvas 读不到 CSS 变量。 */
 export const SVA_CHART_TEXT = '#e6edf3'
 export const SVA_CHART_MUTED = '#8b949e'
 export const SVA_CHART_BORDER = 'rgba(255, 255, 255, 0.08)'

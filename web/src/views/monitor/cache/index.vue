@@ -67,6 +67,7 @@
 <script>
 import { getCache } from "@/api/monitor/cache";
 import echartsLifecycle from "@/mixins/echartsLifecycle";
+import { SVA_CHART_ACCENT, SVA_CHART_TEXT, svaTooltip } from "@/utils/chartTheme";
 
 export default {
   name: "Cache",
@@ -89,13 +90,13 @@ export default {
         this.cache = response.data;
         this.$modal.closeLoading();
 
-        const commandstats = this.ensureChart('commandstats', this.$refs.commandstats, null, "macarons");
+        const commandstats = this.ensureChart('commandstats', this.$refs.commandstats);
         if (commandstats) {
           commandstats.setOption({
-          tooltip: {
+          tooltip: Object.assign({
             trigger: "item",
             formatter: "{a} <br/>{b} : {c} ({d}%)",
-          },
+          }, svaTooltip),
           series: [
             {
               name: "命令",
@@ -110,20 +111,27 @@ export default {
           ]
           });
         }
-        const usedmemory = this.ensureChart('usedmemory', this.$refs.usedmemory, null, "macarons");
+        const usedmemory = this.ensureChart('usedmemory', this.$refs.usedmemory);
         if (usedmemory) {
           usedmemory.setOption({
-          tooltip: {
+          tooltip: Object.assign({
             formatter: "{b} <br/>{a} : " + this.cache.info.used_memory_human,
-          },
+          }, svaTooltip),
           series: [
             {
               name: "峰值",
               type: "gauge",
               min: 0,
               max: 1000,
+              axisLabel: {
+                color: SVA_CHART_TEXT
+              },
+              title: {
+                color: SVA_CHART_TEXT
+              },
               detail: {
                 formatter: this.cache.info.used_memory_human,
+                color: SVA_CHART_ACCENT
               },
               data: [
                 {

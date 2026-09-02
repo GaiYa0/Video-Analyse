@@ -6,6 +6,7 @@
 <script>
 import {getLevelSpread} from '@/api/system/kanban';
 import echartsLifecycle from '@/mixins/echartsLifecycle';
+import { SVA_CHART_ACCENT, SVA_CHART_MUTED, SVA_CHART_TEXT, svaTooltip } from '@/utils/chartTheme';
 
 export default {
   mixins: [echartsLifecycle],
@@ -37,24 +38,24 @@ export default {
   methods: {
     initLevelEcharts() {
       const option = {
-        color: ['#6b9bb8', '#8b949e', '#c48c5a'],
+        color: [SVA_CHART_ACCENT, SVA_CHART_MUTED, '#c48c5a'],
         backgroundColor: 'transparent',
         legend: {
           orient: 'vertical',
           x: 'center',
           bottom: '15%',
           textStyle: {
-            color: '#f2f2f2',
+            color: SVA_CHART_TEXT,
             fontSize: 14,
 
           },
           icon: 'roundRect',
           data: this.levelData,
         },
-        tooltip: {
+        tooltip: Object.assign({
           trigger: 'item',
           formatter: '{b} : {c}'
-        },
+        }, svaTooltip),
         series: [
           // 主要展示层的
           {
@@ -139,7 +140,7 @@ export default {
           value: item.num,
           name: item.is_handle,
           label: {
-            color: "white" // 指示文字颜色
+            color: SVA_CHART_TEXT
           }
         });
       });

@@ -8,6 +8,7 @@
 import {getRanking} from '@/api/system/kanban';
 import * as echarts from "echarts";
 import echartsLifecycle from '@/mixins/echartsLifecycle';
+import { SVA_CHART_ACCENT, SVA_CHART_BORDER, SVA_CHART_TEXT, svaTooltip } from '@/utils/chartTheme';
 
 export default {
   mixins: [echartsLifecycle],
@@ -54,7 +55,7 @@ export default {
     initOrgEcharts() {
       const option = {
         backgroundColor: "transparent",
-        tooltip: {
+        tooltip: Object.assign({
           trigger: 'axis',
           axisPointer: {
             type: 'line',
@@ -63,7 +64,7 @@ export default {
             }
           },
           formatter: '{b}: {c}'
-        },
+        }, svaTooltip),
         legend: {
           data: ['直接访问', '背景'],
           show: false
@@ -85,12 +86,12 @@ export default {
           },
           axisLine: {
             lineStyle: {
-              color: 'rgba(255,255,255,0.08)'
+              color: SVA_CHART_BORDER
             }
           },
           axisLabel: {
             show: true,
-            color: '#e6edf3',
+            color: SVA_CHART_TEXT,
             fontSize: 12,
             rotate: -17,
             formatter: function (value) {
@@ -108,7 +109,7 @@ export default {
           splitLine: {
             show: true,
             lineStyle: {
-              color: 'rgba(255,255,255,0.08)'
+              color: SVA_CHART_BORDER
             }
           },
           axisTick: {
@@ -116,11 +117,11 @@ export default {
           },
           axisLine: {
             lineStyle: {
-              color: 'rgba(255,255,255,0.08)'
+              color: SVA_CHART_BORDER
             }
           },
           axisLabel: {
-            color: '#e6edf3',
+            color: SVA_CHART_TEXT,
             formatter: '{value}'
           }
         },
@@ -163,7 +164,7 @@ export default {
                 },
                   {
                     offset: 1,
-                    color: '#6b9bb8'
+                    color: SVA_CHART_ACCENT
                   }
                 ]
               )
