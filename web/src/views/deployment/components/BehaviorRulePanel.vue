@@ -1,7 +1,7 @@
 <template>
   <div class="behavior-rule-panel">
               <div class="behavior-rule-toolbar">
-                <span class="behavior-rule-hint">可配置跨线、进区、出区、停留、低速、徘徊、睡觉、缺席、数量阈值、占用、区域运动、定向通行、逆向通行、目标接近、目标远离；区域类规则可绑定任一区域</span>
+                <span class="behavior-rule-hint">可配置跨线、进区、出区、停留、低速、徘徊、睡岗、睡觉、缺席、数量阈值、占用、区域运动、定向通行、逆向通行、目标接近、目标远离；区域类规则可绑定任一区域</span>
                 <el-button size="mini" type="primary" plain icon="el-icon-plus" @click="host.handleAddBehaviorRule">新增规则</el-button>
               </div>
               <div v-if="host.behaviorRuleList.length" class="rules-workspace">

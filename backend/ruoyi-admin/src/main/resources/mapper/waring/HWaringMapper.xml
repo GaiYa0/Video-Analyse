@@ -41,6 +41,7 @@
         <result property="sva_track_id" column="sva_track_id"/>
         <result property="end_time" column="end_time"/>
         <result property="duration_ms" column="duration_ms"/>
+        <result property="sva_pitch_degree" column="sva_pitch_degree"/>
         <result property="sva_media_status" column="sva_media_status"/>
         <result property="sva_media_error" column="sva_media_error"/>
         <result property="ai_review_status" column="ai_review_status"/>
@@ -89,6 +90,7 @@
                              hw.sva_track_id AS sva_track_id,
                              DATE_FORMAT(hw.end_time, '%Y-%m-%d %H:%i:%s') AS end_time,
                              hw.duration_ms AS duration_ms,
+                             hw.sva_pitch_degree AS sva_pitch_degree,
                              hw.sva_media_status AS sva_media_status,
                              hw.sva_media_error AS sva_media_error,
                              (SELECT t.status
@@ -232,6 +234,7 @@
             <if test="sva_track_id != null">sva_track_id,</if>
             <if test="end_time != null">end_time,</if>
             <if test="duration_ms != null">duration_ms,</if>
+            <if test="sva_pitch_degree != null">sva_pitch_degree,</if>
             <if test="sva_media_status != null">sva_media_status,</if>
             <if test="sva_media_error != null">sva_media_error,</if>
         </trim>
@@ -273,6 +276,7 @@
             <if test="sva_track_id != null">#{sva_track_id},</if>
             <if test="end_time != null">#{end_time},</if>
             <if test="duration_ms != null">#{duration_ms},</if>
+            <if test="sva_pitch_degree != null">#{sva_pitch_degree},</if>
             <if test="sva_media_status != null">#{sva_media_status},</if>
             <if test="sva_media_error != null">#{sva_media_error},</if>
         </trim>
@@ -307,6 +311,7 @@
             <if test="sva_track_id != null">sva_track_id = #{sva_track_id},</if>
             <if test="end_time != null">end_time = #{end_time},</if>
             <if test="duration_ms != null">duration_ms = #{duration_ms},</if>
+            <if test="sva_pitch_degree != null">sva_pitch_degree = #{sva_pitch_degree},</if>
             <if test="sva_media_status != null">sva_media_status = #{sva_media_status},</if>
             <if test="sva_media_error != null">sva_media_error = #{sva_media_error},</if>
         </set>
@@ -745,6 +750,7 @@
                 h_waring.sva_crossing_direction,
                 DATE_FORMAT(h_waring.end_time, '%Y-%m-%d %H:%i:%s') AS end_time,
                 h_waring.duration_ms,
+                h_waring.sva_pitch_degree,
                     (SELECT h.h_title
                         FROM h_handle h
                       WHERE h.w_id = h_waring.w_id

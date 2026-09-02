@@ -428,6 +428,10 @@ public class HWaringController extends BaseController implements SvaDetectEventC
             if (sleepDurationMs != null) {
                 waring.setDuration_ms(sleepDurationMs);
             }
+            Double pitchDegree = resolveDouble(body, "pitchDegree", "pitch_degree");
+            if (pitchDegree != null) {
+                waring.setSva_pitch_degree(pitchDegree);
+            }
 
             int insert = hWaringService.insertWaring(waring);
             if (insert == 1) {
@@ -1239,6 +1243,21 @@ public class HWaringController extends BaseController implements SvaDetectEventC
         }
         try {
             return Long.parseLong(String.valueOf(value).trim());
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
+    private Double resolveDouble(JSONObject body, String... keys) {
+        Object value = resolveObject(body, keys);
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof Number) {
+            return ((Number) value).doubleValue();
+        }
+        try {
+            return Double.parseDouble(String.valueOf(value).trim());
         } catch (Exception ignored) {
             return null;
         }

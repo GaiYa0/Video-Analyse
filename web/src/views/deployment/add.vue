@@ -1073,11 +1073,11 @@ export default {
     },
 
     isBehaviorRuleDistanceVisible(behaviorType) {
-      return ['relation_near', 'relation_apart', 'region_motion', 'sleep'].includes(behaviorType)
+      return ['relation_near', 'relation_apart', 'region_motion', 'sleep', 'sleep_on_duty'].includes(behaviorType)
     },
 
     isBehaviorRuleThresholdVisible(behaviorType) {
-      return ['dwell', 'absence', 'occupancy', 'region_motion', 'low_speed', 'loitering', 'sleep', 'count_threshold', 'direction_move', 'direction_reverse', 'relation_near', 'relation_apart', 'relation_not_contains'].includes(behaviorType)
+      return ['dwell', 'absence', 'occupancy', 'region_motion', 'low_speed', 'loitering', 'sleep', 'sleep_on_duty', 'count_threshold', 'direction_move', 'direction_reverse', 'relation_near', 'relation_apart', 'relation_not_contains'].includes(behaviorType)
     },
 
     isBehaviorRuleThresholdCountVisible(behaviorType) {
@@ -1096,6 +1096,9 @@ export default {
       if (behaviorType === 'region_motion') {
         return '运动阈值(%)'
       }
+      if (behaviorType === 'sleep_on_duty') {
+        return '低头角度(°)'
+      }
       if (behaviorType === 'sleep') {
         return '最小宽高比'
       }
@@ -1107,6 +1110,14 @@ export default {
         return {
           min: 1,
           max: 100,
+          step: 1,
+          precision: 0
+        }
+      }
+      if (behaviorType === 'sleep_on_duty') {
+        return {
+          min: 1,
+          max: 135,
           step: 1,
           precision: 0
         }
@@ -1132,6 +1143,9 @@ export default {
         return 200
       }
       if (behaviorType === 'loitering') {
+        return 1000
+      }
+      if (behaviorType === 'sleep_on_duty') {
         return 1000
       }
       if (behaviorType === 'sleep') {
@@ -1221,6 +1235,27 @@ export default {
           logicMode: 'all',
           maxSpeedPxPerSec: 0,
           maxDisplacementPx: 80
+        }
+      }
+      if (behaviorType === 'sleep_on_duty') {
+        return {
+          ruleObjectCode: defaultRuleObjectCode,
+          outputMode: 'direct_alarm',
+          direction: 'both',
+          thresholdMs: 2500,
+          thresholdCount: 0,
+          distanceThresholdPx: 32,
+          sequenceId: '',
+          stageIndex: 0,
+          stageTimeoutMs: 0,
+          stageHoldMs: 0,
+          logicMode: 'all',
+          maxSpeedPxPerSec: 0,
+          maxDisplacementPx: 0,
+          directionAngleDeg: 0,
+          directionToleranceDeg: 10,
+          directionLineId: '',
+          customEventName: '睡岗'
         }
       }
       if (behaviorType === 'sleep') {
@@ -1419,6 +1454,11 @@ export default {
     },
 
     normalizeBehaviorRuleDirectionTolerance(behaviorType, value) {
+      if (behaviorType === 'sleep_on_duty') {
+        const numericValue = Number(value)
+        const nextValue = Number.isFinite(numericValue) ? Math.round(numericValue) : 10
+        return Math.max(1, Math.min(180, nextValue))
+      }
       if (!this.isBehaviorRuleDirectionToleranceVisible(behaviorType)) {
         return 30
       }
@@ -1482,6 +1522,10 @@ export default {
       if (behaviorType === 'region_motion') {
         const nextValue = Number.isFinite(numericValue) && numericValue > 0 ? Math.round(numericValue) : 12
         return Math.max(1, Math.min(100, nextValue))
+      }
+      if (behaviorType === 'sleep_on_duty') {
+        const nextValue = Number.isFinite(numericValue) && numericValue > 0 ? Math.round(numericValue) : 32
+        return Math.max(1, Math.min(135, nextValue))
       }
       if (behaviorType === 'sleep') {
         const nextValue = Number.isFinite(numericValue) && numericValue > 0 ? numericValue : 1.2
@@ -1711,6 +1755,9 @@ export default {
       if (rule.behaviorType === 'region_motion') {
         parts.push(`运动阈值 >= ${this.formatBehaviorRuleNumber(rule.distanceThresholdPx, 0)}%`)
       }
+      if (rule.behaviorType === 'sleep_on_duty') {
+        parts.push(`低头角 >= ${this.formatBehaviorRuleNumber(rule.distanceThresholdPx, 0)}°`)
+      }
       if (rule.behaviorType === 'sleep') {
         parts.push(`宽高比 >= ${this.formatBehaviorRuleNumber(rule.distanceThresholdPx)}`)
       }
@@ -1855,6 +1902,9 @@ export default {
       }
       if (behaviorType === 'loitering') {
         return '徘徊告警'
+      }
+      if (behaviorType === 'sleep_on_duty') {
+        return '睡岗告警'
       }
       if (behaviorType === 'sleep') {
         return '睡觉告警'
@@ -2001,6 +2051,9 @@ export default {
       }
       if (rule.behaviorType === 'loitering') {
         return `徘徊${this.formatBehaviorRuleDuration(rule.thresholdMs)}`
+      }
+      if (rule.behaviorType === 'sleep_on_duty') {
+        return `睡岗${this.formatBehaviorRuleDuration(rule.thresholdMs)}`
       }
       if (rule.behaviorType === 'sleep') {
         return `睡觉${this.formatBehaviorRuleDuration(rule.thresholdMs)}`
@@ -2442,6 +2495,29 @@ export default {
       this.activeRuleId = nextRule.id
       this.activeSequenceId = ''
       this.workspaceTab = 'rules'
+    },
+
+    ensureSleepOnDutyBehaviorRule() {
+      const geometryConfig = this.normalizeGeometryConfig(this.form.geometryConfig, this.polygonPoints)
+      const rules = geometryConfig.behaviorRules || []
+      const hasDutyRule = rules.some(rule => this.normalizeBehaviorType(rule && rule.behaviorType) === 'sleep_on_duty')
+      if (hasDutyRule) {
+        return
+      }
+      const primaryRegion = this.getPrimaryRegion(geometryConfig)
+      const nextRule = this.createBehaviorRule({
+        id: 'sleep_on_duty_default',
+        name: '睡岗',
+        behaviorType: 'sleep_on_duty',
+        customEventName: '睡岗',
+        thresholdMs: 2500,
+        distanceThresholdPx: 32,
+        directionToleranceDeg: 10,
+        geometryId: primaryRegion ? primaryRegion.id : ''
+      }, geometryConfig)
+      geometryConfig.behaviorRules = [...rules, nextRule]
+      this.form.geometryConfig = this.normalizeBehaviorRulesInGeometry(geometryConfig)
+      this.syncGeometryEditorState()
     },
 
     ensureActiveRuleSelection() {
@@ -3265,6 +3341,9 @@ export default {
       task.targetCodes = []
       await this.loadTargetOptionsForTask(task, code)
       this.clearAlgorithmTasksValidation()
+      if (code === 'on_sleep_pose') {
+        this.ensureSleepOnDutyBehaviorRule()
+      }
     },
 
     async handleAddAlgorithmTask() {
@@ -3284,6 +3363,9 @@ export default {
       this.form.algorithmTasks.push(task)
       await this.loadTargetOptionsForTask(task, task.algorithmCode)
       this.clearAlgorithmTasksValidation()
+      if (task.algorithmCode === 'on_sleep_pose') {
+        this.ensureSleepOnDutyBehaviorRule()
+      }
     },
 
     handleRemoveAlgorithmTask(index) {
