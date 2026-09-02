@@ -32,58 +32,29 @@
               @loadedmetadata="handleVideoLoaded"
               @canvas-resized="drawPolygon"
             />
-          <div class="video-toolbar">
-              <el-radio-group v-model="geometryEditorMode" size="mini" class="geometry-mode-switch">
-                <el-radio-button label="region">区域</el-radio-button>
-                <el-radio-button label="line">线段</el-radio-button>
-              </el-radio-group>
-              <el-button size="mini" @click="handleAlignCurrentGeometry">{{ geometryEditorMode === 'line' ? '线段对齐' : '区域对齐' }}</el-button>
-              <el-button size="mini" type="warning" plain @click="handleClearCurrentGeometry">{{ geometryEditorMode === 'line' ? '清空当前线段' : '清空当前区域' }}</el-button>
-              <template v-if="geometryEditorMode === 'region'">
-                <el-button size="mini" type="primary" plain @click="handleAddRegion">新增区域</el-button>
-                <el-select
-                  :value="activeRegionId"
-                  size="mini"
-                  class="region-select"
-                  placeholder="请选择区域"
-                  clearable
-                  @change="handleSelectRegion"
-                >
-                  <el-option
-                    v-for="item in regionOptions"
-                    :key="item.value"
-                    :label="item.label"
-                    :value="item.value"
-                  />
-                </el-select>
-                <el-button size="mini" plain :disabled="!activeRegionId || activeRegionIsPrimary" @click="handleSetActivePrimary">设为主区域</el-button>
-                <el-button size="mini" type="danger" plain :disabled="!activeRegionId" @click="handleRemoveActiveRegion">删除当前区域</el-button>
-              </template>
-              <template v-if="geometryEditorMode === 'line'">
-                <el-button size="mini" type="primary" plain @click="handleAddLine">新增线段</el-button>
-                <el-select
-                  v-model="activeLineId"
-                  size="mini"
-                  class="line-select"
-                  placeholder="请选择线段"
-                  clearable
-                  @change="handleSelectLine"
-                >
-                  <el-option
-                    v-for="item in lineOptions"
-                    :key="item.value"
-                    :label="item.label"
-                    :value="item.value"
-                  />
-                </el-select>
-                <el-button size="mini" type="danger" plain :disabled="!activeLineId" @click="handleRemoveActiveLine">删除当前线段</el-button>
-              </template>
-              <span class="point-count">点位数：{{ polygonPoints.length }}</span>
-              <span class="polygon-state">{{ polygonClosed ? '已闭合' : '未闭合' }}</span>
-              <span class="geometry-state">统一几何配置：{{ geometryRegionCount }} 区域 / {{ geometryLineCount }} 线段</span>
-              <span class="primary-region-state">主区域：{{ primaryRegionLabel }}</span>
-              <span class="geometry-editor-hint">{{ geometryEditorHint }}</span>
-          </div>
+            <geometry-toolbar
+              :geometry-editor-mode.sync="geometryEditorMode"
+              :active-region-id="activeRegionId"
+              :active-line-id="activeLineId"
+              :region-options="regionOptions"
+              :line-options="lineOptions"
+              :polygon-point-count="polygonPoints.length"
+              :polygon-closed="polygonClosed"
+              :geometry-region-count="geometryRegionCount"
+              :geometry-line-count="geometryLineCount"
+              :primary-region-label="primaryRegionLabel"
+              :geometry-editor-hint="geometryEditorHint"
+              :active-region-is-primary="activeRegionIsPrimary"
+              @align="handleAlignCurrentGeometry"
+              @clear="handleClearCurrentGeometry"
+              @add-region="handleAddRegion"
+              @select-region="handleSelectRegion"
+              @set-primary="handleSetActivePrimary"
+              @remove-region="handleRemoveActiveRegion"
+              @add-line="handleAddLine"
+              @select-line="handleSelectLine"
+              @remove-line="handleRemoveActiveLine"
+            />
           <div class="preview-meta">
               <div class="video-rule-overlay">
                 <div class="video-rule-overlay-title">行为识别规则</div>
@@ -1109,11 +1080,30 @@ import { createDeployment, getDeploymentDetail, updateDeployment, updateDeployme
 import { OVERLAY_DELAY_DEFAULT_MS, loadOverlayDelayMs } from '@/utils/systemRuntimeConfig'
 import { BEHAVIOR_TYPE_OPTIONS, getBehaviorTypeLabel, normalizeBehaviorType } from '@/utils/behaviorTypes'
 import { getFieldValue } from '@/utils/fieldMap'
+import {
+  buildPrimaryRegion,
+  clamp01,
+  createEmptyGeometryConfig,
+  createLineConfig as buildLineConfig,
+  createRegionConfig as buildRegionConfig,
+  drawCanvasCrossLineDirectionIndicator,
+  drawCanvasLineArrow,
+  drawCanvasTextLabel,
+  getCrossLineDirectionButtonText,
+  getLineDirectionLabel,
+  getNextLineDirection,
+  normalizeLineDirection,
+  normalizePoint,
+  normalizePointList,
+  normalizeRegionPrimaryState,
+  parseGeometryConfigInput
+} from '@/utils/geometryEditor'
 import VideoPreviewPane from './components/VideoPreviewPane.vue'
+import GeometryToolbar from './components/GeometryToolbar.vue'
 
 export default {
   name: 'DeploymentAdd',
-  components: { VideoPreviewPane },
+  components: { VideoPreviewPane, GeometryToolbar },
   data() {
     const validateAlgorithmTasks = (rule, value, callback) => {
       if (!Array.isArray(value) || value.length === 0) {
@@ -1404,6 +1394,20 @@ export default {
     getFieldValue,
     normalizeBehaviorType,
     getBehaviorTypeLabel,
+    clamp01,
+    createEmptyGeometryConfig,
+    parseGeometryConfigInput,
+    normalizePoint,
+    normalizePointList,
+    buildPrimaryRegion,
+    normalizeLineDirection,
+    getLineDirectionLabel,
+    getNextLineDirection,
+    getCrossLineDirectionButtonText,
+    normalizeRegionPrimaryState,
+    drawCanvasTextLabel,
+    drawCanvasLineArrow,
+    drawCanvasCrossLineDirectionIndicator,
     async initPageData() {
       try {
         this.deploymentId = this.resolveDeploymentIdFromRoute()
@@ -1612,14 +1616,6 @@ export default {
         aiReviewPrompt: '',
         remark: '',
         geometryConfig: this.createEmptyGeometryConfig()
-      }
-    },
-
-    createEmptyGeometryConfig() {
-      return {
-        regions: [],
-        lines: [],
-        behaviorRules: []
       }
     },
 
@@ -2356,30 +2352,15 @@ export default {
     },
 
     createRegionConfig(overrides = {}) {
-      const nextIndex = this.regionSeed
+      const config = buildRegionConfig(this.regionSeed, overrides)
       this.regionSeed += 1
-      const isPrimary = Boolean(overrides.primary)
-      return {
-        id: overrides.id || (isPrimary ? 'region_primary' : `region_${nextIndex}`),
-        name: overrides.name || (isPrimary ? '主区域' : `区域${nextIndex}`),
-        type: 'polygon',
-        primary: isPrimary,
-        points: this.normalizePointList(overrides.points, 0),
-        ...overrides
-      }
+      return config
     },
 
     createLineConfig(overrides = {}) {
-      const nextIndex = this.lineSeed
+      const config = buildLineConfig(this.lineSeed, overrides)
       this.lineSeed += 1
-      return {
-        id: `line_${nextIndex}`,
-        name: `线段${nextIndex}`,
-        type: 'tripwire',
-        direction: 'both',
-        points: [],
-        ...overrides
-      }
+      return config
     },
 
     createBehaviorRule(overrides = {}, geometryConfig = this.normalizeGeometryConfig(this.form.geometryConfig, this.polygonPoints)) {
@@ -2419,39 +2400,8 @@ export default {
       return this.normalizeBehaviorRuleWithGeometry(rule, nextIndex - 1, geometryConfig)
     },
 
-    normalizeLineDirection(direction) {
-      if (direction === 'left_to_right' || direction === 'right_to_left') {
-        return direction
-      }
-      return 'both'
-    },
-
     normalizeBehaviorRuleCustomEventName(value) {
       return String(value || '').trim()
-    },
-
-    getLineDirectionLabel(direction) {
-      if (direction === 'left_to_right') {
-        return '正向'
-      }
-      if (direction === 'right_to_left') {
-        return '反向'
-      }
-      return '双向'
-    },
-
-    getNextLineDirection(direction) {
-      if (direction === 'left_to_right') {
-        return 'right_to_left'
-      }
-      if (direction === 'right_to_left') {
-        return 'both'
-      }
-      return 'left_to_right'
-    },
-
-    getCrossLineDirectionButtonText(direction) {
-      return `切换方向: ${this.getLineDirectionLabel(this.normalizeLineDirection(direction))}`
     },
 
     getBehaviorRuleGeometryOptions(rule) {
@@ -2868,56 +2818,6 @@ export default {
       return labels
     },
 
-    drawCanvasTextLabel(ctx, text, x, y, color) {
-      if (!ctx || !text) {
-        return
-      }
-      ctx.save()
-      ctx.font = '12px sans-serif'
-      const textWidth = ctx.measureText(text).width
-      const paddingX = 6
-      const labelHeight = 18
-      const labelX = x
-      const labelY = Math.max(0, y - labelHeight + 2)
-      ctx.fillStyle = 'rgba(15, 17, 21, 0.68)'
-      ctx.fillRect(labelX - 2, labelY, textWidth + paddingX * 2, labelHeight)
-      ctx.fillStyle = color
-      ctx.fillText(text, labelX + paddingX - 2, labelY + 3)
-      ctx.restore()
-    },
-
-    drawCanvasLineArrow(ctx, startPoint, endPoint, color, lineWidth = 2) {
-      if (!ctx || !startPoint || !endPoint) {
-        return
-      }
-      const dx = Number(endPoint.x) - Number(startPoint.x)
-      const dy = Number(endPoint.y) - Number(startPoint.y)
-      const length = Math.sqrt(dx * dx + dy * dy)
-      if (!Number.isFinite(length) || length < 12) {
-        return
-      }
-
-      const angle = Math.atan2(dy, dx)
-      const arrowSize = Math.max(8, Math.min(14, lineWidth * 4))
-      const arrowAngle = Math.PI / 7
-      const tipX = endPoint.x
-      const tipY = endPoint.y
-      const leftX = tipX - arrowSize * Math.cos(angle - arrowAngle)
-      const leftY = tipY - arrowSize * Math.sin(angle - arrowAngle)
-      const rightX = tipX - arrowSize * Math.cos(angle + arrowAngle)
-      const rightY = tipY - arrowSize * Math.sin(angle + arrowAngle)
-
-      ctx.save()
-      ctx.fillStyle = color
-      ctx.beginPath()
-      ctx.moveTo(tipX, tipY)
-      ctx.lineTo(leftX, leftY)
-      ctx.lineTo(rightX, rightY)
-      ctx.closePath()
-      ctx.fill()
-      ctx.restore()
-    },
-
     getCrossLineDirectionsForLine(lineId) {
       if (!lineId) {
         return []
@@ -2936,107 +2836,6 @@ export default {
         directionSet.add(direction)
       })
       return Array.from(directionSet)
-    },
-
-    drawCanvasCrossLineDirectionIndicator(ctx, startPoint, endPoint, directions, color, lineWidth = 2) {
-      if (!ctx || !startPoint || !endPoint || !Array.isArray(directions) || !directions.length) {
-        return
-      }
-      const dx = Number(endPoint.x) - Number(startPoint.x)
-      const dy = Number(endPoint.y) - Number(startPoint.y)
-      const length = Math.sqrt(dx * dx + dy * dy)
-      if (!Number.isFinite(length) || length < 16) {
-        return
-      }
-
-      const normalX = -dy / length
-      const normalY = dx / length
-      const midX = (Number(startPoint.x) + Number(endPoint.x)) / 2
-      const midY = (Number(startPoint.y) + Number(endPoint.y)) / 2
-      const offset = Math.max(14, Math.min(24, length * 0.18))
-      const arrowLength = Math.max(18, Math.min(30, length * 0.28))
-
-      directions.forEach(direction => {
-        const isLeftToRight = direction === 'left_to_right'
-        const start = isLeftToRight
-          ? { x: midX + normalX * offset, y: midY + normalY * offset }
-          : { x: midX - normalX * offset, y: midY - normalY * offset }
-        const end = isLeftToRight
-          ? { x: midX - normalX * offset, y: midY - normalY * offset }
-          : { x: midX + normalX * offset, y: midY + normalY * offset }
-        const unitX = (end.x - start.x) / (Math.sqrt((end.x - start.x) * (end.x - start.x) + (end.y - start.y) * (end.y - start.y)) || 1)
-        const unitY = (end.y - start.y) / (Math.sqrt((end.x - start.x) * (end.x - start.x) + (end.y - start.y) * (end.y - start.y)) || 1)
-        const shortenedEnd = {
-          x: start.x + unitX * arrowLength,
-          y: start.y + unitY * arrowLength
-        }
-
-        ctx.save()
-        ctx.strokeStyle = color
-        ctx.lineWidth = Math.max(2, lineWidth)
-        ctx.beginPath()
-        ctx.moveTo(start.x, start.y)
-        ctx.lineTo(shortenedEnd.x, shortenedEnd.y)
-        ctx.stroke()
-        ctx.restore()
-
-        this.drawCanvasLineArrow(ctx, start, shortenedEnd, color, Math.max(2, lineWidth))
-      })
-    },
-
-    parseGeometryConfigInput(geometryConfig) {
-      let parsed = geometryConfig
-      if (typeof parsed === 'string') {
-        const trimmed = parsed.trim()
-        if (!trimmed) {
-          return null
-        }
-        try {
-          parsed = JSON.parse(trimmed)
-        } catch (error) {
-          return null
-        }
-      }
-
-      if (Array.isArray(parsed)) {
-        return {
-          regions: parsed,
-          lines: []
-        }
-      }
-
-      return parsed && typeof parsed === 'object' ? parsed : null
-    },
-
-    normalizePoint(point) {
-      const x = Number(point && point.x)
-      const y = Number(point && point.y)
-      if (!Number.isFinite(x) || !Number.isFinite(y)) {
-        return null
-      }
-      return {
-        x: this.clamp01(Number(x.toFixed(6))),
-        y: this.clamp01(Number(y.toFixed(6)))
-      }
-    },
-
-    normalizePointList(points, minimumCount = 0) {
-      if (!Array.isArray(points)) {
-        return []
-      }
-      const normalized = points.map(point => this.normalizePoint(point)).filter(Boolean)
-      return normalized.length >= minimumCount ? normalized : []
-    },
-
-    buildPrimaryRegion(points) {
-      return {
-        id: 'region_primary',
-        name: '主区域',
-        type: 'polygon',
-        primary: true,
-        closed: true,
-        points: this.normalizePointList(points, 3)
-      }
     },
 
     normalizeGeometryConfig(geometryConfig) {
@@ -3119,25 +2918,6 @@ export default {
       const activeRegion = this.getActiveRegion(normalized)
       this.polygonPoints = activeRegion ? this.normalizePointList(activeRegion.points, 0) : []
       this.polygonClosed = Boolean(activeRegion && activeRegion.closed)
-    },
-
-    normalizeRegionPrimaryState(regions, preferredPrimaryRegionId = '') {
-      const normalizedRegions = (regions || []).map(region => ({
-        ...region,
-        closed: Boolean(region.closed),
-        points: this.normalizePointList(region.points, 0)
-      }))
-      const currentPrimaryRegion = normalizedRegions.find(region => region.primary)
-      const fallbackPrimaryRegion = normalizedRegions.find(region => region.id === 'region_primary') || normalizedRegions[0] || null
-      const primaryRegionId =
-        preferredPrimaryRegionId ||
-        (currentPrimaryRegion ? currentPrimaryRegion.id : '') ||
-        (fallbackPrimaryRegion ? fallbackPrimaryRegion.id : '')
-
-      return normalizedRegions.map(region => ({
-        ...region,
-        primary: region.id === primaryRegionId
-      }))
     },
 
     syncGeometryConfigFromPolygon() {
@@ -4927,12 +4707,6 @@ export default {
       }
     },
 
-    clamp01(value) {
-      if (value < 0) return 0
-      if (value > 1) return 1
-      return value
-    },
-
     async handleSave() {
       if (this.saveLoading) {
         return
@@ -5366,37 +5140,6 @@ export default {
   font-size: 12px;
   line-height: 1.5;
   color: rgba(255, 255, 255, 0.74);
-}
-
-.video-toolbar {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 12px;
-  color: var(--sva-text-muted);
-  font-size: 12px;
-}
-
-.geometry-mode-switch,
-.region-select,
-.line-select {
-  flex-shrink: 0;
-}
-
-.region-select,
-.line-select {
-  width: 180px;
-}
-
-.point-count,
-.polygon-state,
-.geometry-state,
-.primary-region-state,
-.geometry-editor-hint {
-  line-height: 22px;
-  font-size: 12px;
-  color: var(--sva-text-muted);
 }
 
 .algorithm-task-list {
