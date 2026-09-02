@@ -24,75 +24,37 @@
     <div class="workspace-body">
       <section class="preview-pane">
         <div class="card-header">实时流预览与区域绘制</div>
-        <div class="video-panel">
-          <div ref="videoWrapper" class="video-wrapper">
-              <video
-                ref="previewVideo"
-                class="preview-video"
-                muted
-                playsinline
-                @loadedmetadata="handleVideoLoaded"
-              />
-              <canvas
-                ref="polygonCanvas"
-                class="polygon-canvas"
-                @click="handleCanvasClick"
-                @dblclick.prevent="handleCanvasDblClick"
-              />
-
-          </div>
-          <div class="video-toolbar">
-              <el-radio-group v-model="geometryEditorMode" size="mini" class="geometry-mode-switch">
-                <el-radio-button label="region">区域</el-radio-button>
-                <el-radio-button label="line">线段</el-radio-button>
-              </el-radio-group>
-              <el-button size="mini" @click="handleAlignCurrentGeometry">{{ geometryEditorMode === 'line' ? '线段对齐' : '区域对齐' }}</el-button>
-              <el-button size="mini" type="warning" plain @click="handleClearCurrentGeometry">{{ geometryEditorMode === 'line' ? '清空当前线段' : '清空当前区域' }}</el-button>
-              <template v-if="geometryEditorMode === 'region'">
-                <el-button size="mini" type="primary" plain @click="handleAddRegion">新增区域</el-button>
-                <el-select
-                  :value="activeRegionId"
-                  size="mini"
-                  class="region-select"
-                  placeholder="请选择区域"
-                  clearable
-                  @change="handleSelectRegion"
-                >
-                  <el-option
-                    v-for="item in regionOptions"
-                    :key="item.value"
-                    :label="item.label"
-                    :value="item.value"
-                  />
-                </el-select>
-                <el-button size="mini" plain :disabled="!activeRegionId || activeRegionIsPrimary" @click="handleSetActivePrimary">设为主区域</el-button>
-                <el-button size="mini" type="danger" plain :disabled="!activeRegionId" @click="handleRemoveActiveRegion">删除当前区域</el-button>
-              </template>
-              <template v-if="geometryEditorMode === 'line'">
-                <el-button size="mini" type="primary" plain @click="handleAddLine">新增线段</el-button>
-                <el-select
-                  v-model="activeLineId"
-                  size="mini"
-                  class="line-select"
-                  placeholder="请选择线段"
-                  clearable
-                  @change="handleSelectLine"
-                >
-                  <el-option
-                    v-for="item in lineOptions"
-                    :key="item.value"
-                    :label="item.label"
-                    :value="item.value"
-                  />
-                </el-select>
-                <el-button size="mini" type="danger" plain :disabled="!activeLineId" @click="handleRemoveActiveLine">删除当前线段</el-button>
-              </template>
-              <span class="point-count">点位数：{{ polygonPoints.length }}</span>
-              <span class="polygon-state">{{ polygonClosed ? '已闭合' : '未闭合' }}</span>
-              <span class="geometry-state">统一几何配置：{{ geometryRegionCount }} 区域 / {{ geometryLineCount }} 线段</span>
-              <span class="primary-region-state">主区域：{{ primaryRegionLabel }}</span>
-              <span class="geometry-editor-hint">{{ geometryEditorHint }}</span>
-          </div>
+          <div class="video-panel">
+            <video-preview-pane
+              ref="previewPane"
+              @canvas-click="handleCanvasClick"
+              @canvas-dblclick="handleCanvasDblClick"
+              @loadedmetadata="handleVideoLoaded"
+              @canvas-resized="drawPolygon"
+            />
+            <geometry-toolbar
+              :geometry-editor-mode.sync="geometryEditorMode"
+              :active-region-id="activeRegionId"
+              :active-line-id="activeLineId"
+              :region-options="regionOptions"
+              :line-options="lineOptions"
+              :polygon-point-count="polygonPoints.length"
+              :polygon-closed="polygonClosed"
+              :geometry-region-count="geometryRegionCount"
+              :geometry-line-count="geometryLineCount"
+              :primary-region-label="primaryRegionLabel"
+              :geometry-editor-hint="geometryEditorHint"
+              :active-region-is-primary="activeRegionIsPrimary"
+              @align="handleAlignCurrentGeometry"
+              @clear="handleClearCurrentGeometry"
+              @add-region="handleAddRegion"
+              @select-region="handleSelectRegion"
+              @set-primary="handleSetActivePrimary"
+              @remove-region="handleRemoveActiveRegion"
+              @add-line="handleAddLine"
+              @select-line="handleSelectLine"
+              @remove-line="handleRemoveActiveLine"
+            />
           <div class="preview-meta">
               <div class="video-rule-overlay">
                 <div class="video-rule-overlay-title">行为识别规则</div>
@@ -274,777 +236,7 @@
             </el-tab-pane>
             <el-tab-pane label="行为规则" name="rules">
             <el-form-item label="行为规则">
-              <div class="behavior-rule-toolbar">
-                <span class="behavior-rule-hint">可配置跨线、进区、出区、停留、低速、徘徊、睡觉、缺席、数量阈值、占用、区域运动、定向通行、逆向通行、目标接近、目标远离；区域类规则可绑定任一区域</span>
-                <el-button size="mini" type="primary" plain icon="el-icon-plus" @click="handleAddBehaviorRule">新增规则</el-button>
-              </div>
-              <div v-if="behaviorRuleList.length" class="rules-workspace">
-                <div class="rules-nav">
-                  <button
-                    v-for="rule in standaloneBehaviorRules"
-                    :key="rule.id"
-                    type="button"
-                    class="rules-nav-item"
-                    :class="{ 'is-active': activeRuleId === rule.id }"
-                    @click="selectStandaloneRule(rule.id)"
-                  >{{ getBehaviorTypeLabel(rule.behaviorType) || '未选类型' }}</button>
-                  <button
-                    v-for="(group, groupIndex) in sequenceRuleGroups"
-                    :key="group.sequenceId"
-                    type="button"
-                    class="rules-nav-item"
-                    :class="{ 'is-active': activeSequenceId === group.sequenceId }"
-                    @click="selectSequenceGroup(group.sequenceId)"
-                  >多阶段 {{ groupIndex + 1 }}</button>
-                </div>
-                <div class="behavior-rule-list">
-                <div v-if="standaloneBehaviorRules.length" class="behavior-rule-section">
-                  <div class="behavior-rule-section-header">
-                    <span class="behavior-rule-section-title">普通规则</span>
-                    <span class="behavior-rule-section-meta">{{ standaloneBehaviorRules.length }} 条</span>
-                  </div>
-                  <div
-                    v-for="rule in standaloneBehaviorRules"
-                    v-show="activeRuleId === rule.id"
-                    :key="rule.id"
-                    class="behavior-rule-item behavior-rule-item--standalone"
-                  >
-                    <div class="behavior-rule-header">
-                      <div class="behavior-rule-grid-row behavior-rule-grid-row--first">
-                        <div class="behavior-rule-header-info behavior-rule-header-info--col">
-                          <div class="behavior-rule-select-field behavior-rule-effective-type-field">
-                            <div class="behavior-rule-field-label behavior-rule-field-label--compact behavior-rule-effective-type-label-row">
-                              <span class="behavior-rule-effective-type-value-inline">{{ getBehaviorRuleEffectiveAlarmTypeName(rule) }}</span>
-                              <span>生效告警类型</span>
-                            </div>
-                            <el-input
-                              class="behavior-rule-event-input"
-                              :value="rule.customEventName"
-                              :placeholder="getBehaviorRuleEventNamePlaceholder(rule)"
-                              clearable
-                              @input="value => handleBehaviorRuleCustomEventNameChange(rule.id, value)"
-                            />
-                          </div>
-                        </div>
-                        <div class="behavior-rule-header-info behavior-rule-header-info--col behavior-rule-header-target">
-                          <div class="behavior-rule-select-field">
-                            <div class="behavior-rule-field-label behavior-rule-field-label--compact">规则目标</div>
-                            <el-select
-                              v-if="isBehaviorRuleObjectVisible(rule.behaviorType)"
-                              :value="rule.ruleObjectCode"
-                              placeholder="规则目标"
-                              clearable
-                              filterable
-                              allow-create
-                              default-first-option
-                              @change="value => handleBehaviorRuleObjectChange(rule.id, value)"
-                            >
-                              <el-option
-                                v-for="item in getBehaviorRuleObjectOptions(rule)"
-                                :key="item.value"
-                                :label="item.label"
-                                :value="item.value"
-                              />
-                            </el-select>
-                            <el-select
-                              v-else-if="isRelationalBehaviorType(rule.behaviorType)"
-                              :value="rule.subjectObject"
-                              placeholder="规则目标"
-                              clearable
-                              filterable
-                              allow-create
-                              default-first-option
-                              @change="value => handleBehaviorRuleSubjectObjectChange(rule.id, value)"
-                            >
-                              <el-option
-                                v-for="item in behaviorObjectOptions"
-                                :key="item.value"
-                                :label="item.label"
-                                :value="item.value"
-                              />
-                            </el-select>
-                            <div v-else class="behavior-rule-summary">当前规则类型不需要规则目标</div>
-                          </div>
-                        </div>
-                        <div class="behavior-rule-actions behavior-rule-actions--switch-only behavior-rule-actions--icon-group">
-                          <el-tooltip :content="rule.enabled ? '停用' : '启用'" placement="top">
-                            <el-button
-                              type="text"
-                              icon="el-icon-switch-button"
-                              class="behavior-rule-action-icon"
-                              :class="{ 'behavior-rule-action-icon--active': rule.enabled }"
-                              @click="handleBehaviorRuleEnabledChange(rule.id, !rule.enabled)"
-                            />
-                          </el-tooltip>
-                          <el-tooltip v-if="canUpgradeBehaviorRuleToSequence(rule)" content="组成序列规则" placement="top">
-                            <el-button
-                              type="text"
-                              icon="el-icon-connection"
-                              class="behavior-rule-action-icon"
-                              @click="handleUpgradeBehaviorRuleToSequence(rule.id)"
-                            />
-                          </el-tooltip>
-                          <el-tooltip content="删除规则" placement="top">
-                            <el-button
-                              type="text"
-                              icon="el-icon-delete"
-                              class="behavior-rule-action-icon behavior-rule-action-icon--danger"
-                              @click="handleRemoveBehaviorRule(rule.id)"
-                            />
-                          </el-tooltip>
-                        </div>
-                      </div>
-                      <div class="behavior-rule-grid-row behavior-rule-grid-row--second">
-                        <div class="behavior-rule-header-info behavior-rule-header-info--col">
-                          <div class="behavior-rule-select-field">
-                            <div class="behavior-rule-field-label behavior-rule-field-label--compact">规则类型</div>
-                            <el-select
-                              :value="rule.behaviorType"
-                              placeholder="请选择行为"
-                              @change="value => handleBehaviorRuleTypeChange(rule.id, value)"
-                            >
-                              <el-option
-                                v-for="item in getBehaviorTypeOptionsForRule(rule)"
-                                :key="item.value"
-                                :label="item.label"
-                                :value="item.value"
-                              />
-                            </el-select>
-                          </div>
-                        </div>
-                        <div class="behavior-rule-header-info behavior-rule-header-info--col">
-                          <div class="behavior-rule-select-field">
-                            <div class="behavior-rule-field-label behavior-rule-field-label--compact">绑定区域</div>
-                            <el-select
-                              :value="rule.geometryId"
-                              :placeholder="getBehaviorRuleGeometryPlaceholder(rule)"
-                              :disabled="!getBehaviorRuleGeometryOptions(rule).length"
-                              @change="value => handleBehaviorRuleGeometryChange(rule.id, value)"
-                            >
-                              <el-option
-                                v-for="item in getBehaviorRuleGeometryOptions(rule)"
-                                :key="item.value"
-                                :label="item.label"
-                                :value="item.value"
-                              />
-                            </el-select>
-                          </div>
-                        </div>
-                        <div class="behavior-rule-header-info behavior-rule-header-info--col behavior-rule-header-output-mode">
-                          <div class="behavior-rule-select-field">
-                            <div class="behavior-rule-field-label behavior-rule-field-label--compact">输出模式</div>
-                            <div class="behavior-rule-output-mode-row">
-                              <el-select
-                                :value="rule.outputMode"
-                                placeholder="输出模式"
-                                @change="value => handleBehaviorRuleOutputModeChange(rule.id, value)"
-                              >
-                                <el-option
-                                  v-for="item in outputModeOptions"
-                                  :key="item.value"
-                                  :label="item.label"
-                                  :value="item.value"
-                                />
-                              </el-select>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    <el-row :gutter="8" class="behavior-rule-subrow">
-                      <el-col v-if="isBehaviorRuleDirectionVisible(rule.behaviorType)" :span="8">
-                        <div class="behavior-rule-field-label">穿越方向</div>
-                        <div class="behavior-rule-direction-toggle-row">
-                          <el-button
-                            size="mini"
-                            plain
-                            @click="handleBehaviorRuleDirectionToggle(rule.id)"
-                          >{{ getCrossLineDirectionButtonText(rule.direction) }}</el-button>
-                          <span class="behavior-rule-direction-hint">点击切换图上穿越示意</span>
-                        </div>
-                      </el-col>
-                      <el-col v-if="shouldShowSequenceSubjectObjectField(rule) && !isRelationalBehaviorType(rule.behaviorType)" :span="8">
-                        <div class="behavior-rule-field-label">主体目标</div>
-                        <el-select
-                          :value="rule.subjectObject"
-                          placeholder="主体目标"
-                          clearable
-                          filterable
-                          allow-create
-                          default-first-option
-                          @change="value => handleBehaviorRuleSubjectObjectChange(rule.id, value)"
-                        >
-                          <el-option
-                            v-for="item in behaviorObjectOptions"
-                            :key="item.value"
-                            :label="item.label"
-                            :value="item.value"
-                          />
-                        </el-select>
-                      </el-col>
-                      <el-col v-if="isBehaviorRuleTargetObjectVisible(rule.behaviorType)" :span="8">
-                        <div class="behavior-rule-field-label">目标对象</div>
-                        <el-select
-                          :value="rule.targetObject"
-                          placeholder="目标对象"
-                          clearable
-                          filterable
-                          allow-create
-                          default-first-option
-                          @change="value => handleBehaviorRuleTargetObjectChange(rule.id, value)"
-                        >
-                          <el-option
-                            v-for="item in behaviorObjectOptions"
-                            :key="item.value"
-                            :label="item.label"
-                            :value="item.value"
-                          />
-                        </el-select>
-                      </el-col>
-                      <el-col v-if="isBehaviorRuleDistanceVisible(rule.behaviorType)" :span="8">
-                        <div class="behavior-rule-field-label">{{ getBehaviorRuleDistanceFieldLabel(rule.behaviorType) }}</div>
-                        <el-input-number
-                          :value="rule.distanceThresholdPx"
-                          :min="getBehaviorRuleDistanceInputConfig(rule.behaviorType).min"
-                          :max="getBehaviorRuleDistanceInputConfig(rule.behaviorType).max"
-                          :step="getBehaviorRuleDistanceInputConfig(rule.behaviorType).step"
-                          :precision="getBehaviorRuleDistanceInputConfig(rule.behaviorType).precision"
-                          controls-position="right"
-                          @change="value => handleBehaviorRuleDistanceChange(rule.id, value)"
-                        />
-                      </el-col>
-                      <el-col v-if="isBehaviorRuleSequenceConfigVisible(rule)" :span="8">
-                        <div class="behavior-rule-field-label">阶段序号</div>
-                        <el-input-number
-                          :value="rule.stageIndex"
-                          :min="0"
-                          :max="32"
-                          :step="1"
-                          :precision="0"
-                          controls-position="right"
-                          @change="value => handleBehaviorRuleStageIndexChange(rule.id, value)"
-                        />
-                      </el-col>
-                      <el-col v-if="isBehaviorRuleSequenceConfigVisible(rule)" :span="8">
-                        <div class="behavior-rule-field-label">阶段逻辑</div>
-                        <el-select
-                          :value="rule.logicMode"
-                          placeholder="阶段逻辑"
-                          @change="value => handleBehaviorRuleLogicModeChange(rule.id, value)"
-                        >
-                          <el-option
-                            v-for="item in sequenceLogicModeOptions"
-                            :key="item.value"
-                            :label="item.label"
-                            :value="item.value"
-                          />
-                        </el-select>
-                      </el-col>
-                      <el-col v-if="isBehaviorRuleSequenceConfigVisible(rule)" :span="8">
-                        <div class="behavior-rule-field-label">阶段超时(ms)</div>
-                        <el-input-number
-                          :value="rule.stageTimeoutMs"
-                          :min="0"
-                          :max="3600000"
-                          :step="100"
-                          :precision="0"
-                          controls-position="right"
-                          @change="value => handleBehaviorRuleStageTimeoutChange(rule.id, value)"
-                        />
-                      </el-col>
-                      <el-col v-if="isBehaviorRuleSequenceConfigVisible(rule)" :span="8">
-                        <div class="behavior-rule-field-label">阶段保持(ms)</div>
-                        <el-input-number
-                          :value="rule.stageHoldMs"
-                          :min="0"
-                          :max="3600000"
-                          :step="100"
-                          :precision="0"
-                          controls-position="right"
-                          @change="value => handleBehaviorRuleStageHoldChange(rule.id, value)"
-                        />
-                      </el-col>
-                      <el-col v-if="isBehaviorRuleDirectionAngleVisible(rule.behaviorType)" :span="8">
-                        <div class="behavior-rule-field-label">目标方向角(°)</div>
-                        <el-input-number
-                          :value="rule.directionAngleDeg"
-                          :min="0"
-                          :max="359"
-                          :step="5"
-                          :precision="0"
-                          :disabled="isBehaviorRuleDirectionAngleLocked(rule)"
-                          controls-position="right"
-                          @change="value => handleBehaviorRuleDirectionAngleChange(rule.id, value)"
-                        />
-                      </el-col>
-                      <el-col v-if="isBehaviorRuleDirectionLineVisible(rule.behaviorType)" :span="8">
-                        <div class="behavior-rule-field-label">参考线段</div>
-                        <el-select
-                          :value="rule.directionLineId"
-                          placeholder="选线段自动带入"
-                          clearable
-                          :disabled="!lineOptions.length"
-                          @change="value => handleBehaviorRuleDirectionLineChange(rule.id, value)"
-                        >
-                          <el-option
-                            v-for="item in lineOptions"
-                            :key="item.value"
-                            :label="item.label"
-                            :value="item.value"
-                          />
-                        </el-select>
-                      </el-col>
-                      <el-col v-if="isBehaviorRuleDirectionToleranceVisible(rule.behaviorType)" :span="8">
-                        <div class="behavior-rule-field-label">角度容差(°)</div>
-                        <el-input-number
-                          :value="rule.directionToleranceDeg"
-                          :min="1"
-                          :max="180"
-                          :step="1"
-                          :precision="0"
-                          controls-position="right"
-                          @change="value => handleBehaviorRuleDirectionToleranceChange(rule.id, value)"
-                        />
-                      </el-col>
-                      <el-col v-if="isBehaviorRuleThresholdVisible(rule.behaviorType)" :span="8">
-                        <div class="behavior-rule-field-label">持续时长(ms)</div>
-                        <el-input-number
-                          :value="rule.thresholdMs"
-                          :min="getBehaviorRuleThresholdMin(rule.behaviorType)"
-                          :max="3600000"
-                          :step="1000"
-                          :precision="0"
-                          controls-position="right"
-                          @change="value => handleBehaviorRuleThresholdChange(rule.id, value)"
-                        />
-                      </el-col>
-                      <el-col v-if="isBehaviorRuleThresholdCountVisible(rule.behaviorType)" :span="8">
-                        <div class="behavior-rule-field-label">数量阈值</div>
-                        <el-input-number
-                          :value="rule.thresholdCount"
-                          :min="1"
-                          :max="100000"
-                          :step="1"
-                          :precision="0"
-                          controls-position="right"
-                          @change="value => handleBehaviorRuleThresholdCountChange(rule.id, value)"
-                        />
-                      </el-col>
-                      <el-col v-if="isBehaviorRuleMaxSpeedVisible(rule.behaviorType)" :span="8">
-                        <div class="behavior-rule-field-label">最大速度(px/s)</div>
-                        <el-input-number
-                          :value="rule.maxSpeedPxPerSec"
-                          :min="0.1"
-                          :max="10000"
-                          :step="0.5"
-                          :precision="1"
-                          controls-position="right"
-                          @change="value => handleBehaviorRuleMaxSpeedChange(rule.id, value)"
-                        />
-                      </el-col>
-                      <el-col v-if="isBehaviorRuleMaxDisplacementVisible(rule.behaviorType)" :span="8">
-                        <div class="behavior-rule-field-label">最大位移(px)</div>
-                        <el-input-number
-                          :value="rule.maxDisplacementPx"
-                          :min="1"
-                          :max="10000"
-                          :step="1"
-                          :precision="0"
-                          controls-position="right"
-                          @change="value => handleBehaviorRuleMaxDisplacementChange(rule.id, value)"
-                        />
-                      </el-col>
-                      <el-col :span="getBehaviorRuleSummarySpan(rule)">
-                        <div class="behavior-rule-summary">
-                          {{ getBehaviorRuleSummary(rule) }}
-                        </div>
-                      </el-col>
-                    </el-row>
-                  </div>
-                </div>
-                <div v-if="sequenceRuleGroups.length" class="behavior-rule-section behavior-rule-section--sequence">
-                  <div class="behavior-rule-section-header">
-                    <span class="behavior-rule-section-title">多阶段规则组</span>
-                    <span class="behavior-rule-section-meta">{{ sequenceRuleGroups.length }} 组 / {{ sequenceGroupedRuleCount }} 条</span>
-                  </div>
-                  <div
-                    v-for="(group, groupIndex) in sequenceRuleGroups"
-                    v-show="activeSequenceId === group.sequenceId"
-                    :key="group.sequenceId"
-                    :class="getSequenceGroupToneClass(groupIndex)"
-                    class="behavior-sequence-group"
-                  >
-                    <div class="behavior-sequence-group-header">
-                      <div class="behavior-sequence-group-row behavior-sequence-group-row--first">
-                        <div class="behavior-sequence-group-title-line">
-                          <div class="behavior-sequence-group-title">多阶段规则组 {{ groupIndex + 1 }}</div>
-                          <div class="behavior-sequence-group-meta behavior-sequence-group-meta--inline">主体目标 {{ getSequenceGroupSubjectLabel(group) }}</div>
-                        </div>
-                        <el-tooltip content="新增阶段" placement="top">
-                          <el-button
-                            type="text"
-                            icon="el-icon-connection"
-                            class="behavior-rule-action-icon"
-                            @click="handleAddSequenceStage(group.sequenceId)"
-                          />
-                        </el-tooltip>
-                      </div>
-                      <div class="behavior-sequence-group-row behavior-sequence-group-row--second">
-                        <div class="behavior-sequence-group-field">
-                          <div class="behavior-rule-field-label">告警类型</div>
-                          <el-input
-                            :value="getSequenceGroupCustomEventName(group)"
-                            placeholder="留空则使用默认告警类型"
-                            clearable
-                            @input="value => handleSequenceGroupCustomEventNameChange(group.sequenceId, value)"
-                          />
-                        </div>
-                        <div class="behavior-sequence-group-field">
-                          <div class="behavior-rule-field-label">输出模式</div>
-                          <el-select
-                            :value="getSequenceGroupOutputMode(group)"
-                            placeholder="输出模式"
-                            @change="value => handleSequenceGroupOutputModeChange(group.sequenceId, value)"
-                          >
-                            <el-option
-                              v-for="item in outputModeOptions"
-                              :key="item.value"
-                              :label="item.label"
-                              :value="item.value"
-                            />
-                          </el-select>
-                        </div>
-                      </div>
-                      <div class="behavior-sequence-group-row behavior-sequence-group-row--third">
-                        <div class="behavior-sequence-group-meta behavior-sequence-group-meta--summary">{{ getBehaviorRuleSequenceGroupSummary(group) }}</div>
-                      </div>
-                    </div>
-                    <div
-                      v-for="rule in group.rules"
-                      :key="rule.id"
-                      :class="getSequenceStageToneClass(rule)"
-                      class="behavior-rule-item behavior-rule-item--grouped"
-                    >
-                      <div class="behavior-rule-header">
-                        <div class="behavior-rule-title">{{ getBehaviorRuleDisplayTitle(rule) }}</div>
-                        <div class="behavior-rule-grid-row behavior-rule-grid-row--first behavior-rule-grid-row--sequence">
-                          <div class="behavior-rule-grid-placeholder" />
-                          <div class="behavior-rule-grid-placeholder" />
-                          <div class="behavior-rule-actions behavior-rule-actions--switch-only behavior-rule-actions--icon-group">
-                            <el-tooltip :content="rule.enabled ? '停用' : '启用'" placement="top">
-                              <el-button
-                                type="text"
-                                icon="el-icon-switch-button"
-                                class="behavior-rule-action-icon"
-                                :class="{ 'behavior-rule-action-icon--active': rule.enabled }"
-                                @click="handleBehaviorRuleEnabledChange(rule.id, !rule.enabled)"
-                              />
-                            </el-tooltip>
-                            <el-tooltip content="删除规则" placement="top">
-                              <el-button
-                                type="text"
-                                icon="el-icon-delete"
-                                class="behavior-rule-action-icon behavior-rule-action-icon--danger"
-                                @click="handleRemoveBehaviorRule(rule.id)"
-                              />
-                            </el-tooltip>
-                          </div>
-                        </div>
-                        <div class="behavior-rule-grid-row behavior-rule-grid-row--second">
-                          <div class="behavior-rule-header-info behavior-rule-header-info--col">
-                            <div class="behavior-rule-select-field">
-                              <div class="behavior-rule-field-label behavior-rule-field-label--compact">规则目标</div>
-                              <el-select
-                                v-if="shouldShowSequenceRuleObjectField(rule) && isSequenceLeadRule(rule)"
-                                :value="rule.ruleObjectCode"
-                                placeholder="规则目标"
-                                clearable
-                                filterable
-                                allow-create
-                                default-first-option
-                                @change="value => handleBehaviorRuleObjectChange(rule.id, value)"
-                              >
-                                <el-option
-                                  v-for="item in getBehaviorRuleObjectOptions(rule)"
-                                  :key="item.value"
-                                  :label="item.label"
-                                  :value="item.value"
-                                />
-                              </el-select>
-                              <el-select
-                                v-else-if="isRelationalBehaviorType(rule.behaviorType) && isSequenceLeadRule(rule)"
-                                :value="rule.subjectObject"
-                                placeholder="规则目标"
-                                clearable
-                                filterable
-                                allow-create
-                                default-first-option
-                                @change="value => handleBehaviorRuleSubjectObjectChange(rule.id, value)"
-                              >
-                                <el-option
-                                  v-for="item in behaviorObjectOptions"
-                                  :key="item.value"
-                                  :label="item.label"
-                                  :value="item.value"
-                                />
-                              </el-select>
-                              <div v-else class="behavior-rule-summary">主体目标：{{ getSequenceGroupSubjectLabelByRule(rule) }}（继承）</div>
-                            </div>
-                          </div>
-                          <div class="behavior-rule-header-info behavior-rule-header-info--col">
-                            <div class="behavior-rule-select-field">
-                              <div class="behavior-rule-field-label behavior-rule-field-label--compact">规则类型</div>
-                              <el-select
-                                :value="rule.behaviorType"
-                                placeholder="请选择行为"
-                                @change="value => handleBehaviorRuleTypeChange(rule.id, value)"
-                              >
-                                <el-option
-                                  v-for="item in getBehaviorTypeOptionsForRule(rule)"
-                                  :key="item.value"
-                                  :label="item.label"
-                                  :value="item.value"
-                                />
-                              </el-select>
-                            </div>
-                          </div>
-                          <div class="behavior-rule-header-info behavior-rule-header-info--col">
-                            <div class="behavior-rule-select-field">
-                              <div class="behavior-rule-field-label behavior-rule-field-label--compact">绑定区域</div>
-                              <div class="behavior-rule-output-mode-row">
-                                <el-select
-                                  :value="rule.geometryId"
-                                  :placeholder="getBehaviorRuleGeometryPlaceholder(rule)"
-                                  :disabled="!getBehaviorRuleGeometryOptions(rule).length"
-                                  @change="value => handleBehaviorRuleGeometryChange(rule.id, value)"
-                                >
-                                  <el-option
-                                    v-for="item in getBehaviorRuleGeometryOptions(rule)"
-                                    :key="item.value"
-                                    :label="item.label"
-                                    :value="item.value"
-                                  />
-                                </el-select>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                      <el-row :gutter="8" class="behavior-rule-subrow">
-                        <el-col v-if="isBehaviorRuleDirectionVisible(rule.behaviorType)" :span="8">
-                          <div class="behavior-rule-field-label">穿越方向</div>
-                          <div class="behavior-rule-direction-toggle-row">
-                            <el-button
-                              size="mini"
-                              plain
-                              @click="handleBehaviorRuleDirectionToggle(rule.id)"
-                            >{{ getCrossLineDirectionButtonText(rule.direction) }}</el-button>
-                            <span class="behavior-rule-direction-hint">点击切换图上穿越示意</span>
-                          </div>
-                        </el-col>
-                        <el-col v-if="shouldShowSequenceSubjectObjectField(rule) && !isRelationalBehaviorType(rule.behaviorType)" :span="8">
-                          <div class="behavior-rule-field-label">主体目标</div>
-                          <el-select
-                            :value="rule.subjectObject"
-                            placeholder="主体目标"
-                            clearable
-                            filterable
-                            allow-create
-                            default-first-option
-                            @change="value => handleBehaviorRuleSubjectObjectChange(rule.id, value)"
-                          >
-                            <el-option
-                              v-for="item in behaviorObjectOptions"
-                              :key="item.value"
-                              :label="item.label"
-                              :value="item.value"
-                            />
-                          </el-select>
-                        </el-col>
-                        <el-col v-if="isBehaviorRuleTargetObjectVisible(rule.behaviorType)" :span="8">
-                          <div class="behavior-rule-field-label">目标对象</div>
-                          <el-select
-                            :value="rule.targetObject"
-                            placeholder="目标对象"
-                            clearable
-                            filterable
-                            allow-create
-                            default-first-option
-                            @change="value => handleBehaviorRuleTargetObjectChange(rule.id, value)"
-                          >
-                            <el-option
-                              v-for="item in behaviorObjectOptions"
-                              :key="item.value"
-                              :label="item.label"
-                              :value="item.value"
-                            />
-                          </el-select>
-                        </el-col>
-                        <el-col v-if="isBehaviorRuleDistanceVisible(rule.behaviorType)" :span="8">
-                          <div class="behavior-rule-field-label">{{ getBehaviorRuleDistanceFieldLabel(rule.behaviorType) }}</div>
-                          <el-input-number
-                            :value="rule.distanceThresholdPx"
-                            :min="getBehaviorRuleDistanceInputConfig(rule.behaviorType).min"
-                            :max="getBehaviorRuleDistanceInputConfig(rule.behaviorType).max"
-                            :step="getBehaviorRuleDistanceInputConfig(rule.behaviorType).step"
-                            :precision="getBehaviorRuleDistanceInputConfig(rule.behaviorType).precision"
-                            controls-position="right"
-                            @change="value => handleBehaviorRuleDistanceChange(rule.id, value)"
-                          />
-                        </el-col>
-                        <el-col v-if="isBehaviorRuleSequenceConfigVisible(rule)" :span="8">
-                          <div class="behavior-rule-field-label">阶段序号</div>
-                          <el-input-number
-                            :value="rule.stageIndex"
-                            :min="0"
-                            :max="32"
-                            :step="1"
-                            :precision="0"
-                            controls-position="right"
-                            @change="value => handleBehaviorRuleStageIndexChange(rule.id, value)"
-                          />
-                        </el-col>
-                        <el-col v-if="shouldShowSequenceStageLogicField(rule)" :span="8">
-                          <div class="behavior-rule-field-label">阶段逻辑</div>
-                          <el-select
-                            :value="rule.logicMode"
-                            placeholder="阶段逻辑"
-                            @change="value => handleBehaviorRuleLogicModeChange(rule.id, value)"
-                          >
-                            <el-option
-                              v-for="item in sequenceLogicModeOptions"
-                              :key="item.value"
-                              :label="item.label"
-                              :value="item.value"
-                            />
-                          </el-select>
-                        </el-col>
-                        <el-col v-if="isBehaviorRuleSequenceConfigVisible(rule)" :span="8">
-                          <div class="behavior-rule-field-label">阶段超时(ms)</div>
-                          <el-input-number
-                            :value="rule.stageTimeoutMs"
-                            :min="0"
-                            :max="3600000"
-                            :step="100"
-                            :precision="0"
-                            controls-position="right"
-                            @change="value => handleBehaviorRuleStageTimeoutChange(rule.id, value)"
-                          />
-                        </el-col>
-                        <el-col v-if="isBehaviorRuleSequenceConfigVisible(rule)" :span="8">
-                          <div class="behavior-rule-field-label">阶段保持(ms)</div>
-                          <el-input-number
-                            :value="rule.stageHoldMs"
-                            :min="0"
-                            :max="3600000"
-                            :step="100"
-                            :precision="0"
-                            controls-position="right"
-                            @change="value => handleBehaviorRuleStageHoldChange(rule.id, value)"
-                          />
-                        </el-col>
-                        <el-col v-if="isBehaviorRuleDirectionAngleVisible(rule.behaviorType)" :span="8">
-                          <div class="behavior-rule-field-label">目标方向角(°)</div>
-                          <el-input-number
-                            :value="rule.directionAngleDeg"
-                            :min="0"
-                            :max="359"
-                            :step="5"
-                            :precision="0"
-                            :disabled="isBehaviorRuleDirectionAngleLocked(rule)"
-                            controls-position="right"
-                            @change="value => handleBehaviorRuleDirectionAngleChange(rule.id, value)"
-                          />
-                        </el-col>
-                        <el-col v-if="isBehaviorRuleDirectionLineVisible(rule.behaviorType)" :span="8">
-                          <div class="behavior-rule-field-label">参考线段</div>
-                          <el-select
-                            :value="rule.directionLineId"
-                            placeholder="选线段自动带入"
-                            clearable
-                            :disabled="!lineOptions.length"
-                            @change="value => handleBehaviorRuleDirectionLineChange(rule.id, value)"
-                          >
-                            <el-option
-                              v-for="item in lineOptions"
-                              :key="item.value"
-                              :label="item.label"
-                              :value="item.value"
-                            />
-                          </el-select>
-                        </el-col>
-                        <el-col v-if="isBehaviorRuleDirectionToleranceVisible(rule.behaviorType)" :span="8">
-                          <div class="behavior-rule-field-label">角度容差(°)</div>
-                          <el-input-number
-                            :value="rule.directionToleranceDeg"
-                            :min="1"
-                            :max="180"
-                            :step="1"
-                            :precision="0"
-                            controls-position="right"
-                            @change="value => handleBehaviorRuleDirectionToleranceChange(rule.id, value)"
-                          />
-                        </el-col>
-                        <el-col v-if="isBehaviorRuleThresholdVisible(rule.behaviorType)" :span="8">
-                          <div class="behavior-rule-field-label">持续时长(ms)</div>
-                          <el-input-number
-                            :value="rule.thresholdMs"
-                            :min="getBehaviorRuleThresholdMin(rule.behaviorType)"
-                            :max="3600000"
-                            :step="1000"
-                            :precision="0"
-                            controls-position="right"
-                            @change="value => handleBehaviorRuleThresholdChange(rule.id, value)"
-                          />
-                        </el-col>
-                        <el-col v-if="isBehaviorRuleThresholdCountVisible(rule.behaviorType)" :span="8">
-                          <div class="behavior-rule-field-label">数量阈值</div>
-                          <el-input-number
-                            :value="rule.thresholdCount"
-                            :min="1"
-                            :max="100000"
-                            :step="1"
-                            :precision="0"
-                            controls-position="right"
-                            @change="value => handleBehaviorRuleThresholdCountChange(rule.id, value)"
-                          />
-                        </el-col>
-                        <el-col v-if="isBehaviorRuleMaxSpeedVisible(rule.behaviorType)" :span="8">
-                          <div class="behavior-rule-field-label">最大速度(px/s)</div>
-                          <el-input-number
-                            :value="rule.maxSpeedPxPerSec"
-                            :min="0.1"
-                            :max="10000"
-                            :step="0.5"
-                            :precision="1"
-                            controls-position="right"
-                            @change="value => handleBehaviorRuleMaxSpeedChange(rule.id, value)"
-                          />
-                        </el-col>
-                        <el-col v-if="isBehaviorRuleMaxDisplacementVisible(rule.behaviorType)" :span="8">
-                          <div class="behavior-rule-field-label">最大位移(px)</div>
-                          <el-input-number
-                            :value="rule.maxDisplacementPx"
-                            :min="1"
-                            :max="10000"
-                            :step="1"
-                            :precision="0"
-                            controls-position="right"
-                            @change="value => handleBehaviorRuleMaxDisplacementChange(rule.id, value)"
-                          />
-                        </el-col>
-                        <el-col :span="getBehaviorRuleSummarySpan(rule)">
-                          <div class="behavior-rule-summary">
-                            {{ getBehaviorRuleSummary(rule) }}
-                          </div>
-                        </el-col>
-                      </el-row>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              </div>
-              <div v-else class="behavior-rule-empty">暂无行为规则，添加后会随 geometryConfig 一并保存</div>
+              <behavior-rule-panel :host="behaviorRulePanelHost" />
             </el-form-item>
 
             </el-tab-pane>
@@ -1112,14 +304,37 @@
 </template>
 
 <script>
-import flvjs from 'flv.js'
 import { getDeviceList, previewDeviceMonitor } from '@/api/device'
 import { getAlgorithmList, getAlgorithmTargets } from '@/api/algorithm'
 import { createDeployment, getDeploymentDetail, updateDeployment, updateDeploymentLiveOutput } from '@/api/deployment'
 import { OVERLAY_DELAY_DEFAULT_MS, loadOverlayDelayMs } from '@/utils/systemRuntimeConfig'
+import { BEHAVIOR_TYPE_OPTIONS, getBehaviorTypeLabel, normalizeBehaviorType } from '@/utils/behaviorTypes'
+import { getFieldValue } from '@/utils/fieldMap'
+import {
+  buildPrimaryRegion,
+  clamp01,
+  createEmptyGeometryConfig,
+  createLineConfig as buildLineConfig,
+  createRegionConfig as buildRegionConfig,
+  drawCanvasCrossLineDirectionIndicator,
+  drawCanvasLineArrow,
+  drawCanvasTextLabel,
+  getCrossLineDirectionButtonText,
+  getLineDirectionLabel,
+  getNextLineDirection,
+  normalizeLineDirection,
+  normalizePoint,
+  normalizePointList,
+  normalizeRegionPrimaryState,
+  parseGeometryConfigInput
+} from '@/utils/geometryEditor'
+import VideoPreviewPane from './components/VideoPreviewPane.vue'
+import GeometryToolbar from './components/GeometryToolbar.vue'
+import BehaviorRulePanel from './components/BehaviorRulePanel.vue'
 
 export default {
   name: 'DeploymentAdd',
+  components: { VideoPreviewPane, GeometryToolbar, BehaviorRulePanel },
   data() {
     const validateAlgorithmTasks = (rule, value, callback) => {
       if (!Array.isArray(value) || value.length === 0) {
@@ -1190,7 +405,6 @@ export default {
       deploymentId: '',
       streamUrl: '',
       videoLoaded: false,
-      flvPlayer: null,
       polygonPoints: [],
       polygonClosed: false,
       geometryEditorMode: 'region',
@@ -1208,6 +422,9 @@ export default {
     }
   },
   computed: {
+    behaviorRulePanelHost() {
+      return this
+    },
     saveButtonText() {
       return this.deploymentId ? '保存更新' : '保存并创建'
     },
@@ -1271,24 +488,7 @@ export default {
       return values
     },
     behaviorTypeOptions() {
-      return [
-        { value: 'cross_line', label: '跨线' },
-        { value: 'enter_region', label: '进区' },
-        { value: 'exit_region', label: '出区' },
-        { value: 'dwell', label: '停留' },
-        { value: 'low_speed', label: '低速' },
-        { value: 'loitering', label: '徘徊' },
-        { value: 'sleep', label: '睡觉' },
-        { value: 'absence', label: '缺席' },
-        { value: 'count_threshold', label: '数量阈值' },
-        { value: 'occupancy', label: '占用' },
-        { value: 'region_motion', label: '区域运动' },
-        { value: 'direction_move', label: '定向通行' },
-        { value: 'direction_reverse', label: '逆向通行' },
-        { value: 'relation_near', label: '目标接近' },
-        { value: 'relation_apart', label: '目标远离' },
-        { value: 'relation_not_contains', label: '目标未包含' }
-      ]
+      return BEHAVIOR_TYPE_OPTIONS
     },
     sequenceBehaviorTypeOptions() {
       return this.behaviorTypeOptions.filter(item => this.isSequenceCapableBehaviorType(item.value))
@@ -1415,18 +615,33 @@ export default {
   },
   mounted() {
     this.initPageData()
-    window.addEventListener('resize', this.syncCanvasSize)
     window.addEventListener('sva:detect-frame', this.handleDetectFramePush)
     window.addEventListener('sva:detect-event', this.handleDetectEventPush)
   },
   beforeDestroy() {
-    window.removeEventListener('resize', this.syncCanvasSize)
     window.removeEventListener('sva:detect-frame', this.handleDetectFramePush)
     window.removeEventListener('sva:detect-event', this.handleDetectEventPush)
     this.clearDetectFrame(false)
     this.destroyPlayer()
   },
   methods: {
+    getFieldValue,
+    normalizeBehaviorType,
+    getBehaviorTypeLabel,
+    clamp01,
+    createEmptyGeometryConfig,
+    parseGeometryConfigInput,
+    normalizePoint,
+    normalizePointList,
+    buildPrimaryRegion,
+    normalizeLineDirection,
+    getLineDirectionLabel,
+    getNextLineDirection,
+    getCrossLineDirectionButtonText,
+    normalizeRegionPrimaryState,
+    drawCanvasTextLabel,
+    drawCanvasLineArrow,
+    drawCanvasCrossLineDirectionIndicator,
     async initPageData() {
       try {
         this.deploymentId = this.resolveDeploymentIdFromRoute()
@@ -1468,19 +683,6 @@ export default {
       const query = route.query || {}
       const params = route.params || {}
       return query.deploymentId || query.id || params.deploymentId || params.id || ''
-    },
-
-    getFieldValue(source, ...keys) {
-      if (!source) {
-        return undefined
-      }
-      for (let i = 0; i < keys.length; i += 1) {
-        const key = keys[i]
-        if (source[key] !== undefined && source[key] !== null) {
-          return source[key]
-        }
-      }
-      return undefined
     },
 
     toBoolean(value, defaultValue = false) {
@@ -1651,40 +853,8 @@ export default {
       }
     },
 
-    createEmptyGeometryConfig() {
-      return {
-        regions: [],
-        lines: [],
-        behaviorRules: []
-      }
-    },
-
     normalizeBehaviorRule(rule, index = 0) {
       return this.normalizeBehaviorRuleWithGeometry(rule, index, this.createEmptyGeometryConfig())
-    },
-
-    normalizeBehaviorType(value) {
-      if ([
-        'cross_line',
-        'enter_region',
-        'exit_region',
-        'dwell',
-        'low_speed',
-        'loitering',
-        'sleep',
-        'absence',
-        'count_threshold',
-        'occupancy',
-        'region_motion',
-        'direction_move',
-        'direction_reverse',
-        'relation_near',
-        'relation_apart',
-        'relation_not_contains'
-      ].includes(value)) {
-        return value
-      }
-      return ''
     },
 
     isDirectionBehaviorType(behaviorType) {
@@ -1903,11 +1073,11 @@ export default {
     },
 
     isBehaviorRuleDistanceVisible(behaviorType) {
-      return ['relation_near', 'relation_apart', 'region_motion', 'sleep'].includes(behaviorType)
+      return ['relation_near', 'relation_apart', 'region_motion', 'sleep', 'sleep_on_duty'].includes(behaviorType)
     },
 
     isBehaviorRuleThresholdVisible(behaviorType) {
-      return ['dwell', 'absence', 'occupancy', 'region_motion', 'low_speed', 'loitering', 'sleep', 'count_threshold', 'direction_move', 'direction_reverse', 'relation_near', 'relation_apart', 'relation_not_contains'].includes(behaviorType)
+      return ['dwell', 'absence', 'occupancy', 'region_motion', 'low_speed', 'loitering', 'sleep', 'sleep_on_duty', 'count_threshold', 'direction_move', 'direction_reverse', 'relation_near', 'relation_apart', 'relation_not_contains'].includes(behaviorType)
     },
 
     isBehaviorRuleThresholdCountVisible(behaviorType) {
@@ -1926,6 +1096,9 @@ export default {
       if (behaviorType === 'region_motion') {
         return '运动阈值(%)'
       }
+      if (behaviorType === 'sleep_on_duty') {
+        return '低头角度(°)'
+      }
       if (behaviorType === 'sleep') {
         return '最小宽高比'
       }
@@ -1937,6 +1110,14 @@ export default {
         return {
           min: 1,
           max: 100,
+          step: 1,
+          precision: 0
+        }
+      }
+      if (behaviorType === 'sleep_on_duty') {
+        return {
+          min: 1,
+          max: 135,
           step: 1,
           precision: 0
         }
@@ -1962,6 +1143,9 @@ export default {
         return 200
       }
       if (behaviorType === 'loitering') {
+        return 1000
+      }
+      if (behaviorType === 'sleep_on_duty') {
         return 1000
       }
       if (behaviorType === 'sleep') {
@@ -2051,6 +1235,27 @@ export default {
           logicMode: 'all',
           maxSpeedPxPerSec: 0,
           maxDisplacementPx: 80
+        }
+      }
+      if (behaviorType === 'sleep_on_duty') {
+        return {
+          ruleObjectCode: defaultRuleObjectCode,
+          outputMode: 'direct_alarm',
+          direction: 'both',
+          thresholdMs: 2500,
+          thresholdCount: 0,
+          distanceThresholdPx: 32,
+          sequenceId: '',
+          stageIndex: 0,
+          stageTimeoutMs: 0,
+          stageHoldMs: 0,
+          logicMode: 'all',
+          maxSpeedPxPerSec: 0,
+          maxDisplacementPx: 0,
+          directionAngleDeg: 0,
+          directionToleranceDeg: 10,
+          directionLineId: '',
+          customEventName: '睡岗'
         }
       }
       if (behaviorType === 'sleep') {
@@ -2249,6 +1454,11 @@ export default {
     },
 
     normalizeBehaviorRuleDirectionTolerance(behaviorType, value) {
+      if (behaviorType === 'sleep_on_duty') {
+        const numericValue = Number(value)
+        const nextValue = Number.isFinite(numericValue) ? Math.round(numericValue) : 10
+        return Math.max(1, Math.min(180, nextValue))
+      }
       if (!this.isBehaviorRuleDirectionToleranceVisible(behaviorType)) {
         return 30
       }
@@ -2312,6 +1522,10 @@ export default {
       if (behaviorType === 'region_motion') {
         const nextValue = Number.isFinite(numericValue) && numericValue > 0 ? Math.round(numericValue) : 12
         return Math.max(1, Math.min(100, nextValue))
+      }
+      if (behaviorType === 'sleep_on_duty') {
+        const nextValue = Number.isFinite(numericValue) && numericValue > 0 ? Math.round(numericValue) : 32
+        return Math.max(1, Math.min(135, nextValue))
       }
       if (behaviorType === 'sleep') {
         const nextValue = Number.isFinite(numericValue) && numericValue > 0 ? numericValue : 1.2
@@ -2416,30 +1630,15 @@ export default {
     },
 
     createRegionConfig(overrides = {}) {
-      const nextIndex = this.regionSeed
+      const config = buildRegionConfig(this.regionSeed, overrides)
       this.regionSeed += 1
-      const isPrimary = Boolean(overrides.primary)
-      return {
-        id: overrides.id || (isPrimary ? 'region_primary' : `region_${nextIndex}`),
-        name: overrides.name || (isPrimary ? '主区域' : `区域${nextIndex}`),
-        type: 'polygon',
-        primary: isPrimary,
-        points: this.normalizePointList(overrides.points, 0),
-        ...overrides
-      }
+      return config
     },
 
     createLineConfig(overrides = {}) {
-      const nextIndex = this.lineSeed
+      const config = buildLineConfig(this.lineSeed, overrides)
       this.lineSeed += 1
-      return {
-        id: `line_${nextIndex}`,
-        name: `线段${nextIndex}`,
-        type: 'tripwire',
-        direction: 'both',
-        points: [],
-        ...overrides
-      }
+      return config
     },
 
     createBehaviorRule(overrides = {}, geometryConfig = this.normalizeGeometryConfig(this.form.geometryConfig, this.polygonPoints)) {
@@ -2479,44 +1678,8 @@ export default {
       return this.normalizeBehaviorRuleWithGeometry(rule, nextIndex - 1, geometryConfig)
     },
 
-    normalizeLineDirection(direction) {
-      if (direction === 'left_to_right' || direction === 'right_to_left') {
-        return direction
-      }
-      return 'both'
-    },
-
     normalizeBehaviorRuleCustomEventName(value) {
       return String(value || '').trim()
-    },
-
-    getLineDirectionLabel(direction) {
-      if (direction === 'left_to_right') {
-        return '正向'
-      }
-      if (direction === 'right_to_left') {
-        return '反向'
-      }
-      return '双向'
-    },
-
-    getNextLineDirection(direction) {
-      if (direction === 'left_to_right') {
-        return 'right_to_left'
-      }
-      if (direction === 'right_to_left') {
-        return 'both'
-      }
-      return 'left_to_right'
-    },
-
-    getCrossLineDirectionButtonText(direction) {
-      return `切换方向: ${this.getLineDirectionLabel(this.normalizeLineDirection(direction))}`
-    },
-
-    getBehaviorTypeLabel(behaviorType) {
-      const matched = this.behaviorTypeOptions.find(item => item.value === behaviorType)
-      return matched ? matched.label : behaviorType
     },
 
     getBehaviorRuleGeometryOptions(rule) {
@@ -2591,6 +1754,9 @@ export default {
       }
       if (rule.behaviorType === 'region_motion') {
         parts.push(`运动阈值 >= ${this.formatBehaviorRuleNumber(rule.distanceThresholdPx, 0)}%`)
+      }
+      if (rule.behaviorType === 'sleep_on_duty') {
+        parts.push(`低头角 >= ${this.formatBehaviorRuleNumber(rule.distanceThresholdPx, 0)}°`)
       }
       if (rule.behaviorType === 'sleep') {
         parts.push(`宽高比 >= ${this.formatBehaviorRuleNumber(rule.distanceThresholdPx)}`)
@@ -2736,6 +1902,9 @@ export default {
       }
       if (behaviorType === 'loitering') {
         return '徘徊告警'
+      }
+      if (behaviorType === 'sleep_on_duty') {
+        return '睡岗告警'
       }
       if (behaviorType === 'sleep') {
         return '睡觉告警'
@@ -2883,6 +2052,9 @@ export default {
       if (rule.behaviorType === 'loitering') {
         return `徘徊${this.formatBehaviorRuleDuration(rule.thresholdMs)}`
       }
+      if (rule.behaviorType === 'sleep_on_duty') {
+        return `睡岗${this.formatBehaviorRuleDuration(rule.thresholdMs)}`
+      }
       if (rule.behaviorType === 'sleep') {
         return `睡觉${this.formatBehaviorRuleDuration(rule.thresholdMs)}`
       }
@@ -2933,56 +2105,6 @@ export default {
       return labels
     },
 
-    drawCanvasTextLabel(ctx, text, x, y, color) {
-      if (!ctx || !text) {
-        return
-      }
-      ctx.save()
-      ctx.font = '12px sans-serif'
-      const textWidth = ctx.measureText(text).width
-      const paddingX = 6
-      const labelHeight = 18
-      const labelX = x
-      const labelY = Math.max(0, y - labelHeight + 2)
-      ctx.fillStyle = 'rgba(15, 17, 21, 0.68)'
-      ctx.fillRect(labelX - 2, labelY, textWidth + paddingX * 2, labelHeight)
-      ctx.fillStyle = color
-      ctx.fillText(text, labelX + paddingX - 2, labelY + 3)
-      ctx.restore()
-    },
-
-    drawCanvasLineArrow(ctx, startPoint, endPoint, color, lineWidth = 2) {
-      if (!ctx || !startPoint || !endPoint) {
-        return
-      }
-      const dx = Number(endPoint.x) - Number(startPoint.x)
-      const dy = Number(endPoint.y) - Number(startPoint.y)
-      const length = Math.sqrt(dx * dx + dy * dy)
-      if (!Number.isFinite(length) || length < 12) {
-        return
-      }
-
-      const angle = Math.atan2(dy, dx)
-      const arrowSize = Math.max(8, Math.min(14, lineWidth * 4))
-      const arrowAngle = Math.PI / 7
-      const tipX = endPoint.x
-      const tipY = endPoint.y
-      const leftX = tipX - arrowSize * Math.cos(angle - arrowAngle)
-      const leftY = tipY - arrowSize * Math.sin(angle - arrowAngle)
-      const rightX = tipX - arrowSize * Math.cos(angle + arrowAngle)
-      const rightY = tipY - arrowSize * Math.sin(angle + arrowAngle)
-
-      ctx.save()
-      ctx.fillStyle = color
-      ctx.beginPath()
-      ctx.moveTo(tipX, tipY)
-      ctx.lineTo(leftX, leftY)
-      ctx.lineTo(rightX, rightY)
-      ctx.closePath()
-      ctx.fill()
-      ctx.restore()
-    },
-
     getCrossLineDirectionsForLine(lineId) {
       if (!lineId) {
         return []
@@ -3001,107 +2123,6 @@ export default {
         directionSet.add(direction)
       })
       return Array.from(directionSet)
-    },
-
-    drawCanvasCrossLineDirectionIndicator(ctx, startPoint, endPoint, directions, color, lineWidth = 2) {
-      if (!ctx || !startPoint || !endPoint || !Array.isArray(directions) || !directions.length) {
-        return
-      }
-      const dx = Number(endPoint.x) - Number(startPoint.x)
-      const dy = Number(endPoint.y) - Number(startPoint.y)
-      const length = Math.sqrt(dx * dx + dy * dy)
-      if (!Number.isFinite(length) || length < 16) {
-        return
-      }
-
-      const normalX = -dy / length
-      const normalY = dx / length
-      const midX = (Number(startPoint.x) + Number(endPoint.x)) / 2
-      const midY = (Number(startPoint.y) + Number(endPoint.y)) / 2
-      const offset = Math.max(14, Math.min(24, length * 0.18))
-      const arrowLength = Math.max(18, Math.min(30, length * 0.28))
-
-      directions.forEach(direction => {
-        const isLeftToRight = direction === 'left_to_right'
-        const start = isLeftToRight
-          ? { x: midX + normalX * offset, y: midY + normalY * offset }
-          : { x: midX - normalX * offset, y: midY - normalY * offset }
-        const end = isLeftToRight
-          ? { x: midX - normalX * offset, y: midY - normalY * offset }
-          : { x: midX + normalX * offset, y: midY + normalY * offset }
-        const unitX = (end.x - start.x) / (Math.sqrt((end.x - start.x) * (end.x - start.x) + (end.y - start.y) * (end.y - start.y)) || 1)
-        const unitY = (end.y - start.y) / (Math.sqrt((end.x - start.x) * (end.x - start.x) + (end.y - start.y) * (end.y - start.y)) || 1)
-        const shortenedEnd = {
-          x: start.x + unitX * arrowLength,
-          y: start.y + unitY * arrowLength
-        }
-
-        ctx.save()
-        ctx.strokeStyle = color
-        ctx.lineWidth = Math.max(2, lineWidth)
-        ctx.beginPath()
-        ctx.moveTo(start.x, start.y)
-        ctx.lineTo(shortenedEnd.x, shortenedEnd.y)
-        ctx.stroke()
-        ctx.restore()
-
-        this.drawCanvasLineArrow(ctx, start, shortenedEnd, color, Math.max(2, lineWidth))
-      })
-    },
-
-    parseGeometryConfigInput(geometryConfig) {
-      let parsed = geometryConfig
-      if (typeof parsed === 'string') {
-        const trimmed = parsed.trim()
-        if (!trimmed) {
-          return null
-        }
-        try {
-          parsed = JSON.parse(trimmed)
-        } catch (error) {
-          return null
-        }
-      }
-
-      if (Array.isArray(parsed)) {
-        return {
-          regions: parsed,
-          lines: []
-        }
-      }
-
-      return parsed && typeof parsed === 'object' ? parsed : null
-    },
-
-    normalizePoint(point) {
-      const x = Number(point && point.x)
-      const y = Number(point && point.y)
-      if (!Number.isFinite(x) || !Number.isFinite(y)) {
-        return null
-      }
-      return {
-        x: this.clamp01(Number(x.toFixed(6))),
-        y: this.clamp01(Number(y.toFixed(6)))
-      }
-    },
-
-    normalizePointList(points, minimumCount = 0) {
-      if (!Array.isArray(points)) {
-        return []
-      }
-      const normalized = points.map(point => this.normalizePoint(point)).filter(Boolean)
-      return normalized.length >= minimumCount ? normalized : []
-    },
-
-    buildPrimaryRegion(points) {
-      return {
-        id: 'region_primary',
-        name: '主区域',
-        type: 'polygon',
-        primary: true,
-        closed: true,
-        points: this.normalizePointList(points, 3)
-      }
     },
 
     normalizeGeometryConfig(geometryConfig) {
@@ -3184,25 +2205,6 @@ export default {
       const activeRegion = this.getActiveRegion(normalized)
       this.polygonPoints = activeRegion ? this.normalizePointList(activeRegion.points, 0) : []
       this.polygonClosed = Boolean(activeRegion && activeRegion.closed)
-    },
-
-    normalizeRegionPrimaryState(regions, preferredPrimaryRegionId = '') {
-      const normalizedRegions = (regions || []).map(region => ({
-        ...region,
-        closed: Boolean(region.closed),
-        points: this.normalizePointList(region.points, 0)
-      }))
-      const currentPrimaryRegion = normalizedRegions.find(region => region.primary)
-      const fallbackPrimaryRegion = normalizedRegions.find(region => region.id === 'region_primary') || normalizedRegions[0] || null
-      const primaryRegionId =
-        preferredPrimaryRegionId ||
-        (currentPrimaryRegion ? currentPrimaryRegion.id : '') ||
-        (fallbackPrimaryRegion ? fallbackPrimaryRegion.id : '')
-
-      return normalizedRegions.map(region => ({
-        ...region,
-        primary: region.id === primaryRegionId
-      }))
     },
 
     syncGeometryConfigFromPolygon() {
@@ -3493,6 +2495,29 @@ export default {
       this.activeRuleId = nextRule.id
       this.activeSequenceId = ''
       this.workspaceTab = 'rules'
+    },
+
+    ensureSleepOnDutyBehaviorRule() {
+      const geometryConfig = this.normalizeGeometryConfig(this.form.geometryConfig, this.polygonPoints)
+      const rules = geometryConfig.behaviorRules || []
+      const hasDutyRule = rules.some(rule => this.normalizeBehaviorType(rule && rule.behaviorType) === 'sleep_on_duty')
+      if (hasDutyRule) {
+        return
+      }
+      const primaryRegion = this.getPrimaryRegion(geometryConfig)
+      const nextRule = this.createBehaviorRule({
+        id: 'sleep_on_duty_default',
+        name: '睡岗',
+        behaviorType: 'sleep_on_duty',
+        customEventName: '睡岗',
+        thresholdMs: 2500,
+        distanceThresholdPx: 32,
+        directionToleranceDeg: 10,
+        geometryId: primaryRegion ? primaryRegion.id : ''
+      }, geometryConfig)
+      geometryConfig.behaviorRules = [...rules, nextRule]
+      this.form.geometryConfig = this.normalizeBehaviorRulesInGeometry(geometryConfig)
+      this.syncGeometryEditorState()
     },
 
     ensureActiveRuleSelection() {
@@ -4316,6 +3341,9 @@ export default {
       task.targetCodes = []
       await this.loadTargetOptionsForTask(task, code)
       this.clearAlgorithmTasksValidation()
+      if (code === 'on_sleep_pose') {
+        this.ensureSleepOnDutyBehaviorRule()
+      }
     },
 
     async handleAddAlgorithmTask() {
@@ -4335,6 +3363,9 @@ export default {
       this.form.algorithmTasks.push(task)
       await this.loadTargetOptionsForTask(task, task.algorithmCode)
       this.clearAlgorithmTasksValidation()
+      if (task.algorithmCode === 'on_sleep_pose') {
+        this.ensureSleepOnDutyBehaviorRule()
+      }
     },
 
     handleRemoveAlgorithmTask(index) {
@@ -4354,7 +3385,6 @@ export default {
 
     handleVideoLoaded() {
       this.videoLoaded = true
-      this.syncCanvasSize()
     },
 
     handleDetectFramePush(event) {
@@ -4571,70 +3601,35 @@ export default {
     },
 
     playStream(url) {
-      this.destroyPlayer()
       this.videoLoaded = false
-      const video = this.$refs.previewVideo
-      if (!video || !url) {
-        return
+      if (this.$refs.previewPane) {
+        this.$refs.previewPane.playStream(url)
       }
-
-      const isFlv = /\.flv($|[?#])/i.test(url)
-      const isHttpOrWs = /^(https?:\/\/|wss?:\/\/)/i.test(url)
-
-      if (isFlv && isHttpOrWs && flvjs.isSupported()) {
-        this.flvPlayer = flvjs.createPlayer({
-          type: 'flv',
-          url,
-          isLive: true
-        })
-        this.flvPlayer.attachMediaElement(video)
-        this.flvPlayer.load()
-        this.flvPlayer.play().catch(() => {})
-        return
-      }
-
-      video.src = url
-      video.play().catch(() => {})
     },
 
     destroyPlayer() {
-      const video = this.$refs.previewVideo
-      if (this.flvPlayer) {
-        this.flvPlayer.unload()
-        this.flvPlayer.detachMediaElement()
-        this.flvPlayer.destroy()
-        this.flvPlayer = null
-      }
-      if (video) {
-        video.pause()
-        video.removeAttribute('src')
-        video.load()
-      }
       this.videoLoaded = false
+      if (this.$refs.previewPane) {
+        this.$refs.previewPane.destroyPlayer()
+      }
     },
 
     syncCanvasSize() {
-      const wrapper = this.$refs.videoWrapper
-      const canvas = this.$refs.polygonCanvas
-      if (!wrapper || !canvas) {
-        return
+      if (this.$refs.previewPane) {
+        this.$refs.previewPane.syncCanvasSize()
       }
-      const width = wrapper.clientWidth || 0
-      const height = wrapper.clientHeight || 0
-      if (!width || !height) {
-        return
-      }
-      const oldWidth = canvas.width
-      const oldHeight = canvas.height
-      if (oldWidth !== width || oldHeight !== height) {
-        canvas.width = width
-        canvas.height = height
-      }
-      this.drawPolygon()
+    },
+
+    getPreviewCanvas() {
+      return this.$refs.previewPane && this.$refs.previewPane.getCanvas()
+    },
+
+    getPreviewVideo() {
+      return this.$refs.previewPane && this.$refs.previewPane.getVideo()
     },
 
     handleCanvasClick(event) {
-      const canvas = this.$refs.polygonCanvas
+      const canvas = this.getPreviewCanvas()
       if (!canvas || !canvas.width || !canvas.height) {
         return
       }
@@ -4836,7 +3831,7 @@ export default {
     },
 
     drawPolygon() {
-      const canvas = this.$refs.polygonCanvas
+      const canvas = this.getPreviewCanvas()
       if (!canvas) {
         return
       }
@@ -4992,7 +3987,7 @@ export default {
     },
 
     getVideoDisplayRect(canvas, fallbackWidth, fallbackHeight) {
-      const video = this.$refs.previewVideo
+      const video = this.getPreviewVideo()
       const canvasWidth = Number(canvas && canvas.width) || 0
       const canvasHeight = Number(canvas && canvas.height) || 0
       if (!canvasWidth || !canvasHeight) {
@@ -5026,12 +4021,6 @@ export default {
         width,
         height
       }
-    },
-
-    clamp01(value) {
-      if (value < 0) return 0
-      if (value > 1) return 1
-      return value
     },
 
     async handleSave() {
@@ -5228,33 +4217,6 @@ export default {
   margin-bottom: 8px;
 }
 
-.rules-workspace {
-  display: grid;
-  grid-template-columns: minmax(120px, 168px) minmax(0, 1fr);
-  gap: 12px;
-}
-
-.rules-nav {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.rules-nav-item {
-  text-align: left;
-  padding: 8px 10px;
-  border: 1px solid var(--sva-border);
-  border-radius: 6px;
-  background: var(--sva-surface-2);
-  color: var(--sva-text);
-  cursor: pointer;
-}
-
-.rules-nav-item.is-active {
-  border-color: var(--sva-accent);
-  color: var(--sva-accent);
-}
-
 @media (max-width: 1100px) {
   .workspace-body {
     grid-template-columns: 1fr;
@@ -5266,19 +4228,6 @@ export default {
     overflow: visible;
   }
 
-  .video-wrapper {
-    flex: none;
-    max-height: 36dvh;
-  }
-
-  .rules-workspace {
-    grid-template-columns: 1fr;
-  }
-
-  .rules-nav {
-    flex-direction: row;
-    flex-wrap: wrap;
-  }
 }
 
 @media (max-width: 720px) {
@@ -5331,35 +4280,6 @@ export default {
   min-height: 0;
   display: flex;
   flex-direction: column;
-}
-
-.video-wrapper {
-  position: relative;
-  width: 100%;
-  flex: 1 1 auto;
-  min-height: 200px;
-  background: #0f1115;
-  border-radius: 4px;
-  overflow: hidden;
-}
-
-.preview-video,
-.polygon-canvas {
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: 100%;
-  height: 100%;
-}
-
-.preview-video {
-  object-fit: contain;
-  background: #0f1115;
-}
-
-.polygon-canvas {
-  z-index: 2;
-  cursor: crosshair;
 }
 
 .video-rule-overlay {
@@ -5503,37 +4423,6 @@ export default {
   color: rgba(255, 255, 255, 0.74);
 }
 
-.video-toolbar {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 12px;
-  color: var(--sva-text-muted);
-  font-size: 12px;
-}
-
-.geometry-mode-switch,
-.region-select,
-.line-select {
-  flex-shrink: 0;
-}
-
-.region-select,
-.line-select {
-  width: 180px;
-}
-
-.point-count,
-.polygon-state,
-.geometry-state,
-.primary-region-state,
-.geometry-editor-hint {
-  line-height: 22px;
-  font-size: 12px;
-  color: var(--sva-text-muted);
-}
-
 .algorithm-task-list {
   display: flex;
   flex-direction: column;
@@ -5601,422 +4490,6 @@ export default {
   text-decoration: underline;
 }
 
-.behavior-rule-toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 8px;
-}
-
-.behavior-rule-hint {
-  font-size: 12px;
-  line-height: 1.5;
-  color: var(--sva-text-muted);
-}
-
-.behavior-rule-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.behavior-rule-section {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.behavior-rule-section-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.behavior-rule-section-title {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--sva-text);
-}
-
-.behavior-rule-section-meta {
-  font-size: 12px;
-  color: var(--sva-text-muted);
-}
-
-.behavior-rule-item {
-  position: relative;
-  padding: 12px;
-  border: 1px solid var(--sva-border);
-  border-radius: 8px;
-  background: var(--sva-surface-2);
-  box-shadow: none;
-}
-
-.behavior-rule-item--standalone {
-  border-color: var(--sva-border);
-  background: var(--sva-surface-2);
-}
-
-.behavior-rule-item--standalone::before {
-  content: '';
-  position: absolute;
-  top: 10px;
-  bottom: 10px;
-  left: 0;
-  width: 3px;
-  border-radius: 999px;
-  background: var(--sva-accent);
-}
-
-.behavior-sequence-group {
-  --behavior-sequence-border: var(--sva-border);
-  --behavior-sequence-background: var(--sva-surface-2);
-  padding: 12px;
-  border: 1px solid var(--behavior-sequence-border);
-  border-radius: 8px;
-  background: var(--behavior-sequence-background);
-}
-
-.behavior-sequence-group--tone-1,
-.behavior-sequence-group--tone-2,
-.behavior-sequence-group--tone-3,
-.behavior-sequence-group--tone-4 {
-  --behavior-sequence-border: var(--sva-border);
-  --behavior-sequence-background: var(--sva-surface-2);
-}
-
-.behavior-sequence-group-header {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-
-.behavior-sequence-group-row {
-  display: grid;
-  align-items: start;
-  gap: 10px;
-}
-
-.behavior-sequence-group-row--first {
-  grid-template-columns: minmax(0, 1fr) auto;
-}
-
-.behavior-sequence-group-row--second {
-  grid-template-columns: minmax(0, 1fr) minmax(180px, 220px);
-}
-
-.behavior-sequence-group-row--third {
-  grid-template-columns: 1fr;
-}
-
-.behavior-sequence-group-field {
-  min-width: 0;
-}
-
-.behavior-sequence-group-field .el-input,
-.behavior-sequence-group-field .el-select {
-  width: 100%;
-}
-
-.behavior-sequence-group-title {
-  font-size: 13px;
-  font-weight: 600;
-  line-height: 1.5;
-  color: var(--sva-text);
-}
-
-.behavior-sequence-group-title-line {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
-  flex-wrap: wrap;
-}
-
-.behavior-sequence-group-meta {
-  font-size: 12px;
-  line-height: 1.5;
-  color: var(--sva-text-muted);
-}
-
-.behavior-sequence-group-meta--inline {
-  white-space: nowrap;
-}
-
-.behavior-sequence-group-meta--summary {
-  color: var(--sva-text-muted);
-}
-
-.behavior-rule-header {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 10px;
-  margin-bottom: 10px;
-}
-
-.behavior-rule-grid-row {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  align-items: start;
-  gap: 12px;
-}
-
-.behavior-rule-grid-row--first {
-  margin-bottom: 2px;
-}
-
-.behavior-rule-grid-row--first .behavior-rule-field-label--compact {
-  min-height: 21px;
-  display: flex;
-  align-items: center;
-}
-
-.behavior-rule-grid-row--sequence {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.behavior-rule-grid-row .el-select,
-.behavior-rule-grid-row .el-input,
-.behavior-rule-grid-row .el-input-number {
-  width: 100%;
-}
-
-.behavior-rule-grid-row .el-input-number .el-input {
-  width: 100%;
-}
-
-.behavior-rule-header-info {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  min-width: 0;
-  flex: 1;
-}
-
-.behavior-rule-header-info--col {
-  width: 100%;
-}
-
-.behavior-rule-header-target {
-  max-width: none;
-}
-
-.behavior-rule-header-output-mode {
-  max-width: none;
-}
-
-.behavior-rule-effective-type-label-row {
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 8px;
-  min-height: 18px;
-}
-
-.behavior-rule-effective-type-value-inline {
-  font-size: 14px;
-  font-weight: 600;
-  line-height: 1.5;
-  color: var(--sva-text);
-}
-
-.behavior-rule-event-editor {
-  width: 280px;
-  max-width: 100%;
-}
-
-.behavior-rule-select-field {
-  width: 100%;
-}
-
-.behavior-rule-effective-type-field {
-  width: 100%;
-  height: 100%;
-}
-
-.behavior-rule-event-input {
-  width: 100%;
-  max-width: 100%;
-}
-
-.behavior-rule-actions {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 10px;
-  flex-shrink: 0;
-  white-space: nowrap;
-}
-
-.behavior-rule-actions--switch-only {
-  min-height: 56px;
-  justify-content: flex-end;
-  align-items: center;
-}
-
-.behavior-rule-actions--icon-group {
-  gap: 4px;
-}
-
-.behavior-rule-action-icon {
-  padding: 5px;
-  font-size: 19px;
-  color: var(--sva-text-muted);
-}
-
-.behavior-rule-action-icon:hover {
-  color: #409eff;
-}
-
-.behavior-rule-action-icon--active {
-  color: #409eff;
-}
-
-.behavior-rule-action-icon--danger {
-  color: #f56c6c;
-}
-
-.behavior-rule-action-icon--danger:hover {
-  color: #ff7875;
-}
-
-.behavior-rule-grid-placeholder {
-  min-height: 56px;
-}
-
-.behavior-rule-output-mode-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: start;
-  gap: 10px;
-}
-
-.behavior-rule-output-mode-row .el-select {
-  min-width: 0;
-}
-
-@media (max-width: 1500px) {
-  .behavior-rule-output-mode-row {
-    grid-template-columns: 1fr;
-    gap: 6px;
-  }
-}
-
-.behavior-rule-title {
-  font-size: 13px;
-  font-weight: 600;
-  line-height: 1.5;
-  color: var(--sva-text);
-}
-
-.behavior-rule-item--grouped {
-  --behavior-stage-accent: #94a3b8;
-  padding-top: 14px;
-  background: var(--sva-surface-2);
-}
-
-.behavior-rule-item--grouped::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 4px;
-  border-radius: 8px 8px 0 0;
-  background: linear-gradient(90deg, var(--behavior-stage-accent) 0%, rgba(255, 255, 255, 0.35) 100%);
-}
-
-.behavior-rule-item--stage-1 {
-  --behavior-stage-accent: #3b82f6;
-}
-
-.behavior-rule-item--stage-2 {
-  --behavior-stage-accent: #2f855a;
-}
-
-.behavior-rule-item--stage-3 {
-  --behavior-stage-accent: #d97706;
-}
-
-.behavior-rule-item--stage-4 {
-  --behavior-stage-accent: #7c3aed;
-}
-
-.behavior-rule-subrow {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-  margin-top: 8px;
-}
-
-.behavior-rule-subrow::before,
-.behavior-rule-subrow::after {
-  display: none;
-}
-
-.behavior-rule-subrow > [class*='el-col-'] {
-  float: none;
-  width: auto;
-  max-width: none;
-  padding-left: 0 !important;
-  padding-right: 0 !important;
-}
-
-.behavior-rule-subrow .el-select,
-.behavior-rule-subrow .el-input,
-.behavior-rule-subrow .el-input-number {
-  width: 100%;
-}
-
-.behavior-rule-subrow .el-input-number .el-input {
-  width: 100%;
-}
-
-.behavior-rule-field-label {
-  margin-bottom: 4px;
-  font-size: 12px;
-  line-height: 1.5;
-  color: var(--sva-text-muted);
-}
-
-.behavior-rule-field-label--compact {
-  margin-bottom: 2px;
-}
-
-.behavior-rule-direction-toggle-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 32px;
-}
-
-.behavior-rule-direction-hint {
-  font-size: 12px;
-  line-height: 1.5;
-  color: var(--sva-text-muted);
-}
-
-.behavior-rule-summary {
-  min-height: 32px;
-  padding: 6px 10px;
-  font-size: 12px;
-  line-height: 20px;
-  color: var(--sva-text-muted);
-  background: var(--sva-surface-2);
-  border-radius: 4px;
-}
-
-.behavior-rule-empty {
-  padding: 10px 12px;
-  font-size: 12px;
-  color: var(--sva-text-muted);
-  background: var(--sva-surface-2);
-  border-radius: 4px;
-}
 
 @media (max-width: 1200px) {
   .deployment-add-page {
@@ -6025,52 +4498,6 @@ export default {
 
   .algorithm-task-params-row .el-col {
     margin-bottom: 8px;
-  }
-
-  .behavior-rule-header {
-    align-items: flex-start;
-  }
-
-  .behavior-rule-grid-row {
-    width: 100%;
-    align-items: flex-start;
-    grid-template-columns: 1fr;
-  }
-
-  .behavior-rule-actions {
-    width: 100%;
-    justify-content: flex-end;
-  }
-
-  .behavior-rule-output-mode-row {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .behavior-rule-subrow {
-    grid-template-columns: 1fr;
-  }
-
-  .behavior-rule-header-info,
-  .behavior-rule-event-editor,
-  .behavior-rule-header-info--col {
-    width: 100%;
-    max-width: none;
-  }
-
-  .behavior-rule-header-target,
-  .behavior-sequence-group-row--second {
-    max-width: none;
-    min-width: 0;
-    width: 100%;
-  }
-
-  .behavior-sequence-group-row--second {
-    grid-template-columns: 1fr;
-  }
-
-  .behavior-rule-event-input {
-    width: 100%;
   }
 }
 </style>

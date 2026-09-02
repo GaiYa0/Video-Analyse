@@ -27,9 +27,8 @@
 
 <script>
 import { getDeviceNum } from '@/api/system/kanban';
-import { markRaw } from 'vue'
-import * as echarts from 'echarts'
 import BarChart from '@/views/dping/components/templateChart.vue'
+import { SVA_CHART_ACCENT, SVA_CHART_MUTED, SVA_CHART_SPLIT, SVA_CHART_TEXT } from '@/utils/chartTheme'
 let style = {
   fontSize: 24
 }
@@ -55,10 +54,10 @@ const option =  {
           color: [[1, "rgba(255,255,255,0)"]],
         }
       },
-      //刻度标签。
+      //刻度标签。橙红装饰语义不改。
       axisTick: {
         show: true,
-        splitNumber: 6, //刻度的段落数
+        splitNumber: 5,
         itemStyle: {
           color: {
             type: 'linear',
@@ -69,24 +68,26 @@ const option =  {
             colorStops: [
               {
                 offset: 0,
-                color: '#f12711' // 0% 处的颜色
+                color: '#f12711'
               },
               {
                 offset: 1,
-                color: '#f5af19' // 100% 处的颜色
+                color: '#f5af19'
               }
             ],
-            global: false // 缺省为 false
+            global: false
           }
         },
-        length: 2, //刻度的长度
+        length: 4,
       },
       splitLine: {
         show: false,
+        lineStyle: { color: SVA_CHART_SPLIT, width: 1 }
       },
-      // //刻度线文字
       axisLabel: {
         show: false,
+        color: SVA_CHART_MUTED,
+        fontSize: 10
       },
 
       data: [],
@@ -95,7 +96,7 @@ const option =  {
         length: "60%",
         radius: "50%",
         itemStyle: {
-          color: '#ffffff'
+          color: SVA_CHART_TEXT
         },
         width: 3, //指针粗细
         offsetCenter: [0, 0],
@@ -166,7 +167,7 @@ export default {
             detail: {
               show: true,
               offsetCenter: [0, "30%"],
-              color: "#6b9bb8",
+              color: SVA_CHART_ACCENT,
               formatter: function (params) {
                 return '监测点：' + params;
               },
@@ -186,7 +187,7 @@ export default {
             detail: {
               show: true,
               offsetCenter: [0, "30%"],
-              color: "#6b9bb8",
+              color: SVA_CHART_ACCENT,
               formatter: function (params) {
                 return '在线：' + params;
               },
@@ -206,7 +207,7 @@ export default {
             detail: {
               show: true,
               offsetCenter: [0, "30%"],
-              color: "#6b9bb8",
+              color: SVA_CHART_ACCENT,
               formatter: function (params) {
                 return '离线：' + params;
               },
@@ -224,7 +225,7 @@ export default {
         style: {
           ...style,
           // stroke: "#00fdfa",
-          fill: "#6b9bb8",
+          fill: SVA_CHART_ACCENT,
         },
       },
       onlineconfig: {
@@ -273,22 +274,10 @@ export default {
   },
   methods: {
     initChart() {
-      const dom = this.$refs.firstBar.$refs.templateChart
-      const dom2 = this.$refs.secondBar.$refs.templateChart
-      const dom3 = this.$refs.thirdBar.$refs.templateChart
-      const chart = echarts.init(dom)
-      const chart2 = echarts.init(dom2)
-      const chart3 = echarts.init(dom3)
-      dom.setAttribute('_echarts_instance_', '')
-      dom2.setAttribute('_echarts_instance_', '')
-      dom3.setAttribute('_echarts_instance_', '')
-      this.$refs.firstBar.initChart()
-      this.$refs.secondBar.initChart()
-      this.$refs.thirdBar.initChart()
-      window.addEventListener('resize', () => {
-        chart.resize()
-        chart2.resize()
-        chart3.resize()
+      this.$nextTick(() => {
+        this.$refs.firstBar && this.$refs.firstBar.initChart()
+        this.$refs.secondBar && this.$refs.secondBar.initChart()
+        this.$refs.thirdBar && this.$refs.thirdBar.initChart()
       })
     },
 

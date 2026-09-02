@@ -1,13 +1,16 @@
 <!-- 报警统计 -->
 <template>
-  <div class="echart" id="levelDis" :style="levelStyle"></div>
+  <div ref="levelDis" class="echart" id="levelDis" :style="levelStyle"></div>
 </template>
 
 <script>
 import {getLevelSpread} from '@/api/system/kanban';
-import * as echarts from "echarts";
+import echartsLifecycle from '@/mixins/echartsLifecycle';
+import { SVA_CHART_PALETTE, SVA_CHART_TEXT, svaCountTooltip } from '@/utils/chartTheme';
 
 export default {
+  mixins: [echartsLifecycle],
+  echartsFields: ['levelChart'],
   data() {
     return {
       levelStyle: {
@@ -35,24 +38,24 @@ export default {
   methods: {
     initLevelEcharts() {
       const option = {
-        color: ['#6b9bb8', '#8b949e', '#c48c5a'],
+        color: SVA_CHART_PALETTE,
         backgroundColor: 'transparent',
         legend: {
           orient: 'vertical',
           x: 'center',
           bottom: '15%',
           textStyle: {
-            color: '#f2f2f2',
+            color: SVA_CHART_TEXT,
             fontSize: 14,
 
           },
           icon: 'roundRect',
           data: this.levelData,
         },
-        tooltip: {
+        tooltip: svaCountTooltip({
           trigger: 'item',
-          formatter: '{b} : {c}'
-        },
+          formatter: '{b} : {c} 条'
+        }),
         series: [
           // 主要展示层的
           {
@@ -112,20 +115,19 @@ export default {
         ]
       }
 
-      const dom = document.getElementById("levelDis")
-      dom.setAttribute('_echarts_instance_', '')
-      const levelDis = echarts.init(dom)
-      levelDis.on('click', (params) => {
+      const levelDis = this.ensureChart('levelChart', this.$refs.levelDis, (params) => {
         if (params.data.name === "未处理") {
           this.$router.push({path: "/warning/warning", query: {withQue: 2, is_handle: 0}});
         } else {
           this.$router.push({path: "/warning/warning", query: {withQue: 2, is_handle: 1}});
         }
       });
+      if (!levelDis) {
+        return
+      }
       levelDis.setOption(option);
-      // 随着屏幕大小调节图表
-      window.addEventListener("resize", () => {
-        levelDis.resize();
+      this.bindChartResize(() => {
+        this.levelChart && this.levelChart.resize();
       });
 
     },
@@ -138,7 +140,7 @@ export default {
           value: item.num,
           name: item.is_handle,
           label: {
-            color: "white" // 指示文字颜色
+            color: SVA_CHART_TEXT
           }
         });
       });

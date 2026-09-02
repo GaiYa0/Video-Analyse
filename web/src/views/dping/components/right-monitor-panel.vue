@@ -55,9 +55,9 @@
 </template>
 
 <script>
-import flvjs from 'flv.js'
 import { getDeviceList, previewDeviceMonitor } from '@/api/device'
 import { getAlarmPhoto } from '@/api/system/kanban'
+import { destroyFlvPlayer, playHttpFlv, resetVideoElement } from '@/utils/flvPlayer'
 
 export default {
   name: 'RightMonitorPanel',
@@ -292,17 +292,8 @@ export default {
       }
 
       this.destroyStreamPlayer(index)
-      const isFlv = /\.flv($|[?#])/i.test(url)
-      const isHttpOrWs = /^(https?:\/\/|wss?:\/\/)/i.test(url)
-
-      if (isFlv && isHttpOrWs && flvjs.isSupported()) {
-        const player = flvjs.createPlayer({
-          type: 'flv',
-          url,
-          isLive: true
-        })
-        player.attachMediaElement(video)
-        player.load()
+      const player = playHttpFlv(video, url)
+      if (player) {
         player.play().then(() => {
           this.updateStreamCard(index, { status: 'playing', previewUrl: url, player })
         }).catch(() => {
@@ -326,18 +317,12 @@ export default {
       const video = this.$refs[`liveVideo${index}`]
       if (card && card.player) {
         try {
-          card.player.unload()
-          card.player.detachMediaElement()
-          card.player.destroy()
+          destroyFlvPlayer(card.player)
         } catch (error) {
           // Ignore teardown errors to avoid blocking later stream recovery.
         }
       }
-      if (video) {
-        video.pause()
-        video.removeAttribute('src')
-        video.load()
-      }
+      resetVideoElement(video)
       if (card) {
         this.updateStreamCard(index, { player: null })
       }

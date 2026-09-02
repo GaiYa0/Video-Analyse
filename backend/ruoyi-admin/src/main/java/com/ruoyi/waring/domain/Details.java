@@ -27,6 +27,7 @@ public class Details {
     private String sva_crossing_direction;
     private String end_time;
     private Long duration_ms;
+    private Double sva_pitch_degree;
     private String ai_review_status;
     private String ai_review_decision;
     private String ai_review_summary;

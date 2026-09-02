@@ -100,140 +100,39 @@
                 @pagination="fetchData"/>
 
 
-    <el-dialog :title="title" :visible.sync="openDetails" width="1200px" append-to-body destroy-on-close @close="handleDetailDialogClose">
-      <el-row>
-        <el-col :span="15">
-          <div class="grid-content bg-purple">
-            <div class="block">
-              <el-image v-if="detailsInfo.picture_absolute_url" :src="detailsInfo.picture_absolute_url"
-                        :preview-src-list="[detailsInfo.picture_absolute_url]"></el-image>
-              <div v-else>暂无抓拍</div>
-            </div>
-            <div class="detail-video-toolbar">
-              <el-button size="mini" type="primary" icon="el-icon-video-play" :loading="detailVideoLoading"
-                         @click="playDetailVideo">
-                {{ detailVideoVisible ? '重新加载视频证据' : '播放视频证据' }}
-              </el-button>
-            </div>
-            <div v-if="detailVideoVisible" class="detail-video-panel">
-              <player :viewProof="detailVideoVisible" :rtspUrl="rtspUrl" :inline="true"
-                      @closeProof="closeDetailVideo" title="视频证据查看">
-              </player>
-            </div>
-          </div>
-        </el-col>
-
-        <el-col :span="9">
-          <div class="grid-content bg-purple-light">
-            <el-descriptions class="margin-top" title="报警信息" :column="1" size="medium"
-                             style="margin: 0px 0 35px 40px;">
-              <el-descriptions-item label="报警类型">
-                <span
-                  class="alarm-type-badge"
-                  :class="{ 'is-sleep': isSleepType(detailsInfo.alarm_type_name) }"
-                >{{ detailsInfo.alarm_type_name || '—' }}</span>
-              </el-descriptions-item>
-              <el-descriptions-item label="报警时间"> {{ detailsInfo.alarm_time }}</el-descriptions-item>
-              <el-descriptions-item label="设备通道">
-                <el-tag size="small"> {{ detailsInfo.device_name }}</el-tag>
-              </el-descriptions-item>
-              <el-descriptions-item label="行为类型"> {{ getBehaviorTypeLabel(detailsInfo.sva_behavior_type) }}</el-descriptions-item>
-              <el-descriptions-item label="规则ID"> {{ detailsInfo.sva_rule_id || '---' }}</el-descriptions-item>
-              <el-descriptions-item label="区域名称"> {{ detailsInfo.sva_region_name || '---' }}</el-descriptions-item>
-              <el-descriptions-item label="线段名称"> {{ detailsInfo.sva_line_name || '---' }}</el-descriptions-item>
-              <el-descriptions-item label="跨线方向"> {{ getCrossingDirectionLabel(detailsInfo.sva_crossing_direction) }}</el-descriptions-item>
-              <el-descriptions-item label="事件阶段"> {{ getEventStateLabel(detailsInfo.sva_event_state) }}</el-descriptions-item>
-              <el-descriptions-item label="持续时长"> {{ formatDuration(detailsInfo.duration_ms) }}</el-descriptions-item>
-              <el-descriptions-item label="结束时间"> {{ detailsInfo.end_time || '---' }}</el-descriptions-item>
-              <el-descriptions-item label="处理状态"> {{ isHandled(detailsInfo.is_handle) ? '已处理' : '未处理' }}
-              </el-descriptions-item>
-              <el-descriptions-item label="处理方式"> {{ isHandled(detailsInfo.is_handle) ? (detailsInfo.h_title || '---') : '---' }}
-              </el-descriptions-item>
-              <el-descriptions-item label="处理单位"> {{
-                  isHandled(detailsInfo.is_handle) ? detailsInfo.h_org_name : '---'
-                }}
-              </el-descriptions-item>
-              <el-descriptions-item label="处理意见"> {{ isHandled(detailsInfo.is_handle) ? detailsInfo.h_remark : '---' }}
-              </el-descriptions-item>
-              <el-descriptions-item label="处理时间"> {{
-                  isHandled(detailsInfo.is_handle) ? detailsInfo.h_create_time : '---'
-                }}
-              </el-descriptions-item>
-              <el-descriptions-item label="AI复核状态">
-                <el-tag size="small" :type="getAiReviewStatusType(detailsInfo.ai_review_status, detailsInfo.ai_review_decision)">
-                  {{ getAiReviewStatusLabel(detailsInfo.ai_review_status, detailsInfo.ai_review_decision) }}
-                </el-tag>
-              </el-descriptions-item>
-              <el-descriptions-item label="AI复核结论"> {{ getAiDecisionLabel(detailsInfo.ai_review_decision) }}
-              </el-descriptions-item>
-              <el-descriptions-item label="误报分数"> {{ formatAiScore(detailsInfo.ai_false_positive_score) }}
-              </el-descriptions-item>
-              <el-descriptions-item label="AI复核时间"> {{ detailsInfo.ai_review_time || '---' }}
-              </el-descriptions-item>
-              <el-descriptions-item label="AI摘要"> {{ detailsInfo.ai_review_summary || '---' }}
-              </el-descriptions-item>
-            </el-descriptions>
-
-            <el-alert
-              v-if="isHandled(detailsInfo.is_handle) && !hasHandleDetail(detailsInfo)"
-              title="该告警已标记为已处理，但未找到处理明细记录"
-              type="warning"
-              :closable="false"
-              show-icon
-              class="detail-handle-alert"
-            />
-
-            <div class="detail-solve-panel">
-              <el-divider>处理报警</el-divider>
-              <el-form :model="solveData" :rules="solveRules" label-width="80px" ref="solveForm">
-                <el-form-item label="处理方式" prop="h_title">
-                  <el-radio-group v-model="solveData.h_title">
-                    <el-radio label="确认"></el-radio>
-                    <el-radio label="误报"></el-radio>
-                  </el-radio-group>
-                </el-form-item>
-                <el-form-item label="处理意见" prop="h_remark">
-                  <el-input type="textarea" :rows="6" v-model="solveData.h_remark"/>
-                </el-form-item>
-              </el-form>
-            </div>
-          </div>
-        </el-col>
-      </el-row>
-
-      <div slot="footer" class="dialog-footer">
-        <el-button v-if="detailsInfo.w_id || detailActionRow.w_id" type="primary" @click="comfirmSolve">提 交</el-button>
-        <el-button plain @click="openDetails = false">关 闭</el-button>
-      </div>
-    </el-dialog>
+    <warning-detail-dialog
+      ref="detailDialog"
+      :visible.sync="openDetails"
+      :title="title"
+      :details-info="detailsInfo"
+      :solve-data="solveData"
+      :solve-rules="solveRules"
+      :detail-video-visible="detailVideoVisible"
+      :detail-video-loading="detailVideoLoading"
+      :rtsp-url="rtspUrl"
+      :action-row-id="detailActionRow.w_id"
+      :show-sleep-badge="true"
+      :show-sva-fields="true"
+      :show-ai-fields="true"
+      @close="handleDetailDialogClose"
+      @submit="comfirmSolve"
+      @play-video="playDetailVideo"
+      @close-video="closeDetailVideo"
+    />
   </div>
 </template>
 
 <script>
-import {
-  getAlarmTypeFilterOptions,
-  getTeamWaring,
-  getWarningDetail,
-  getWarningList,
-  handleWarning
-} from "@/api/warning";
-import {getDeptList} from '@/api/system/kanban';
-import player from "@/components/RTSPPlayer"
-import store from '@/store'
-import { getVideoEvidenceUnavailableMessage, resolveAlarmVideoUrl } from '@/utils/alarmVideo'
-
-const formatDateLocal = (date) => {
-  const d = date instanceof Date ? date : new Date(date)
-  const year = d.getFullYear()
-  const month = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
+import { getWarningList } from '@/api/warning'
+import { getBehaviorTypeLabel as resolveBehaviorTypeLabel, isKnownBehaviorType } from '@/utils/behaviorTypes'
+import WarningDetailDialog from './components/WarningDetailDialog.vue'
+import warningListMixin, { formatDateLocal } from './mixins/warningListMixin'
 
 export default {
   name: "Warning",
   dicts: ['sys_normal_disable'],
-  components: {player},
+  mixins: [warningListMixin],
+  components: { WarningDetailDialog },
 
   data() {
     return {
@@ -355,6 +254,9 @@ export default {
     });
   },
   methods: {
+    fetchWarningList(params) {
+      return getWarningList(params)
+    },
     solveRouterQuery() {
       this.querySpecificParamsWatch = false;
       this.dateRangeWatch = false;
@@ -429,214 +331,6 @@ export default {
       this.dateRangeWatch = true;
       this.fetchData();
     },
-    // 处理查询时间
-    handleTime() {
-      if (this.dateRange == null || this.dateRange.length === 0) {
-        this.queryParams.begin = undefined;
-        this.queryParams.end = undefined;
-        return;
-      }
-      const formattedDateRange = [
-        this.dateRange[0] + ' 00:00:00',
-        this.dateRange[1] + ' 23:59:59'
-      ];
-
-      const timestamps = formattedDateRange.map(dateStr => {
-        const date = new Date(dateStr);
-        return Math.round(date.getTime() / 1000);
-      });
-
-      if (timestamps.length === 2) {
-        this.queryParams.begin = timestamps[0];
-        this.queryParams.end = timestamps[1];
-      }
-    },
-
-    // 导出数据
-    handleExport() {
-      const {pageNum, pageSize, ...newQueryParams} = this.queryParams;
-      this.download('/waring/waring/importTemplate', {
-        ...newQueryParams
-      }, `报警信息_${new Date().getTime()}.xlsx`)
-    },
-
-    // 获取报警列表
-    async fetchData() {
-      try {
-        this.loading = true;
-        this.handleTime();
-        const response = await getWarningList({...this.queryParams, ...this.querySpecificParams});
-        this.warningList = response.rows;
-        this.total = response.total;
-        this.loading = false;
-        this.auth = response.token;
-        // if(response)
-        // 
-      } catch (error) {
-        console.error(error);
-      }
-    },
-
-    // 获取搜索下拉
-    async fetchQueryOptionData() {
-      try {
-        const permissions = store.getters && store.getters.permissions;
-        const all_permission = "*:*:*";
-        const permissionFlag = "getDeptList";
-        const hasPermissions = permissions.some(permission => {
-          return all_permission === permission || permissionFlag.includes(permission)
-        })
-        if (hasPermissions) {
-          const deptListRes = await getDeptList();
-          this.orgOptions = [
-            {
-              value: '',
-              label: '全部'
-            },
-            ...deptListRes.data.map((item) => ({
-              value: item.orgIndex,
-              label: item.deptName
-            }))
-          ];
-        }
-        const typeWarningRes = await getAlarmTypeFilterOptions();
-        this.typeWarningOptions = typeWarningRes.data.map(item => ({
-          value: item.alarm_type_name,
-          label: item.alarm_type_name
-        }));
-        const teamWarningRes = await getTeamWaring();
-        this.teamOptions = teamWarningRes.data.map(item => ({
-          value: item.team_name,
-          label: item.team_name
-        }));
-      } catch (error) {
-        console.error(error);
-      }
-    },
-
-    // 查询数据
-    handleQuery() {
-      // const currentPath = this.$route.path;
-      // const currentQuery = {...this.$route.query}
-      // delete currentQuery.wid
-      // this.$router.push({path: currentPath, query: currentQuery})
-      this.queryParams.pageNum = 1;
-      this.fetchData();
-    },
-
-    // 查看详情
-    async viewDetail(row) {
-      const id = row.w_id;
-      try {
-        const response = await getWarningDetail(id);
-        this.detailsInfo = response.data;
-        this.detailActionRow = Object.assign({}, row || {}, response.data || {});
-        this.resetSolveForm(this.detailActionRow);
-        this.closeDetailVideo();
-        this.openDetails = true;
-        this.title = "报警详情";
-      } catch (error) {
-        console.error(error);
-      }
-    },
-
-    // 提交处理
-    comfirmSolve() {
-      this.$refs['solveForm'].validate(async (valid) => {
-        if (valid) {
-          try {
-            const response = await handleWarning(this.solveData);
-            if (response.code !== 200) throw new Error(response.message);
-            await this.fetchData();
-            const detailResponse = await getWarningDetail(this.solveData.w_id);
-            this.detailsInfo = detailResponse.data;
-            this.detailActionRow = Object.assign({}, this.detailActionRow, detailResponse.data || {});
-            this.resetSolveForm(this.detailActionRow);
-          } catch (error) {
-            console.error(error);
-          }
-        } else return false;
-      });
-    },
-
-    resetSolveForm(detail = {}) {
-      this.solveData = {
-        w_id: detail.w_id || "",
-        h_title: detail.h_title || "",
-        h_remark: detail.h_remark || ""
-      };
-      this.$nextTick(() => {
-        if (this.$refs.solveForm) {
-          this.$refs.solveForm.clearValidate();
-        }
-      });
-    },
-
-    handleDetailDialogClose() {
-      this.closeDetailVideo();
-      this.resetSolveForm({});
-      this.detailsInfo = {};
-      this.detailActionRow = {};
-    },
-
-    closeDetailVideo() {
-      this.detailVideoVisible = false;
-      this.rtspUrl = "";
-    },
-
-    async playDetailVideo() {
-      await this.viewVideo(this.detailActionRow);
-    },
-
-    // 查看视频证据
-    toAbsoluteMediaUrl(path) {
-      if (!path) return "";
-      if (/^https?:\/\//i.test(path)) return path;
-      if (path.startsWith('/')) return `${window.location.origin}${path}`;
-      return `${window.location.origin}/${path}`;
-    },
-
-    resolveVideoMediaUrl(row) {
-      return resolveAlarmVideoUrl(row, this.toAbsoluteMediaUrl.bind(this))
-    },
-
-    async viewVideo(row) {
-      if (!row || !row.device_id || !row.alarm_time) {
-        this.$modal.msgError("缺少视频取证信息");
-        return;
-      }
-
-      this.detailVideoLoading = true;
-      const localVideoUrl = this.resolveVideoMediaUrl(row);
-      if (localVideoUrl) {
-        this.rtspUrl = localVideoUrl;
-        this.detailVideoVisible = true;
-        this.detailVideoLoading = false;
-        return;
-      }
-
-      this.$modal.msgError(getVideoEvidenceUnavailableMessage(row));
-      this.detailVideoLoading = false;
-    },
-
-    // 多选框选中数据
-    handleSelectionChange(selection) {
-      this.ids = selection.map(item => item.w_id)
-      this.single = selection.length != 1
-      this.multiple = !selection.length
-    },
-
-    isSleepType(name) {
-      return String(name || '').indexOf('睡岗') !== -1
-    },
-
-    isHandled(value) {
-      return String(value) === '1';
-    },
-
-    hasHandleDetail(detail = {}) {
-      return !!(detail.h_title || detail.h_org_name || detail.h_remark || detail.h_create_time);
-    },
 
     getAiReviewStatusLabel(status, decision) {
       if (!status) return '未复核';
@@ -668,33 +362,14 @@ export default {
       return '---';
     },
 
-    formatAiScore(score) {
-      if (score === undefined || score === null || score === '') {
-        return '---';
-      }
-      const numericScore = Number(score);
-      if (!Number.isFinite(numericScore)) {
-        return '---';
-      }
-      return numericScore.toFixed(2);
-    },
-
     getBehaviorTypeLabel(behaviorType) {
-      if (behaviorType === 'cross_line') return '跨线';
-      if (behaviorType === 'enter_region') return '进区';
-      if (behaviorType === 'exit_region') return '出区';
-      if (behaviorType === 'dwell') return '停留';
-      if (behaviorType === 'low_speed') return '低速';
-      if (behaviorType === 'loitering') return '徘徊';
-      if (behaviorType === 'absence') return '缺席';
-      if (behaviorType === 'count_threshold') return '数量阈值';
-      if (behaviorType === 'occupancy') return '占用';
-      if (behaviorType === 'direction_move') return '定向通行';
-      if (behaviorType === 'direction_reverse') return '逆向通行';
-      if (behaviorType === 'relation_near') return '目标接近';
-      if (behaviorType === 'relation_apart') return '目标远离';
-      if (behaviorType === 'relation_not_contains') return '目标未包含';
-      return '---';
+      if (behaviorType === undefined || behaviorType === null || behaviorType === '') {
+        return '---';
+      }
+      if (!isKnownBehaviorType(behaviorType)) {
+        return '---';
+      }
+      return resolveBehaviorTypeLabel(behaviorType);
     },
 
     getEventStateLabel(eventState) {
@@ -793,22 +468,5 @@ export default {
   color: var(--sva-text-muted);
   font-size: 12px;
   line-height: 1.4;
-}
-
-.detail-video-toolbar {
-  margin-top: 16px;
-}
-
-.detail-video-panel {
-  margin-top: 16px;
-}
-
-.detail-solve-panel {
-  margin-left: 40px;
-  margin-right: 16px;
-}
-
-.detail-handle-alert {
-  margin: 0 16px 16px 40px;
 }
 </style>

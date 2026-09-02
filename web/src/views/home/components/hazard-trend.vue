@@ -88,10 +88,10 @@ import {
   SVA_CHART_AREA,
   SVA_CHART_LINE,
   svaCategoryAxis,
+  svaCountTooltip,
   svaGrid,
-  svaTooltip,
   svaValueAxis
-} from '../chartTheme';
+} from '@/utils/chartTheme';
 
 export default {
   props: {
@@ -152,7 +152,7 @@ export default {
         window.addEventListener("resize", this.onTrendResize);
       }
       this.trendChart.setOption({
-        tooltip: Object.assign({ trigger: 'axis' }, svaTooltip),
+        tooltip: svaCountTooltip({ trigger: 'axis' }),
         grid: svaGrid(),
         xAxis: svaCategoryAxis({
           boundaryGap: false,
@@ -171,9 +171,9 @@ export default {
             type: 'line',
             smooth: true,
             symbol: 'circle',
-            symbolSize: 6,
+            symbolSize: 5,
             itemStyle: { color: SVA_CHART_LINE },
-            lineStyle: { color: SVA_CHART_LINE, width: 2 },
+            lineStyle: { color: SVA_CHART_LINE, width: 3 },
             areaStyle: { color: SVA_CHART_AREA }
           }
         ]
