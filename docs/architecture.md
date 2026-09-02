@@ -85,7 +85,7 @@ server/      C++ Analyzer     mediaServer/  ZLMediaKit
 | ZLMediaKit | `/opt/SVA/mediaServer/MediaServer` | 拉流、转协议、HTTP-FLV/RTSP |
 | 后端 | `/opt/SVA/backend/backend.jar` | 设备、布控、调 ZLM、存告警 |
 | Analyzer | `/opt/SVA/server/Analyzer` | 拉流、YOLO、上报告警 |
-| Nginx | 系统包 | `dist` + `/prod-api/` → 9114 |
+| Nginx | 系统包 | `dist` + `/prod-api/` → 9114；`/live/` → ZLM 9992 |
 | MariaDB | 端口 3307 | 设备、布控、`zlm_server` |
 
 登录 `admin` / `admin123`。
@@ -140,7 +140,8 @@ ffmpeg 循环 cup.mp4 → RTMP 推到 ZLM :9995 live/test1
 
 ```text
 zlm_server: host=127.0.0.1, api_port=9992, media_http_port=9992, media_rtsp_port=9994, app=live
-nginx: location /prod-api/ → 9114；location /alarm/ → upload/alarm/；root dist/
+nginx: location /prod-api/ → 9114；location /live/ → 9992（HTTP-FLV/WS-FLV）；location /alarm/ → upload/alarm/；root dist/
+zlm_server.host 必须保持 127.0.0.1（Analyzer / 后端 API 用）。同学看流走 Nginx `/live/`，不要把 host 改成局域网 IP。
 ```
 
 睡岗不改变「流如何进 ZLM」这条路径，只改 Analyzer 判定和告警类型。国标在 P3 开 SIP 5060。
