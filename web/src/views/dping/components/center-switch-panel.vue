@@ -89,6 +89,7 @@ import WarningHistory from './warning-history.vue'
 import { getDeploymentDetail, updateDeploymentLiveOutput } from '@/api/deployment'
 import { getScreenWallStreams, normalizeScreenWallStream } from '@/api/screenWall'
 import { OVERLAY_DELAY_DEFAULT_MS, loadOverlayDelayMs } from '@/utils/systemRuntimeConfig'
+import { getFieldValue } from '@/utils/fieldMap'
 
 export default {
   name: 'CenterSwitchPanel',
@@ -175,6 +176,7 @@ export default {
     window.removeEventListener('sva:detect-frame', this.handleDetectFramePush)
   },
   methods: {
+    getFieldValue,
     statusText(status) {
       if (status === 'playing') return '播放中'
       if (status === 'loading') return '加载中'
@@ -213,18 +215,6 @@ export default {
         }
       }
       return Boolean(value)
-    },
-    getFieldValue(source, ...keys) {
-      if (!source) {
-        return undefined
-      }
-      for (let i = 0; i < keys.length; i += 1) {
-        const key = keys[i]
-        if (source[key] !== undefined && source[key] !== null) {
-          return source[key]
-        }
-      }
-      return undefined
     },
     extractResponseData(response) {
       if (!response) {

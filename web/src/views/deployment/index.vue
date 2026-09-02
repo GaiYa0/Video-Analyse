@@ -99,6 +99,7 @@
 import { getDeploymentDetail, listDeployments, startDeployment, stopDeployment, updateDeploymentLiveOutput } from '@/api/deployment'
 import { previewDeviceMonitor } from '@/api/device'
 import { upsertScreenWallStream } from '@/api/screenWall'
+import { getFieldValue } from '@/utils/fieldMap'
 
 export default {
   name: 'DeploymentIndex',
@@ -129,18 +130,7 @@ export default {
     this.getList()
   },
   methods: {
-    getFieldValue(source, ...keys) {
-      if (!source) {
-        return undefined
-      }
-      for (let i = 0; i < keys.length; i += 1) {
-        const key = keys[i]
-        if (source[key] !== undefined && source[key] !== null) {
-          return source[key]
-        }
-      }
-      return undefined
-    },
+    getFieldValue,
     toBoolean(value, defaultValue = false) {
       if (value === undefined || value === null || value === '') {
         return defaultValue

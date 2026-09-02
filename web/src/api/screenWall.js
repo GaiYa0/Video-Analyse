@@ -1,17 +1,5 @@
 import request from '@/utils/request'
-
-function pickValue(source, keys, defaultValue) {
-  if (!source) {
-    return defaultValue
-  }
-  for (let i = 0; i < keys.length; i += 1) {
-    const key = keys[i]
-    if (source[key] !== undefined && source[key] !== null && source[key] !== '') {
-      return source[key]
-    }
-  }
-  return defaultValue
-}
+import { pickValue } from '@/utils/fieldMap'
 
 function toBoolean(value, defaultValue = false) {
   if (value === undefined || value === null || value === '') {
