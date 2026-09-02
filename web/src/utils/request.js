@@ -1,5 +1,6 @@
 import axios from 'axios'
-import {Loading, Message, MessageBox, Notification} from 'element-ui'
+import {Loading, MessageBox} from 'element-ui'
+import {showMessage, showNotify} from '@/utils/svaMessage'
 import store from '@/store'
 import {getToken} from '@/utils/auth'
 import errorCode from '@/utils/errorCode'
@@ -85,7 +86,7 @@ service.interceptors.response.use(res => {
     const msg = errorCode[code] || data.msg || errorCode['default']
     if (code === null || Number.isNaN(code)) {
       if (!silent) {
-        Notification.error({title: msg})
+        showNotify.error({title: msg})
       }
       return Promise.reject(new Error(msg))
     }
@@ -108,17 +109,17 @@ service.interceptors.response.use(res => {
       return Promise.reject('无效的会话，或者会话已过期，请重新登录。')
     } else if (code === 500) {
       if (!silent) {
-        Message({message: msg, type: 'error'})
+        showMessage({message: msg, type: 'error'})
       }
       return Promise.reject(new Error(msg))
     } else if (code === 601) {
       if (!silent) {
-        Message({message: msg, type: 'warning'})
+        showMessage({message: msg, type: 'warning'})
       }
       return Promise.reject('error')
     } else if (code !== 200) {
       if (!silent) {
-        Notification.error({title: msg})
+        showNotify.error({title: msg})
       }
       return Promise.reject('error')
     } else {
@@ -138,7 +139,7 @@ service.interceptors.response.use(res => {
     } else if (message.includes("Request failed with status code")) {
       message = "系统接口" + message.substr(message.length - 3) + "异常";
     }
-    Message({message: message, type: 'error', duration: 5 * 1000})
+    showMessage({message: message, type: 'error', duration: 5 * 1000})
     return Promise.reject(error)
   }
 )
@@ -166,12 +167,12 @@ export function download(url, params, filename, config) {
       const resText = await data.text();
       const rspObj = JSON.parse(resText);
       const errMsg = errorCode[rspObj.code] || rspObj.msg || errorCode['default']
-      Message.error(errMsg);
+      showMessage.error(errMsg);
     }
     downloadLoadingInstance.close();
   }).catch((r) => {
     console.error(r)
-    Message.error('下载文件出现错误，请联系管理员！')
+    showMessage.error('下载文件出现错误，请联系管理员！')
     downloadLoadingInstance.close();
   })
 }

@@ -224,6 +224,24 @@ cd E:\video-analysis\Video-Analyse-main
 
 WSL IP 查看：`wsl -d Ubuntu-22.04 -- hostname -I`
 
+### 同学看不到实时画面（监控墙黑屏）
+
+页面能开、列表有设备，但画面黑：数据库里的播放地址是 `ws://127.0.0.1:9992/live/<流>.live.flv`。同学浏览器里的 `127.0.0.1` 是他们自己的电脑，且 **9992 未对局域网开放**。
+
+正确做法（已在演示机落地，一键启动会补 Nginx）：
+
+1. Nginx `location /live/` 把 ZLM 的 HTTP-FLV / WS-FLV 代理到 80，复用 `8080 → 80`。片段见 `scripts/nginx-live-proxy.conf`。
+2. **不要改** `zlm_server.host`。从 WSL 访问 `局域网IP:9992` 不通，改了会弄断 Analyzer 拉流和后端调 ZLM API。
+3. 把库里的播放地址改成 `ws://<局域网IP>:8080/live/<流>.live.flv`：
+
+```bash
+wsl -d Ubuntu-22.04 -u root -- bash /mnt/e/video-analysis/Video-Analyse-main/scripts/rewrite_play_url_for_lan.sh <你的WLAN_IPv4>
+```
+
+同学强制刷新 `http://<IP>:8080/`，看 **监控墙**。设备列表里的「实时预览」弹窗仍由后端按 `zlm_server` 现算 `127.0.0.1`，只有本机能放。
+
+WiFi IP 变了，或「启动监控」把 `play_url` 写回 `127.0.0.1:9992` 后，再跑一次上面的改写脚本。
+
 ## 10. 已知问题
 
 
@@ -233,6 +251,7 @@ WSL IP 查看：`wsl -d Ubuntu-22.04 -- hostname -I`
 | 保存布控报「geometryConfig 至少需要一个 3 点以上的主区域」 | 未画检测区域                                                        | 左侧点「区域对齐」或手动画区并设主区域               |
 | 顶部 `live-output` 404                   | 前端调用 `POST /deployments/{id}/live-output`，当前安装的后端 **未实现** 该接口 | 可忽略；以报警列表为准，勿依赖布控详情页算法预览流         |
 | 本机 / 同学打不开 `http://<IP>/` 或 `:8080` | WSL mirrored；**Clash/VPN 劫持局域网**；防火墙未放行 | **先关 VPN/Clash**；同学用 `http://<IP>:8080/`；管理员运行 `setup_windows_lan_access.ps1` 或 `open_lan_firewall.bat` |
+| 同学打开网页但监控墙黑屏 | `play_url` 是 `ws://127.0.0.1:9992/...`；9992 未对局域网开放 | Nginx `/live/` 代理 + `rewrite_play_url_for_lan.sh <IP>`；关 Clash；走监控墙不要依赖设备列表弹窗 |
 | 重启后网页 502 | 后端未起或连错数据库 | 执行 `start_easysva.ps1` |
 | MariaDB 启动失败                           | Windows MySQL 占 3306                                          | 使用 MariaDB **3307** + 后端 JDBC 改端口 |
 
@@ -246,5 +265,6 @@ WSL IP 查看：`wsl -d Ubuntu-22.04 -- hostname -I`
 | ---------- | ---------------------------------------------- |
 | 2026-08-31 | 初稿：WSL2 + D 盘、GPU 安装、3307/9994/9995、验收点 1 跑通记录 |
 | 2026-08-31 | 一键启动 `start_easysva.ps1`；局域网 `:8080`；关 Clash/VPN 才能互访 |
+| 2026-09-02 | Nginx `/live/` 代理 ZLM；同学经 `:8080` 看监控墙，不改 `zlm_server.host` |
 
 

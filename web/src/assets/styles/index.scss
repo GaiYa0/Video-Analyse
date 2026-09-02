@@ -15,6 +15,13 @@
   --sva-accent: #6b9bb8;
   --sva-radius: 8px;
   --sva-ui-scale: 1;
+  --ti-base-color: var(--sva-accent);
+  --ti-base-bg: var(--sva-surface);
+  --ti-grid-header-bg-color: var(--sva-surface-2);
+  --ti-grid-bg-color: var(--sva-surface);
+  --ti-grid-text-color: var(--sva-text);
+  --ti-grid-header-text-color: var(--sva-text-muted);
+  --ti-grid-border-color: var(--sva-border);
 }
 
 body {

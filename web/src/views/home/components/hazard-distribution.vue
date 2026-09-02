@@ -4,16 +4,16 @@
       <tiny-row :flex="true" justify="center">
         <tiny-col :span="7">
           <div style="display: flex; align-items: center; justify-content: space-between;">
-            <h3 style="color: black">
+            <h3>
               报警类型统计
             </h3>
             <div>
               <span class="clickable" @click="selectTime('1', 1)" :style="timeStyle('1', 1)">周</span>
-              <span style="color: grey;"> | </span>
+              <span class="time-sep"> | </span>
               <span class="clickable" @click="selectTime('2', 1)" :style="timeStyle('2', 1)">月</span>
-              <span style="color: grey;"> | </span>
+              <span class="time-sep"> | </span>
               <span class="clickable" @click="selectTime('3', 1)" :style="timeStyle('3', 1)">季度</span>
-              <span style="color: grey;"> | </span>
+              <span class="time-sep"> | </span>
               <span class="clickable" @click="selectTime('4', 1)" :style="timeStyle('4', 1)">年</span>
             </div>
           </div>
@@ -30,11 +30,11 @@
         <!--            <h3 style="color: black">处置情况</h3>-->
         <!--            <div>-->
         <!--              <span class="clickable" @click="selectTime('1', 2)" :style="timeStyle('1', 2)">周</span>-->
-        <!--              <span style="color: grey;"> | </span>-->
+        <!--              <span class="time-sep"> | </span>-->
         <!--              <span class="clickable" @click="selectTime('2', 2)" :style="timeStyle('2', 2)">月</span>-->
-        <!--              <span style="color: grey;"> | </span>-->
+        <!--              <span class="time-sep"> | </span>-->
         <!--              <span class="clickable" @click="selectTime('3', 2)" :style="timeStyle('3', 2)">季度</span>-->
-        <!--              <span style="color: grey;"> | </span>-->
+        <!--              <span class="time-sep"> | </span>-->
         <!--              <span class="clickable" @click="selectTime('4', 2)" :style="timeStyle('4', 2)">年</span>-->
         <!--            </div>-->
         <!--          </div>-->
@@ -46,14 +46,14 @@
         <!--        </tiny-col>-->
         <tiny-col :span="6">
           <div style="display: flex; align-items: center; justify-content: space-between;">
-            <h3 style="color: black">报警类型分布</h3>
+            <h3>报警类型分布</h3>
             <div>
               <span class="clickable" @click="selectTime('1', 3)" :style="timeStyle('1', 3)">周</span>
-              <span style="color: grey;"> | </span>
+              <span class="time-sep"> | </span>
               <span class="clickable" @click="selectTime('2', 3)" :style="timeStyle('2', 3)">月</span>
-              <span style="color: grey;"> | </span>
+              <span class="time-sep"> | </span>
               <span class="clickable" @click="selectTime('3', 3)" :style="timeStyle('3', 3)">季度</span>
-              <span style="color: grey;"> | </span>
+              <span class="time-sep"> | </span>
               <span class="clickable" @click="selectTime('4', 3)" :style="timeStyle('4', 3)">年</span>
             </div>
           </div>
@@ -116,7 +116,7 @@ export default {
   computed: {
     timeStyle() {
       return (time, number) => ({
-        'color': this[`selectedTime${number}`] === time ? 'blue' : 'black',
+        'color': this[`selectedTime${number}`] === time ? 'var(--sva-accent)' : 'var(--sva-text-muted)',
         'font-weight': this[`selectedTime${number}`] === time ? 'bold' : 'normal'
       });
     }
@@ -282,18 +282,30 @@ export default {
 </script>
 
 <style scoped lang="less">
+h3 {
+  margin: 0 0 8px;
+  color: var(--sva-text);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.time-sep {
+  color: var(--sva-text-muted);
+}
+
 .col {
-  background-color: white;
+  background-color: var(--sva-surface);
   display: flex;
   justify-content: space-around;
   height: 250px;
   text-align: center;
   border-radius: 10px;
-  box-shadow: 0 4px 12px 0 rgba(0, 0, 0, 0.05);
+  border: 1px solid var(--sva-border);
+  box-shadow: none;
 }
 
 .col:hover {
-  box-shadow: 0 3px 10px 0 rgb(64, 98, 225, 0.45);
+  box-shadow: none;
 }
 
 .left {
@@ -321,7 +333,7 @@ export default {
 }
 
 .item {
-  color: black;
+  color: var(--sva-text);
   padding: 6px;
   text-align: left;
 }
@@ -330,7 +342,7 @@ export default {
   cursor: pointer;
   user-select: none;
   transition: color 0.3s ease;
-  color: blue;
+  color: var(--sva-text-muted);
   font-size: small;
 }
 </style>
