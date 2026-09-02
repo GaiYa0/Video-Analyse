@@ -69,17 +69,15 @@
         <span class="plan-pass">{{ monthHandle.rectificationNum }}</span>
         <span class="num"> / 条</span>
       </div>
-      <tiny-progress type="dashboard" :percentage="monthHandle.rate" :color="customColors" :width="70" />
+      <el-progress type="dashboard" :percentage="monthHandle.rate" :color="customColors" :width="70" />
     </div>
   </div>
 </template>
 
 <script>
 import {getMonthHandle, getMonthMajorWaring, getMonthOverdueWaring, getMonthWaring} from '@/api/system/kanban';
-import TinyProgress from '@opentiny/vue-progress'
 
 export default {
-  components: {TinyProgress},
   props: {
     orgIndex: {
       type: String,
@@ -194,9 +192,10 @@ export default {
 
 .plan-pass {
   color: var(--sva-accent);
-  font-weight: 600;
-  font-size: 20px;
-  line-height: 24px;
+  font-weight: 500;
+  font-size: 22px;
+  line-height: 26px;
+  letter-spacing: 0.02em;
 }
 
 .num {
@@ -244,7 +243,7 @@ export default {
   }
 }
 
-/deep/ .tiny-progress__text {
+/deep/ .el-progress__text {
   font-size: 13px !important;
   color: var(--sva-text);
 }

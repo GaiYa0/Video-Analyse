@@ -189,7 +189,7 @@ P2 只动布控选项和告警类型，**不要改国标设备字段**。
 - 或 `behavior_type` = `sleep_on_duty`
 - 或 `customEventName` / `alarm_type_name` = `睡岗`
 - `snapshotPath` 可作为 `image_path` 别名
-- 可选 `confidence`、`pitchDegree`、`durationFrames`（不新建列；`durationFrames` 写入已有 `duration_ms`）
+- 可选 `confidence`、`pitchDegree`、`durationFrames`（`pitchDegree` 写入已有表新列 `sva_pitch_degree`；`durationFrames` 写入已有 `duration_ms`）
 
 算法编码：`on_sleep_pose`，`object_str=person`。B 在 Analyzer `resolveAlgorithm` 认这个 code。A 在 MariaDB **3307** 执行一次（列不全时 `DESC av_algorithm` 再补 `sort`）：
 
@@ -197,9 +197,11 @@ P2 只动布控选项和告警类型，**不要改国标设备字段**。
 INSERT INTO av_algorithm (code, name, state, sort, object_str)
 SELECT 'on_sleep_pose', '睡岗检测', 0, 99, 'person'
 WHERE NOT EXISTS (SELECT 1 FROM av_algorithm WHERE code = 'on_sleep_pose');
+
+ALTER TABLE h_waring ADD COLUMN sva_pitch_degree DOUBLE NULL;
 ```
 
-B 未合入 Pose 前，选睡岗启动会「不支持的算法」，这是预期。
+A 执行 `ALTER` 后需重启 `backend.jar`。列已存在时跳过。B 未合入 Pose 前，选睡岗启动会「不支持的算法」，这是预期。
 
 - 睡岗：B 改 `server/`（Pose + 时序）；C 已改告警类型映射、布控选项默认值、`live-output`。
 - 国标：A 改 SIP 与 ZLM 同步接口；C 改设备表与列表；B 让 Analyzer 取国标播放 URL。

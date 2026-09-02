@@ -1,14 +1,28 @@
 <template>
   <div class="right_bottom">
-    <div class="echart" id="warning-org" :style="myChartStyle"></div>
+    <div ref="warningOrg" class="echart" id="warning-org" :style="myChartStyle"></div>
   </div>
 </template>
 
 <script>
 import {getRanking} from '@/api/system/kanban';
 import * as echarts from "echarts";
+import echartsLifecycle from '@/mixins/echartsLifecycle';
+import {
+  SVA_CHART_BAR_MAX_WIDTH,
+  SVA_CHART_BAR_RADIUS_VERTICAL,
+  SVA_CHART_DEEP,
+  SVA_CHART_LIGHT,
+  SVA_CHART_SPLIT,
+  SVA_CHART_TEXT,
+  svaCategoryAxis,
+  svaCountTooltip,
+  svaValueAxis
+} from '@/utils/chartTheme';
 
 export default {
+  mixins: [echartsLifecycle],
+  echartsFields: ['orgChart'],
   data() {
     return {
       myChartStyle: {
@@ -51,7 +65,7 @@ export default {
     initOrgEcharts() {
       const option = {
         backgroundColor: "transparent",
-        tooltip: {
+        tooltip: svaCountTooltip({
           trigger: 'axis',
           axisPointer: {
             type: 'line',
@@ -59,8 +73,8 @@ export default {
               opacity: 0
             }
           },
-          formatter: '{b}: {c}'
-        },
+          formatter: '{b}: {c} 条'
+        }),
         legend: {
           data: ['直接访问', '背景'],
           show: false
@@ -73,58 +87,39 @@ export default {
           containLabel: true,
           z: 22
         },
-        xAxis: [{
-          type: 'category',
+        xAxis: [svaCategoryAxis({
           gridIndex: 0,
           data: this.orgData.yData,
           axisTick: {
-            alignWithLabel: true
-          },
-          axisLine: {
-            lineStyle: {
-              color: 'rgba(255,255,255,0.08)'
-            }
+            show: true,
+            alignWithLabel: true,
+            length: 3,
+            lineStyle: { color: SVA_CHART_SPLIT }
           },
           axisLabel: {
             show: true,
-            color: '#e6edf3',
+            color: SVA_CHART_TEXT,
             fontSize: 12,
             rotate: -17,
             formatter: function (value) {
               var texts = value
               if (texts.length > 4) {
-                // 限制长度自设
                 texts = texts.substr(0, 4) + '...'
               }
               return texts
             }
           }
-        }],
-        yAxis: [{
-          type: 'value',
-          splitLine: {
-            show: true,
-            lineStyle: {
-              color: 'rgba(255,255,255,0.08)'
-            }
-          },
-          axisTick: {
-            show: false
-          },
-          axisLine: {
-            lineStyle: {
-              color: 'rgba(255,255,255,0.08)'
-            }
-          },
+        })],
+        yAxis: [svaValueAxis({
           axisLabel: {
-            color: '#e6edf3',
+            color: SVA_CHART_TEXT,
             formatter: '{value}'
           }
-        },
+        }),
           {
             type: 'value',
             gridIndex: 0,
-            splitNumber: 12,
+            splitNumber: 4,
             splitLine: {
               show: false
             },
@@ -147,24 +142,23 @@ export default {
         ],
         series: [{
           type: 'bar',
+          barMaxWidth: SVA_CHART_BAR_MAX_WIDTH,
           barWidth: '30%',
           xAxisIndex: 0,
           yAxisIndex: 0,
           itemStyle: {
-            normal: {
-                  barBorderRadius: 2,
-                  color: new echarts.graphic.LinearGradient(
-                0, 0, 0, 1, [{
-                  offset: 0,
-                  color: '#8fb4c9'
-                },
-                  {
-                    offset: 1,
-                    color: '#6b9bb8'
-                  }
-                ]
-              )
-            }
+            borderRadius: SVA_CHART_BAR_RADIUS_VERTICAL,
+            color: new echarts.graphic.LinearGradient(
+              0, 0, 0, 1, [{
+                offset: 0,
+                color: SVA_CHART_LIGHT
+              },
+                {
+                  offset: 1,
+                  color: SVA_CHART_DEEP
+                }
+              ]
+            )
           },
           data: this.orgData.xData,
           zlevel: 11
@@ -177,12 +171,9 @@ export default {
             xAxisIndex: 0,
             yAxisIndex: 1,
             barGap: '-135%',
-            // data: this.orgData.xData.map(),
             itemStyle: {
-              normal: {
-                    barBorderRadius: 2,
-                color: 'rgba(255,255,255,0.1)'
-              }
+              borderRadius: SVA_CHART_BAR_RADIUS_VERTICAL,
+              color: 'rgba(158,197,212,0.08)'
             },
             zlevel: 9
           },
@@ -190,17 +181,15 @@ export default {
         ]
       };
 
-      const dom = document.getElementById("warning-org")
-      dom.setAttribute('_echarts_instance_', '')
-      const warningOrg = echarts.init(dom);
-
-      warningOrg.on('click', (params) => {
+      const warningOrg = this.ensureChart('orgChart', this.$refs.warningOrg, (params) => {
         this.$router.push({path: "/warning/warning", query: {withQue: 8, time: "年", org_name: params.name}});
       });
+      if (!warningOrg) {
+        return
+      }
       warningOrg.setOption(option);
-      //随着屏幕大小调节图表
-      window.addEventListener("resize", () => {
-        warningOrg.resize();
+      this.bindChartResize(() => {
+        this.orgChart && this.orgChart.resize();
       });
     },
 

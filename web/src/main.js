@@ -38,7 +38,6 @@ import DictTag from '@/components/DictTag'
 import VueMeta from 'vue-meta'
 // 字典数据组件
 import DictData from '@/components/DictData'
-import {loading,borderBox13,digitalFlop,capsuleChart,borderBox8} from '@jiaminghi/data-view'
 
 // 全局方法挂载
 Vue.prototype.getDicts = getDicts
@@ -82,6 +81,7 @@ Vue.use(Element, {
   size: Cookies.get('size') || 'small' // set element-ui default size
 })
 Vue.prototype.$message = showMessage
+Vue.prototype.$Message = showMessage
 
 Vue.config.productionTip = false
 
