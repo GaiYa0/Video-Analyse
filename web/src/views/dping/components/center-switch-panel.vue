@@ -84,12 +84,12 @@
 </template>
 
 <script>
-import flvjs from 'flv.js'
 import WarningHistory from './warning-history.vue'
 import { getDeploymentDetail, updateDeploymentLiveOutput } from '@/api/deployment'
 import { getScreenWallStreams, normalizeScreenWallStream } from '@/api/screenWall'
 import { OVERLAY_DELAY_DEFAULT_MS, loadOverlayDelayMs } from '@/utils/systemRuntimeConfig'
 import { getFieldValue } from '@/utils/fieldMap'
+import { applyContainStyle, destroyFlvPlayer, playHttpFlv, resetVideoElement } from '@/utils/flvPlayer'
 
 export default {
   name: 'CenterSwitchPanel',
@@ -421,19 +421,6 @@ export default {
       this.syncOverlayCanvas(index)
       this.drawDetectOverlayForCard(index)
     },
-    applyContainStyle(videoElement) {
-      if (!videoElement) {
-        return
-      }
-      videoElement.style.objectFit = 'contain'
-      videoElement.style.objectPosition = 'center center'
-      videoElement.style.backgroundColor = '#000'
-      videoElement.style.width = 'auto'
-      videoElement.style.height = 'auto'
-      videoElement.style.maxWidth = '100%'
-      videoElement.style.maxHeight = '100%'
-      videoElement.style.display = 'block'
-    },
     playStream(index, url, sessionId) {
       if (sessionId !== this.realtimeSession || this.displayMode !== 'realtime') {
         return
@@ -446,26 +433,18 @@ export default {
         return
       }
 
-      this.applyContainStyle(videoElement)
+      applyContainStyle(videoElement)
       videoElement.onloadedmetadata = () => {
-        this.applyContainStyle(videoElement)
+        applyContainStyle(videoElement)
       }
 
       this.destroyStreamPlayer(index)
       this.clearOverlayCanvas(index)
-      const isFlv = /\.flv($|[?#])/i.test(url)
-      const isHttpOrWs = /^(https?:\/\/|wss?:\/\/)/i.test(url)
 
-      if (isFlv && isHttpOrWs && flvjs.isSupported()) {
-        const player = flvjs.createPlayer({
-          type: 'flv',
-          url,
-          isLive: true
-        })
-        player.attachMediaElement(videoElement)
-        player.load()
+      const player = playHttpFlv(videoElement, url)
+      if (player) {
         this.$nextTick(() => {
-          this.applyContainStyle(videoElement)
+          applyContainStyle(videoElement)
         })
         player.play().then(() => {
           this.updateStreamCard(index, { status: 'playing', player })
@@ -493,19 +472,15 @@ export default {
 
       if (card && card.player) {
         try {
-          card.player.unload()
-          card.player.detachMediaElement()
-          card.player.destroy()
+          destroyFlvPlayer(card.player)
         } catch (error) {
           // Ignore teardown errors to avoid blocking later stream recovery.
         }
       }
 
       if (videoElement) {
-        videoElement.pause()
         videoElement.onloadedmetadata = null
-        videoElement.removeAttribute('src')
-        videoElement.load()
+        resetVideoElement(videoElement)
       }
 
       this.clearOverlayCanvas(index)

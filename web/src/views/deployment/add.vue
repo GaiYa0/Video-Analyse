@@ -1112,13 +1112,13 @@
 </template>
 
 <script>
-import flvjs from 'flv.js'
 import { getDeviceList, previewDeviceMonitor } from '@/api/device'
 import { getAlgorithmList, getAlgorithmTargets } from '@/api/algorithm'
 import { createDeployment, getDeploymentDetail, updateDeployment, updateDeploymentLiveOutput } from '@/api/deployment'
 import { OVERLAY_DELAY_DEFAULT_MS, loadOverlayDelayMs } from '@/utils/systemRuntimeConfig'
 import { BEHAVIOR_TYPE_OPTIONS, getBehaviorTypeLabel, normalizeBehaviorType } from '@/utils/behaviorTypes'
 import { getFieldValue } from '@/utils/fieldMap'
+import { destroyFlvPlayer, playHttpFlv, resetVideoElement } from '@/utils/flvPlayer'
 
 export default {
   name: 'DeploymentAdd',
@@ -4524,17 +4524,9 @@ export default {
         return
       }
 
-      const isFlv = /\.flv($|[?#])/i.test(url)
-      const isHttpOrWs = /^(https?:\/\/|wss?:\/\/)/i.test(url)
-
-      if (isFlv && isHttpOrWs && flvjs.isSupported()) {
-        this.flvPlayer = flvjs.createPlayer({
-          type: 'flv',
-          url,
-          isLive: true
-        })
-        this.flvPlayer.attachMediaElement(video)
-        this.flvPlayer.load()
+      const player = playHttpFlv(video, url)
+      if (player) {
+        this.flvPlayer = player
         this.flvPlayer.play().catch(() => {})
         return
       }
@@ -4546,16 +4538,10 @@ export default {
     destroyPlayer() {
       const video = this.$refs.previewVideo
       if (this.flvPlayer) {
-        this.flvPlayer.unload()
-        this.flvPlayer.detachMediaElement()
-        this.flvPlayer.destroy()
+        destroyFlvPlayer(this.flvPlayer)
         this.flvPlayer = null
       }
-      if (video) {
-        video.pause()
-        video.removeAttribute('src')
-        video.load()
-      }
+      resetVideoElement(video)
       this.videoLoaded = false
     },
 
