@@ -221,6 +221,34 @@ grep -E 'ZLM录像|startRecordTask|SVA素材回写' /opt/SVA/backend/log.out | t
 find /var/www/SVA-web/upload -name 'main.mp4' | tail -10
 ```
 
+### PR #30 合入后必跑：睡岗俯仰角列
+
+前端 #30 会读写 `h_waring.sva_pitch_degree`。演示机若未执行 `ALTER`，告警列表与 WebSocket 弹窗会报 `Unknown column 'sva_pitch_degree'`，页面表现为 **列表空白、右下角不弹告警**。
+
+```bash
+wsl -d Ubuntu-22.04 -u root -- bash -lc \
+  "mysql -h127.0.0.1 -P3307 -uroot -peasySVA.EZ easySVA < /mnt/e/video-analysis/Video-Analyse-main/scripts/add_sva_pitch_degree.sql"
+# 然后重启 backend：.\scripts\start_easysva.ps1
+```
+
+列已存在时 MariaDB 会报错，可忽略。合入后需 **重启 `backend.jar`**。
+
+**报警列表「今天没数据」**：待处理页默认日期为 **当天**。历史告警在昨天时，把日期改到昨天～今天或清空日期再搜索。
+
+### 本机摄像头测睡岗（P2）
+
+无工位录像时，用笔记本摄像头推 RTMP，设备 `cam918429`（工位摄像头）。
+
+| 脚本 | 用途 |
+| --- | --- |
+| `scripts\push_webcam.bat` | Windows：摄像头 → `rtmp://127.0.0.1:9995/live/webcam`（窗口需保持打开） |
+| `scripts\setup_webcam_device.sql` | 库内插入/更新工位摄像头设备 |
+| `scripts\insert_on_sleep_pose.sql` | `av_algorithm` 插入睡岗算法（缺则布控下拉无睡岗） |
+| `scripts\start_webcam_monitor.sh` | WSL：启用该设备监控 |
+| `scripts\start_sleep_deployment.sh` | WSL：启动睡岗布控 `controljDNAEPaKnlcupU`（需先在网页保存过该布控） |
+
+顺序：先 `push_webcam.bat` → `setup_webcam_device.sql`（首次）→ `start_webcam_monitor.sh` → 网页布控选睡岗并保存 → `start_sleep_deployment.sh` 或布控列表点启动。趴桌约 2.5s 应出睡岗告警。
+
 ## 8. 日志位置
 
 
