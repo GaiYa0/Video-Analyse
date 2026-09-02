@@ -18,7 +18,7 @@
 
 
 <script>
-import flvjs from 'flv.js';
+import { attachFlvPlayer, createLiveFlvPlayer, destroyFlvPlayer, isFlvSupported, isFlvUrl, resetVideoElement } from '@/utils/flvPlayer';
 
 export default {
   name: 'player',
@@ -74,10 +74,6 @@ export default {
       return /^(https?:\/\/|wss?:\/\/|\/)/i.test(url || '');
     },
 
-    isFlvUrl(url) {
-      return /\.flv($|[?#])/i.test(url || '');
-    },
-
     playHttpMedia(url) {
       const videoElement = this.$refs.flvVideo;
       if (!videoElement || !url) return;
@@ -93,14 +89,9 @@ export default {
       if (!videoElement || !url) return;
       if (this.flvPlayer != null) this.closeFLVPlayer(true);
 
-      if (flvjs.isSupported()) {
-        this.flvPlayer = flvjs.createPlayer({
-          isLive: true,
-          type: 'flv',
-          url: url
-        });
-        this.flvPlayer.attachMediaElement(videoElement);
-        this.flvPlayer.load();
+      if (isFlvSupported()) {
+        this.flvPlayer = createLiveFlvPlayer(url);
+        attachFlvPlayer(this.flvPlayer, videoElement);
         this.flvPlayer.play();
       }
     },
@@ -109,7 +100,7 @@ export default {
       const videoElement = this.$refs.flvVideo;
       if (!videoElement || !this.rtspUrl) return;
 
-      if (this.isHttpMediaUrl(this.rtspUrl) && this.isFlvUrl(this.rtspUrl)) {
+      if (this.isHttpMediaUrl(this.rtspUrl) && isFlvUrl(this.rtspUrl)) {
         this.playFlvMedia(this.rtspUrl);
         return;
       }
@@ -128,19 +119,15 @@ export default {
       // 销毁
       if (this.flvPlayer != null) this.closeFLVPlayer(true);
 
-      if (flvjs.isSupported()) {
+      if (isFlvSupported()) {
         console.log("正在加载播放器……");
-        this.flvPlayer = flvjs.createPlayer({
-          isLive: true,
-          type: 'flv',
-          url: url,
+        this.flvPlayer = createLiveFlvPlayer(url, {
           enableWorker: true,
           enableStashBuffer: false,
           stashInitialSize: 128
         });
 
-        this.flvPlayer.attachMediaElement(videoElement);
-        this.flvPlayer.load();
+        attachFlvPlayer(this.flvPlayer, videoElement);
         this.flvPlayer.play();
         this.flvPlayer.muted = false; // 确保新播放器不是静音状态
       }
@@ -152,9 +139,7 @@ export default {
       if (this.flvPlayer != null) {
         if (realClose == true) {
           console.log("正在销毁播放器……");
-          this.flvPlayer.unload();
-          this.flvPlayer.detachMediaElement();
-          this.flvPlayer.destroy();
+          destroyFlvPlayer(this.flvPlayer);
           this.flvPlayer = null;
           console.log("销毁完毕……");
         } else {
@@ -165,9 +150,7 @@ export default {
 
       if (videoElement) {
         if (realClose == true) {
-          videoElement.pause();
-          videoElement.removeAttribute('src');
-          videoElement.load();
+          resetVideoElement(videoElement);
         } else {
           videoElement.pause();
         }
