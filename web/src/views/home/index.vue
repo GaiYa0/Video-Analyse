@@ -129,7 +129,7 @@ export default {
   //min-height: 1200px;
   margin: 0 auto;
   overflow: hidden;
-  background-color: rgb(246, 248, 249);
+  background-color: var(--sva-bg);
 
   .work-image {
     width: 99%;
@@ -240,7 +240,7 @@ export default {
     }
 
     .card:hover {
-      box-shadow: 0 3px 10px 0 rgba(64, 98, 225, 0.45);
+      box-shadow: none;
     }
 
     .announcement-card:hover {

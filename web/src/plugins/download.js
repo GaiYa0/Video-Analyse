@@ -1,5 +1,6 @@
 import axios from 'axios'
-import {Loading, Message} from 'element-ui'
+import {Loading} from 'element-ui'
+import { showMessage } from '@/utils/svaMessage'
 import { saveAs } from 'file-saver'
 import { getToken } from '@/utils/auth'
 import errorCode from '@/utils/errorCode'
@@ -62,7 +63,7 @@ export default {
       downloadLoadingInstance.close();
     }).catch((r) => {
       console.error(r)
-      Message.error('下载文件出现错误，请联系管理员！')
+      showMessage.error('下载文件出现错误，请联系管理员！')
       downloadLoadingInstance.close();
     })
   },
@@ -73,7 +74,7 @@ export default {
     const resText = await data.text();
     const rspObj = JSON.parse(resText);
     const errMsg = errorCode[rspObj.code] || rspObj.msg || errorCode['default']
-    Message.error(errMsg);
+    showMessage.error(errMsg);
   }
 }
 

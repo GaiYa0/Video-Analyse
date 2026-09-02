@@ -1,23 +1,24 @@
-import { Message, MessageBox, Notification, Loading } from 'element-ui'
+import { MessageBox, Notification, Loading } from 'element-ui'
+import { showMessage } from '@/utils/svaMessage'
 
 let loadingInstance;
 
 export default {
   // 消息提示
   msg(content) {
-    Message.info(content)
+    showMessage.info(content)
   },
   // 错误消息
   msgError(content) {
-    Message.error(content)
+    showMessage.error(content)
   },
   // 成功消息
   msgSuccess(content) {
-    Message.success(content)
+    showMessage.success(content)
   },
   // 警告消息
   msgWarning(content) {
-    Message.warning(content)
+    showMessage.warning(content)
   },
   // 弹出提示
   alert(content) {
