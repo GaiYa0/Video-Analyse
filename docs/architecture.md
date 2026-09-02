@@ -166,6 +166,12 @@ P2 只动布控选项和告警类型，**不要改国标设备字段**。
 4. 报警列表有记录和截图。
 5. 三人已给 Gitee 上游五仓点 Star。
 
+P2 睡岗（2026-09-02 演示机走查，**未升 phase**）：
+
+- 布控选 `on_sleep_pose`、闭合主区域、规则 `sleep_on_duty`（低头 ≥32° / 2500ms），趴桌后弹出睡岗推送：[p2睡岗检测布控.png](./photo/p2睡岗检测布控.png)
+- 告警详情类型为睡岗 / `SLEEP_ON_DUTY`，规则 ID `sleep_on_duty_default`：[p2睡岗检测告警详情.png](./photo/p2睡岗检测告警详情.png)
+- 同机原 YOLO 进区告警仍可用（CCTV5 / `behavior_rule_1`）：[p2原YOLO进区告警.png](./photo/p2原YOLO进区告警.png)
+
 ## 后面改哪里
 
 分析器取流、模型与现网告警 POST 见 [architecture-analyzer.md](./architecture-analyzer.md) §6.2。入口不变：`POST /waring/waring/addFromSvaSimple`。设备由 `control_code` 反查布控，不靠 `deviceId` 入库。
