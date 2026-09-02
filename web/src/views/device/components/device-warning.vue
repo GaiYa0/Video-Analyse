@@ -117,6 +117,7 @@
 import {getWarningDetail, handleWarning} from "@/api/warning";
 import {getHistoryWaring} from "@/api/device";
 import player from "@/components/RTSPPlayer"
+import { getVideoEvidenceUnavailableMessage, resolveAlarmVideoUrl } from '@/utils/alarmVideo'
 
 export default {
   name: "Warning",
@@ -213,15 +214,7 @@ export default {
     },
 
     resolveVideoMediaUrl(row) {
-      const absoluteVideoPath = row && row.video_absolute_url;
-      if (absoluteVideoPath) {
-        return this.toAbsoluteMediaUrl(absoluteVideoPath);
-      }
-      const relativeVideoPath = row && row.video_url;
-      if (/^\/?alarm\//i.test(relativeVideoPath || '')) {
-        return this.toAbsoluteMediaUrl(relativeVideoPath.startsWith('/') ? relativeVideoPath : `/${relativeVideoPath}`);
-      }
-      return this.toAbsoluteMediaUrl(relativeVideoPath);
+      return resolveAlarmVideoUrl(row, this.toAbsoluteMediaUrl.bind(this))
     },
 
     // 查询数据
@@ -271,11 +264,10 @@ export default {
       });
     },
 
-    // 查看视频证据
     async viewVideo(row) {
       const localVideoUrl = this.resolveVideoMediaUrl(row);
       if (!localVideoUrl) {
-        this.$modal.msgError("视频不存在");
+        this.$modal.msgError(getVideoEvidenceUnavailableMessage(row));
         return;
       }
 
