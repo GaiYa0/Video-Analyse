@@ -180,6 +180,47 @@ wsl -d Ubuntu-22.04 -u root -- bash -lc "nohup ffmpeg -re -stream_loop -1 -i /op
 
 布控建议：「是否推流」先选 **否**，「前端画框」选 **是**；AI 复核先 **否**，便于快速验证。
 
+## 7.1 告警视频证据与录像引擎
+
+实时预览（监控墙 WS-FLV）与告警「视频证据」（录好的 MP4）是两条链路。告警页点「视频证据」时，前端只读库里的 `video_url` / `video_absolute_url`；两者都空会提示「视频不存在」或按 `sva_media_status` 显示「录像中 / 录像失败」。
+
+### 录像引擎（布控「录像引擎」字段）
+
+| 引擎 | 默认？ | Analyzer 是否生成 MP4 | 视频来源 |
+| --- | --- | --- | --- |
+| **M-SERVER（媒体服务器）** | 是 | **否**（`saveVideoEnabled=false`） | 后端调 ZLM `startRecordTask`，成功后写入 `zlm/live/{deviceId}/{alarmId}.mp4` |
+| **A-SERVER（算法服务器）** | 否 | **是** | Analyzer 编码到 `alarm/{control_code}/{alarm_id}/main.mp4`，经 `addFromSvaMediaCallback` 回写库 |
+
+**演示机建议**：本机 RTMP 水杯流等稳定源，布控选 **A-SERVER**，便于快速得到 `alarm/.../main.mp4`。公网 HLS/RTMP 若用默认 **M-SERVER**，ZLM 录像可能因断流或 `MediaSource` 不存在而失败（`sva_media_status=record_failed`），可暂时只展示截图证据。
+
+### 静态资源与浏览器 URL
+
+| 类型 | 磁盘路径 | Nginx |
+| --- | --- | --- |
+| 告警截图 / A-SERVER 视频 | `/var/www/SVA-web/upload/alarm/` | `location /alarm/` |
+| M-SERVER ZLM 录像 | `/var/www/SVA-web/upload/storage/`（`zlm/live/...`） | `location /zlm/` |
+
+后端 `AlarmMediaUrls` 会把 `alarm/`、`zlm/` 路径改写成浏览器可访问的相对 URL（如 `/alarm/...`、`/zlm/...`），**不要**把 `zlm_server.host` 改成局域网 IP。
+
+### 历史告警 video_url 为空但磁盘已有 MP4
+
+若素材回调漏写库，可执行回写脚本（只改 `video_url` 为空的记录）：
+
+```bash
+wsl -d Ubuntu-22.04 -u root -- bash /mnt/e/video-analysis/Video-Analyse-main/scripts/backfill_alarm_video_url.sh
+```
+
+### 排查「有截图、无视频」
+
+```bash
+mysql -h127.0.0.1 -P3307 -uroot -peasySVA.EZ easySVA -e \
+"SELECT id, device_id, control_code, video_url, sva_media_status, sva_media_error FROM h_waring ORDER BY alarm_time DESC LIMIT 5\G"
+
+grep -E 'ZLM录像|startRecordTask|SVA素材回写' /opt/SVA/backend/log.out | tail -30
+
+find /var/www/SVA-web/upload -name 'main.mp4' | tail -10
+```
+
 ## 8. 日志位置
 
 
@@ -252,6 +293,7 @@ WiFi IP 变了，或「启动监控」把 `play_url` 写回 `127.0.0.1:9992` 后
 | 顶部 `live-output` 404                   | 前端调用 `POST /deployments/{id}/live-output`，当前安装的后端 **未实现** 该接口 | 可忽略；以报警列表为准，勿依赖布控详情页算法预览流         |
 | 本机 / 同学打不开 `http://<IP>/` 或 `:8080` | WSL mirrored；**Clash/VPN 劫持局域网**；防火墙未放行 | **先关 VPN/Clash**；同学用 `http://<IP>:8080/`；管理员运行 `setup_windows_lan_access.ps1` 或 `open_lan_firewall.bat` |
 | 同学打开网页但监控墙黑屏 | `play_url` 是 `ws://127.0.0.1:9992/...`；9992 未对局域网开放 | Nginx `/live/` 代理 + `rewrite_play_url_for_lan.sh <IP>`；关 Clash；走监控墙不要依赖设备列表弹窗 |
+| 告警有截图但点「视频证据」提示不存在 | 默认 M-SERVER 时 ZLM 录像失败，或 A-SERVER 回调未写 `video_url` | 布控改 A-SERVER 复测；查 `sva_media_status` / 后端日志；跑 `backfill_alarm_video_url.sh`；见 §7.1 |
 | 重启后网页 502 | 后端未起或连错数据库 | 执行 `start_easysva.ps1` |
 | MariaDB 启动失败                           | Windows MySQL 占 3306                                          | 使用 MariaDB **3307** + 后端 JDBC 改端口 |
 
@@ -266,5 +308,6 @@ WiFi IP 变了，或「启动监控」把 `play_url` 写回 `127.0.0.1:9992` 后
 | 2026-08-31 | 初稿：WSL2 + D 盘、GPU 安装、3307/9994/9995、验收点 1 跑通记录 |
 | 2026-08-31 | 一键启动 `start_easysva.ps1`；局域网 `:8080`；关 Clash/VPN 才能互访 |
 | 2026-09-02 | Nginx `/live/` 代理 ZLM；同学经 `:8080` 看监控墙，不改 `zlm_server.host` |
+| 2026-09-02 | §7.1 告警视频证据：录像引擎 A/M-SERVER、`/zlm/` URL、`backfill_alarm_video_url.sh` |
 
 

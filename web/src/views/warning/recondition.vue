@@ -140,6 +140,7 @@ import {
 import {getDeptList} from '@/api/system/kanban';
 import player from "@/components/RTSPPlayer"
 import store from "@/store";
+import { getVideoEvidenceUnavailableMessage, resolveAlarmVideoUrl } from '@/utils/alarmVideo'
 
 const formatDateLocal = (date) => {
   const d = date instanceof Date ? date : new Date(date)
@@ -392,18 +393,9 @@ export default {
     },
 
     resolveVideoMediaUrl(row) {
-      const absoluteVideoPath = row && row.video_absolute_url;
-      if (absoluteVideoPath) {
-        return this.toAbsoluteMediaUrl(absoluteVideoPath);
-      }
-      const relativeVideoPath = row && row.video_url;
-      if (/^\/?alarm\//i.test(relativeVideoPath || '')) {
-        return this.toAbsoluteMediaUrl(relativeVideoPath.startsWith('/') ? relativeVideoPath : `/${relativeVideoPath}`);
-      }
-      return this.toAbsoluteMediaUrl(relativeVideoPath);
+      return resolveAlarmVideoUrl(row, this.toAbsoluteMediaUrl.bind(this))
     },
 
-    // 查看视频证据
     async viewVideo(row) {
       if (!row || !row.device_id || !row.alarm_time) {
         this.$modal.msgError("缺少视频取证信息");
@@ -411,7 +403,7 @@ export default {
       }
 
       this.detailVideoLoading = true;
-  const localVideoUrl = this.resolveVideoMediaUrl(row);
+      const localVideoUrl = this.resolveVideoMediaUrl(row);
       if (localVideoUrl) {
         this.rtspUrl = localVideoUrl;
         this.detailVideoVisible = true;
@@ -419,7 +411,7 @@ export default {
         return;
       }
 
-      this.$modal.msgError("视频不存在");
+      this.$modal.msgError(getVideoEvidenceUnavailableMessage(row));
       this.detailVideoLoading = false;
     },
 
