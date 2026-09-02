@@ -20,7 +20,7 @@ cd algo\sleep-pose
 python -m unittest discover -s tests -v
 ```
 
-短低头不应报；持续低头 ≥ 3s 应报。
+短低头、正面看镜头不应报；持续低头 ≥ 2.5s 应报。正拍/侧拍用同一套俯仰角；头仍在脖子上方会封顶。
 
 ## 本地视频
 

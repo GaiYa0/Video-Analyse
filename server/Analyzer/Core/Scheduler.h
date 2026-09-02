@@ -134,6 +134,10 @@ namespace SVAAnalyzer
 		float inferFps = 0.0f;
 		bool happen = false;
 		float happenScore = 0.0f;
+		float confidence = 0.0f;
+		float pitchDegree = 0.0f;
+		int durationFrames = 0;
+		int64_t durationMs = 0;
 		std::string ruleId;
 		std::string customEventName;
 		std::string behaviorType;
@@ -210,6 +214,10 @@ namespace SVAAnalyzer
 		int startHitCount = 0;
 		int64_t pendingWindowStartMs = 0;
 		float maxScore = 0.0f;
+		float confidence = 0.0f;
+		float pitchDegree = 0.0f;
+		int durationFrames = 0;
+		int64_t durationMs = 0;
 		std::vector<std::string> algorithmCodes;
 		std::unordered_set<std::string> algorithmCodeSet;
 	};

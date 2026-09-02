@@ -46,7 +46,7 @@ namespace SVAAnalyzer
 		std::queue<AVPacket> mVideoPktQ;
 		std::mutex mVideoPktQ_mtx;
 		std::condition_variable mVideoPktQ_cv;
-		size_t mVideoPktQueueCapacity = 32;
+		size_t mVideoPktQueueCapacity = 4;
 	};
 
 }

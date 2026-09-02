@@ -210,14 +210,6 @@ namespace SVAAnalyzer
 
         static void updateSleepPoseState(TemporalTrackState &track, DetectObject &detect, const Control &control, int64_t timestampMs)
         {
-            if (!detect.hasPose)
-            {
-                detect.sleepOnDuty = false;
-                detect.headDownMs = 0;
-                detect.durationFrames = 0;
-                return;
-            }
-
             float downDeg = SleepPose::kDefaultPitchDownDeg;
             float recoverDeg = SleepPose::kDefaultPitchRecoverDeg;
             int64_t holdMs = SleepPose::kDefaultSleepHoldMs;
@@ -226,12 +218,13 @@ namespace SVAAnalyzer
             int64_t headDownMs = 0;
             const SleepPose::FrameLabel label = SleepPose::updateTemporal(
                 track.sleepPose,
-                detect.pitchValid,
+                detect.hasPose && detect.pitchValid,
                 detect.pitchDegree,
                 timestampMs,
                 downDeg,
                 recoverDeg,
                 holdMs,
+                SleepPose::kDefaultRecoverHoldMs,
                 headDownMs);
             track.headDownMs = headDownMs;
             track.sleepOnDuty = (label == SleepPose::FrameLabel::Sleep);

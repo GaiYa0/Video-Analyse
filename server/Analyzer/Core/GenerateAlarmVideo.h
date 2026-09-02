@@ -36,6 +36,10 @@ namespace SVAAnalyzer
 		std::string ruleId;
 		std::string videoPath;
 		std::string imagePath;
+		float confidence = 0;
+		float pitchDegree = 0;
+		int durationFrames = 0;
+		int64_t durationMs = 0;
 		std::vector<Frame *> frames; // 组成报警视频的图片帧
 	};
 

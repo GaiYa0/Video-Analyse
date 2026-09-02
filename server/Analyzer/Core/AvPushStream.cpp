@@ -122,9 +122,10 @@ namespace SVAAnalyzer
         mVideoCodecCtx->height = videoHeight;
         mVideoCodecCtx->time_base = {1, videoFps};
         //        mDstVideoCodecCtx->framerate = { mDstVideoFps, 1 };
-        mVideoCodecCtx->gop_size = 25;
+        const int liveGop = (videoFps > 0 && videoFps < 5) ? videoFps : 5;
+        mVideoCodecCtx->gop_size = liveGop > 0 ? liveGop : 5;
         mVideoCodecCtx->max_b_frames = 0;
-        mVideoCodecCtx->thread_count = 5;
+        mVideoCodecCtx->thread_count = 1;
         mVideoCodecCtx->flags |= AV_CODEC_FLAG_GLOBAL_HEADER; // 添加PPS、SPS
         AVDictionary *video_codec_options = NULL;
 
@@ -195,10 +196,8 @@ namespace SVAAnalyzer
         av_dict_set(&fmt_options, "rw_timeout", "30000000", 0); // 设置rtmp/http-flv连接超时（单位 us）
         av_dict_set(&fmt_options, "stimeout", "30000000", 0);   // 设置rtsp连接超时（单位 us）
         av_dict_set(&fmt_options, "rtsp_transport", "tcp", 0);
-        //        av_dict_set(&fmt_options, "fflags", "discardcorrupt", 0);
-
-        // av_dict_set(&fmt_options, "muxdelay", "0.1", 0);
-        // av_dict_set(&fmt_options, "tune", "zerolatency", 0);
+        av_dict_set(&fmt_options, "muxdelay", "0", 0);
+        av_dict_set(&fmt_options, "muxpreload", "0", 0);
 
         mFmtCtx->video_codec_id = mFmtCtx->oformat->video_codec;
 

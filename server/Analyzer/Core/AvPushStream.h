@@ -51,7 +51,7 @@ namespace SVAAnalyzer
 		std::queue<Frame *> mVideoFrameQ;
 		std::mutex mVideoFrameQ_mtx;
 		std::condition_variable mVideoFrameQ_cv;
-		size_t mVideoFrameQCapacity = 32;
+		size_t mVideoFrameQCapacity = 4;
 		bool getVideoFrame(Frame *&frame);
 	};
 

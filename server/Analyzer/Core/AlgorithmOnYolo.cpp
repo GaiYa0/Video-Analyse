@@ -489,9 +489,8 @@ namespace SVAAnalyzer
                 detect.poseKeypoints[static_cast<size_t>(k)] = kp;
             }
             detect.pitchValid = SleepPose::tryComputePitchDeg(
-                detect.poseKeypoints[SleepPose::kNose],
-                detect.poseKeypoints[SleepPose::kLeftShoulder],
-                detect.poseKeypoints[SleepPose::kRightShoulder],
+                detect.poseKeypoints.data(),
+                SleepPose::kKeypointCount,
                 SleepPose::kMinKeypointConf,
                 detect.pitchDegree);
             detects.push_back(detect);
