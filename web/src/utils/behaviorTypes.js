@@ -5,6 +5,7 @@ export const BEHAVIOR_TYPE_OPTIONS = [
   { value: 'dwell', label: '停留' },
   { value: 'low_speed', label: '低速' },
   { value: 'loitering', label: '徘徊' },
+  { value: 'sleep_on_duty', label: '睡岗' },
   { value: 'sleep', label: '睡觉' },
   { value: 'absence', label: '缺席' },
   { value: 'count_threshold', label: '数量阈值' },
@@ -19,7 +20,8 @@ export const BEHAVIOR_TYPE_OPTIONS = [
 
 export const BEHAVIOR_TYPE_VALUES = BEHAVIOR_TYPE_OPTIONS.map(item => item.value)
 
-const SLEEP_DISPLAY_ALIASES = ['SLEEP_ON_DUTY', 'sleep_on_duty', '睡岗', '睡觉']
+const SLEEP_ON_DUTY_ALIASES = ['SLEEP_ON_DUTY', 'sleep_on_duty', '睡岗']
+const SLEEP_HEURISTIC_ALIASES = ['sleep', '睡觉']
 
 export function normalizeBehaviorType(value) {
   if (BEHAVIOR_TYPE_VALUES.includes(value)) {
@@ -36,7 +38,9 @@ export function isKnownBehaviorType(behaviorType) {
     return true
   }
   const raw = String(behaviorType).trim()
-  return BEHAVIOR_TYPE_VALUES.includes(raw) || SLEEP_DISPLAY_ALIASES.indexOf(raw) !== -1
+  return BEHAVIOR_TYPE_VALUES.includes(raw)
+    || SLEEP_ON_DUTY_ALIASES.indexOf(raw) !== -1
+    || SLEEP_HEURISTIC_ALIASES.indexOf(raw) !== -1
 }
 
 export function getBehaviorTypeLabel(behaviorType) {
@@ -44,7 +48,10 @@ export function getBehaviorTypeLabel(behaviorType) {
     return ''
   }
   const raw = String(behaviorType).trim()
-  if (SLEEP_DISPLAY_ALIASES.indexOf(raw) !== -1) {
+  if (SLEEP_ON_DUTY_ALIASES.indexOf(raw) !== -1) {
+    return '睡岗'
+  }
+  if (SLEEP_HEURISTIC_ALIASES.indexOf(raw) !== -1) {
     return '睡觉'
   }
   const matched = BEHAVIOR_TYPE_OPTIONS.find(item => item.value === raw)

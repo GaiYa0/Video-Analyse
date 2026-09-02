@@ -47,6 +47,7 @@
               <el-descriptions-item label="跨线方向"> {{ getCrossingDirectionLabel(detailsInfo.sva_crossing_direction) }}</el-descriptions-item>
               <el-descriptions-item label="事件阶段"> {{ getEventStateLabel(detailsInfo.sva_event_state) }}</el-descriptions-item>
               <el-descriptions-item label="持续时长"> {{ formatDuration(detailsInfo.duration_ms) }}</el-descriptions-item>
+              <el-descriptions-item v-if="isSleepPitchVisible(detailsInfo)" label="俯仰角"> {{ formatPitchDegree(detailsInfo.sva_pitch_degree) }}</el-descriptions-item>
               <el-descriptions-item label="结束时间"> {{ detailsInfo.end_time || '---' }}</el-descriptions-item>
             </template>
             <el-descriptions-item label="处理状态"> {{ isHandled(detailsInfo.is_handle) ? '已处理' : '未处理' }}
@@ -207,6 +208,23 @@ export default {
     },
     isSleepType(name) {
       return String(name || '').indexOf('睡岗') !== -1
+    },
+    isSleepPitchVisible(detail = {}) {
+      const behaviorType = String(detail.sva_behavior_type || '').trim()
+      return this.isSleepType(detail.alarm_type_name)
+        || behaviorType === 'SLEEP_ON_DUTY'
+        || behaviorType === 'sleep_on_duty'
+        || behaviorType === '睡岗'
+    },
+    formatPitchDegree(value) {
+      if (value === undefined || value === null || value === '') {
+        return '---'
+      }
+      const numericValue = Number(value)
+      if (!Number.isFinite(numericValue)) {
+        return '---'
+      }
+      return `${numericValue.toFixed(1)}°`
     },
     isHandled(value) {
       return String(value) === '1'

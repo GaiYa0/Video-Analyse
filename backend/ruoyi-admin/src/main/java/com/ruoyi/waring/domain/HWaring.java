@@ -102,6 +102,8 @@ public class HWaring extends BaseEntity {
 
     private Long duration_ms;
 
+    private Double sva_pitch_degree;
+
     private Boolean ai_review_enabled;
 
     private String ai_review_prompt;
