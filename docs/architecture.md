@@ -60,10 +60,10 @@ flowchart TB
 | 阶段 | 图上要亮的部分 |
 | --- | --- |
 | P1 已完成 | RTSP/直连 → ZLM 拉流 → WS-FLV 预览；Analyzer 原 YOLO；backend 告警入库；Vue 原页面 |
-| P2 当前 | Pose 睡岗 + 时序防误报；布控增加睡岗类型；告警页展示睡岗 |
-| P3 | SIP 5060、国标 IPC；backend 从 ZLM 同步设备；列表区分 RTSP/国标；Analyzer 向 ZLM 取播放 URL |
+| P2 已完成 | Pose 睡岗 + 时序防误报；布控增加睡岗类型；告警页展示睡岗 |
+| P3 当前 | SIP 5060、国标 IPC；backend 从 ZLM 同步设备；列表区分 RTSP/国标；Analyzer 向 ZLM 取播放 URL |
 
-P1 已过，正在做睡岗。国标仍禁止。布控详情 `POST /deployments/{id}/live-output` 已补，返回已有 `algorithmStreamUrl`；同学访问演示机用 `http://<IP>:8080/`（先关 Clash/VPN）。
+P2 已过，正在做国标。睡岗与原 YOLO 保留。布控详情 `POST /deployments/{id}/live-output` 已补，返回已有 `algorithmStreamUrl`；同学访问演示机用 `http://<IP>:8080/`（先关 Clash/VPN）。
 
 ## 和课件图的差别
 
@@ -165,6 +165,12 @@ P2 只动布控选项和告警类型，**不要改国标设备字段**。
 3. 布控原 YOLO（本组 `yolo11n_80` + 如 `cup`），画区域后启动。
 4. 报警列表有记录和截图。
 5. 三人已给 Gitee 上游五仓点 Star。
+
+P2 睡岗（2026-09-02 演示机走查，已关账）：
+
+- 布控选 `on_sleep_pose`、闭合主区域、规则 `sleep_on_duty`（低头 ≥32° / 2500ms），趴桌后弹出睡岗推送：[p2睡岗检测布控.png](./photo/p2睡岗检测布控.png)
+- 告警详情类型为睡岗 / `SLEEP_ON_DUTY`，规则 ID `sleep_on_duty_default`：[p2睡岗检测告警详情.png](./photo/p2睡岗检测告警详情.png)
+- 同机原 YOLO 进区告警仍可用（CCTV5 / `behavior_rule_1`）：[p2原YOLO进区告警.png](./photo/p2原YOLO进区告警.png)
 
 ## 后面改哪里
 
