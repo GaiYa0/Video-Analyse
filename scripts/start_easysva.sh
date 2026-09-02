@@ -12,6 +12,8 @@ fi
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
 WITH_STREAM=0
 if [ "${1:-}" = "--with-stream" ]; then
   WITH_STREAM=1
@@ -49,6 +51,7 @@ fi
 echo "=== [3/7] Redis + nginx ==="
 start_systemd redis-server || start_systemd redis
 start_systemd nginx
+bash "$SCRIPT_DIR/apply_nginx_live_proxy.sh"
 
 echo "=== [4/7] Start backend ==="
 if pgrep -f 'backend.jar' >/dev/null; then
