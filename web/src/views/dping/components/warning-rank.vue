@@ -1,14 +1,17 @@
 <template>
   <div class="right_bottom">
-    <div class="echart" id="warning-org" :style="myChartStyle"></div>
+    <div ref="warningOrg" class="echart" id="warning-org" :style="myChartStyle"></div>
   </div>
 </template>
 
 <script>
 import {getRanking} from '@/api/system/kanban';
 import * as echarts from "echarts";
+import echartsLifecycle from '@/mixins/echartsLifecycle';
 
 export default {
+  mixins: [echartsLifecycle],
+  echartsFields: ['orgChart'],
   data() {
     return {
       myChartStyle: {
@@ -190,17 +193,15 @@ export default {
         ]
       };
 
-      const dom = document.getElementById("warning-org")
-      dom.setAttribute('_echarts_instance_', '')
-      const warningOrg = echarts.init(dom);
-
-      warningOrg.on('click', (params) => {
+      const warningOrg = this.ensureChart('orgChart', this.$refs.warningOrg, (params) => {
         this.$router.push({path: "/warning/warning", query: {withQue: 8, time: "年", org_name: params.name}});
       });
+      if (!warningOrg) {
+        return
+      }
       warningOrg.setOption(option);
-      //随着屏幕大小调节图表
-      window.addEventListener("resize", () => {
-        warningOrg.resize();
+      this.bindChartResize(() => {
+        this.orgChart && this.orgChart.resize();
       });
     },
 

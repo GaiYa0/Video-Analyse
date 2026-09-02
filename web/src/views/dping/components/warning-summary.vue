@@ -1,13 +1,15 @@
 <!-- 报警统计 -->
 <template>
-  <div class="echart" id="levelDis" :style="levelStyle"></div>
+  <div ref="levelDis" class="echart" id="levelDis" :style="levelStyle"></div>
 </template>
 
 <script>
 import {getLevelSpread} from '@/api/system/kanban';
-import * as echarts from "echarts";
+import echartsLifecycle from '@/mixins/echartsLifecycle';
 
 export default {
+  mixins: [echartsLifecycle],
+  echartsFields: ['levelChart'],
   data() {
     return {
       levelStyle: {
@@ -112,20 +114,19 @@ export default {
         ]
       }
 
-      const dom = document.getElementById("levelDis")
-      dom.setAttribute('_echarts_instance_', '')
-      const levelDis = echarts.init(dom)
-      levelDis.on('click', (params) => {
+      const levelDis = this.ensureChart('levelChart', this.$refs.levelDis, (params) => {
         if (params.data.name === "未处理") {
           this.$router.push({path: "/warning/warning", query: {withQue: 2, is_handle: 0}});
         } else {
           this.$router.push({path: "/warning/warning", query: {withQue: 2, is_handle: 1}});
         }
       });
+      if (!levelDis) {
+        return
+      }
       levelDis.setOption(option);
-      // 随着屏幕大小调节图表
-      window.addEventListener("resize", () => {
-        levelDis.resize();
+      this.bindChartResize(() => {
+        this.levelChart && this.levelChart.resize();
       });
 
     },

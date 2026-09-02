@@ -66,16 +66,14 @@
 
 <script>
 import { getCache } from "@/api/monitor/cache";
-import * as echarts from "echarts";
+import echartsLifecycle from "@/mixins/echartsLifecycle";
 
 export default {
   name: "Cache",
+  mixins: [echartsLifecycle],
+  echartsFields: ['commandstats', 'usedmemory'],
   data() {
     return {
-      // 统计命令信息
-      commandstats: null,
-      // 使用内存
-      usedmemory: null,
       // cache信息
       cache: []
     }
@@ -91,8 +89,9 @@ export default {
         this.cache = response.data;
         this.$modal.closeLoading();
 
-        this.commandstats = echarts.init(this.$refs.commandstats, "macarons");
-        this.commandstats.setOption({
+        const commandstats = this.ensureChart('commandstats', this.$refs.commandstats, null, "macarons");
+        if (commandstats) {
+          commandstats.setOption({
           tooltip: {
             trigger: "item",
             formatter: "{a} <br/>{b} : {c} ({d}%)",
@@ -109,9 +108,11 @@ export default {
               animationDuration: 1000,
             }
           ]
-        });
-        this.usedmemory = echarts.init(this.$refs.usedmemory, "macarons");
-        this.usedmemory.setOption({
+          });
+        }
+        const usedmemory = this.ensureChart('usedmemory', this.$refs.usedmemory, null, "macarons");
+        if (usedmemory) {
+          usedmemory.setOption({
           tooltip: {
             formatter: "{b} <br/>{a} : " + this.cache.info.used_memory_human,
           },
@@ -132,10 +133,11 @@ export default {
               ]
             }
           ]
-        });
-        window.addEventListener("resize", () => {
-          this.commandstats.resize();
-          this.usedmemory.resize();
+          });
+        }
+        this.bindChartResize(() => {
+          this.commandstats && this.commandstats.resize();
+          this.usedmemory && this.usedmemory.resize();
         });
       });
     },

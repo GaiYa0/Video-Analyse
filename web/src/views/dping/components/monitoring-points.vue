@@ -27,8 +27,6 @@
 
 <script>
 import { getDeviceNum } from '@/api/system/kanban';
-import { markRaw } from 'vue'
-import * as echarts from 'echarts'
 import BarChart from '@/views/dping/components/templateChart.vue'
 let style = {
   fontSize: 24
@@ -273,22 +271,10 @@ export default {
   },
   methods: {
     initChart() {
-      const dom = this.$refs.firstBar.$refs.templateChart
-      const dom2 = this.$refs.secondBar.$refs.templateChart
-      const dom3 = this.$refs.thirdBar.$refs.templateChart
-      const chart = echarts.init(dom)
-      const chart2 = echarts.init(dom2)
-      const chart3 = echarts.init(dom3)
-      dom.setAttribute('_echarts_instance_', '')
-      dom2.setAttribute('_echarts_instance_', '')
-      dom3.setAttribute('_echarts_instance_', '')
-      this.$refs.firstBar.initChart()
-      this.$refs.secondBar.initChart()
-      this.$refs.thirdBar.initChart()
-      window.addEventListener('resize', () => {
-        chart.resize()
-        chart2.resize()
-        chart3.resize()
+      this.$nextTick(() => {
+        this.$refs.firstBar && this.$refs.firstBar.initChart()
+        this.$refs.secondBar && this.$refs.secondBar.initChart()
+        this.$refs.thirdBar && this.$refs.thirdBar.initChart()
       })
     },
 
