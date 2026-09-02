@@ -8,7 +8,17 @@
 import {getRanking} from '@/api/system/kanban';
 import * as echarts from "echarts";
 import echartsLifecycle from '@/mixins/echartsLifecycle';
-import { SVA_CHART_ACCENT, SVA_CHART_BORDER, SVA_CHART_TEXT, svaTooltip } from '@/utils/chartTheme';
+import {
+  SVA_CHART_BAR_MAX_WIDTH,
+  SVA_CHART_BAR_RADIUS_VERTICAL,
+  SVA_CHART_DEEP,
+  SVA_CHART_LIGHT,
+  SVA_CHART_SPLIT,
+  SVA_CHART_TEXT,
+  svaCategoryAxis,
+  svaCountTooltip,
+  svaValueAxis
+} from '@/utils/chartTheme';
 
 export default {
   mixins: [echartsLifecycle],
@@ -55,7 +65,7 @@ export default {
     initOrgEcharts() {
       const option = {
         backgroundColor: "transparent",
-        tooltip: Object.assign({
+        tooltip: svaCountTooltip({
           trigger: 'axis',
           axisPointer: {
             type: 'line',
@@ -63,8 +73,8 @@ export default {
               opacity: 0
             }
           },
-          formatter: '{b}: {c}'
-        }, svaTooltip),
+          formatter: '{b}: {c} 条'
+        }),
         legend: {
           data: ['直接访问', '背景'],
           show: false
@@ -77,17 +87,14 @@ export default {
           containLabel: true,
           z: 22
         },
-        xAxis: [{
-          type: 'category',
+        xAxis: [svaCategoryAxis({
           gridIndex: 0,
           data: this.orgData.yData,
           axisTick: {
-            alignWithLabel: true
-          },
-          axisLine: {
-            lineStyle: {
-              color: SVA_CHART_BORDER
-            }
+            show: true,
+            alignWithLabel: true,
+            length: 3,
+            lineStyle: { color: SVA_CHART_SPLIT }
           },
           axisLabel: {
             show: true,
@@ -97,38 +104,22 @@ export default {
             formatter: function (value) {
               var texts = value
               if (texts.length > 4) {
-                // 限制长度自设
                 texts = texts.substr(0, 4) + '...'
               }
               return texts
             }
           }
-        }],
-        yAxis: [{
-          type: 'value',
-          splitLine: {
-            show: true,
-            lineStyle: {
-              color: SVA_CHART_BORDER
-            }
-          },
-          axisTick: {
-            show: false
-          },
-          axisLine: {
-            lineStyle: {
-              color: SVA_CHART_BORDER
-            }
-          },
+        })],
+        yAxis: [svaValueAxis({
           axisLabel: {
             color: SVA_CHART_TEXT,
             formatter: '{value}'
           }
-        },
+        }),
           {
             type: 'value',
             gridIndex: 0,
-            splitNumber: 12,
+            splitNumber: 4,
             splitLine: {
               show: false
             },
@@ -151,24 +142,23 @@ export default {
         ],
         series: [{
           type: 'bar',
+          barMaxWidth: SVA_CHART_BAR_MAX_WIDTH,
           barWidth: '30%',
           xAxisIndex: 0,
           yAxisIndex: 0,
           itemStyle: {
-            normal: {
-                  barBorderRadius: 2,
-                  color: new echarts.graphic.LinearGradient(
-                0, 0, 0, 1, [{
-                  offset: 0,
-                  color: '#8fb4c9'
-                },
-                  {
-                    offset: 1,
-                    color: SVA_CHART_ACCENT
-                  }
-                ]
-              )
-            }
+            borderRadius: SVA_CHART_BAR_RADIUS_VERTICAL,
+            color: new echarts.graphic.LinearGradient(
+              0, 0, 0, 1, [{
+                offset: 0,
+                color: SVA_CHART_LIGHT
+              },
+                {
+                  offset: 1,
+                  color: SVA_CHART_DEEP
+                }
+              ]
+            )
           },
           data: this.orgData.xData,
           zlevel: 11
@@ -181,12 +171,9 @@ export default {
             xAxisIndex: 0,
             yAxisIndex: 1,
             barGap: '-135%',
-            // data: this.orgData.xData.map(),
             itemStyle: {
-              normal: {
-                    barBorderRadius: 2,
-                color: 'rgba(255,255,255,0.1)'
-              }
+              borderRadius: SVA_CHART_BAR_RADIUS_VERTICAL,
+              color: 'rgba(158,197,212,0.08)'
             },
             zlevel: 9
           },

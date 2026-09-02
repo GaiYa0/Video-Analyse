@@ -28,7 +28,7 @@
 <script>
 import { getDeviceNum } from '@/api/system/kanban';
 import BarChart from '@/views/dping/components/templateChart.vue'
-import { SVA_CHART_ACCENT, SVA_CHART_TEXT } from '@/utils/chartTheme'
+import { SVA_CHART_ACCENT, SVA_CHART_MUTED, SVA_CHART_SPLIT, SVA_CHART_TEXT } from '@/utils/chartTheme'
 let style = {
   fontSize: 24
 }
@@ -54,10 +54,10 @@ const option =  {
           color: [[1, "rgba(255,255,255,0)"]],
         }
       },
-      //刻度标签。
+      //刻度标签。橙红装饰语义不改。
       axisTick: {
         show: true,
-        splitNumber: 6, //刻度的段落数
+        splitNumber: 5,
         itemStyle: {
           color: {
             type: 'linear',
@@ -68,24 +68,26 @@ const option =  {
             colorStops: [
               {
                 offset: 0,
-                color: '#f12711' // 0% 处的颜色
+                color: '#f12711'
               },
               {
                 offset: 1,
-                color: '#f5af19' // 100% 处的颜色
+                color: '#f5af19'
               }
             ],
-            global: false // 缺省为 false
+            global: false
           }
         },
-        length: 2, //刻度的长度
+        length: 4,
       },
       splitLine: {
         show: false,
+        lineStyle: { color: SVA_CHART_SPLIT, width: 1 }
       },
-      // //刻度线文字
       axisLabel: {
         show: false,
+        color: SVA_CHART_MUTED,
+        fontSize: 10
       },
 
       data: [],

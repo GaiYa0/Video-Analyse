@@ -67,7 +67,16 @@
 <script>
 import { getCache } from "@/api/monitor/cache";
 import echartsLifecycle from "@/mixins/echartsLifecycle";
-import { SVA_CHART_ACCENT, SVA_CHART_TEXT, svaTooltip } from "@/utils/chartTheme";
+import {
+  SVA_CHART_ACCENT,
+  SVA_CHART_DEEP,
+  SVA_CHART_LIGHT,
+  SVA_CHART_MUTED,
+  SVA_CHART_PALETTE,
+  SVA_CHART_SPLIT,
+  SVA_CHART_TEXT,
+  svaTooltip
+} from "@/utils/chartTheme";
 
 export default {
   name: "Cache",
@@ -93,6 +102,7 @@ export default {
         const commandstats = this.ensureChart('commandstats', this.$refs.commandstats);
         if (commandstats) {
           commandstats.setOption({
+          color: SVA_CHART_PALETTE,
           tooltip: Object.assign({
             trigger: "item",
             formatter: "{a} <br/>{b} : {c} ({d}%)",
@@ -123,8 +133,24 @@ export default {
               type: "gauge",
               min: 0,
               max: 1000,
+              splitNumber: 5,
+              axisLine: {
+                lineStyle: {
+                  color: [[1, SVA_CHART_DEEP]],
+                  width: 8
+                }
+              },
+              axisTick: {
+                show: true,
+                length: 4,
+                lineStyle: { color: SVA_CHART_SPLIT }
+              },
+              splitLine: {
+                length: 8,
+                lineStyle: { color: SVA_CHART_LIGHT }
+              },
               axisLabel: {
-                color: SVA_CHART_TEXT
+                color: SVA_CHART_MUTED
               },
               title: {
                 color: SVA_CHART_TEXT
