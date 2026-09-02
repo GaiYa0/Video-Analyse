@@ -24,23 +24,14 @@
     <div class="workspace-body">
       <section class="preview-pane">
         <div class="card-header">实时流预览与区域绘制</div>
-        <div class="video-panel">
-          <div ref="videoWrapper" class="video-wrapper">
-              <video
-                ref="previewVideo"
-                class="preview-video"
-                muted
-                playsinline
-                @loadedmetadata="handleVideoLoaded"
-              />
-              <canvas
-                ref="polygonCanvas"
-                class="polygon-canvas"
-                @click="handleCanvasClick"
-                @dblclick.prevent="handleCanvasDblClick"
-              />
-
-          </div>
+          <div class="video-panel">
+            <video-preview-pane
+              ref="previewPane"
+              @canvas-click="handleCanvasClick"
+              @canvas-dblclick="handleCanvasDblClick"
+              @loadedmetadata="handleVideoLoaded"
+              @canvas-resized="drawPolygon"
+            />
           <div class="video-toolbar">
               <el-radio-group v-model="geometryEditorMode" size="mini" class="geometry-mode-switch">
                 <el-radio-button label="region">区域</el-radio-button>
@@ -1118,10 +1109,11 @@ import { createDeployment, getDeploymentDetail, updateDeployment, updateDeployme
 import { OVERLAY_DELAY_DEFAULT_MS, loadOverlayDelayMs } from '@/utils/systemRuntimeConfig'
 import { BEHAVIOR_TYPE_OPTIONS, getBehaviorTypeLabel, normalizeBehaviorType } from '@/utils/behaviorTypes'
 import { getFieldValue } from '@/utils/fieldMap'
-import { destroyFlvPlayer, playHttpFlv, resetVideoElement } from '@/utils/flvPlayer'
+import VideoPreviewPane from './components/VideoPreviewPane.vue'
 
 export default {
   name: 'DeploymentAdd',
+  components: { VideoPreviewPane },
   data() {
     const validateAlgorithmTasks = (rule, value, callback) => {
       if (!Array.isArray(value) || value.length === 0) {
@@ -1192,7 +1184,6 @@ export default {
       deploymentId: '',
       streamUrl: '',
       videoLoaded: false,
-      flvPlayer: null,
       polygonPoints: [],
       polygonClosed: false,
       geometryEditorMode: 'region',
@@ -1400,12 +1391,10 @@ export default {
   },
   mounted() {
     this.initPageData()
-    window.addEventListener('resize', this.syncCanvasSize)
     window.addEventListener('sva:detect-frame', this.handleDetectFramePush)
     window.addEventListener('sva:detect-event', this.handleDetectEventPush)
   },
   beforeDestroy() {
-    window.removeEventListener('resize', this.syncCanvasSize)
     window.removeEventListener('sva:detect-frame', this.handleDetectFramePush)
     window.removeEventListener('sva:detect-event', this.handleDetectEventPush)
     this.clearDetectFrame(false)
@@ -4300,7 +4289,6 @@ export default {
 
     handleVideoLoaded() {
       this.videoLoaded = true
-      this.syncCanvasSize()
     },
 
     handleDetectFramePush(event) {
@@ -4517,56 +4505,35 @@ export default {
     },
 
     playStream(url) {
-      this.destroyPlayer()
       this.videoLoaded = false
-      const video = this.$refs.previewVideo
-      if (!video || !url) {
-        return
+      if (this.$refs.previewPane) {
+        this.$refs.previewPane.playStream(url)
       }
-
-      const player = playHttpFlv(video, url)
-      if (player) {
-        this.flvPlayer = player
-        this.flvPlayer.play().catch(() => {})
-        return
-      }
-
-      video.src = url
-      video.play().catch(() => {})
     },
 
     destroyPlayer() {
-      const video = this.$refs.previewVideo
-      if (this.flvPlayer) {
-        destroyFlvPlayer(this.flvPlayer)
-        this.flvPlayer = null
-      }
-      resetVideoElement(video)
       this.videoLoaded = false
+      if (this.$refs.previewPane) {
+        this.$refs.previewPane.destroyPlayer()
+      }
     },
 
     syncCanvasSize() {
-      const wrapper = this.$refs.videoWrapper
-      const canvas = this.$refs.polygonCanvas
-      if (!wrapper || !canvas) {
-        return
+      if (this.$refs.previewPane) {
+        this.$refs.previewPane.syncCanvasSize()
       }
-      const width = wrapper.clientWidth || 0
-      const height = wrapper.clientHeight || 0
-      if (!width || !height) {
-        return
-      }
-      const oldWidth = canvas.width
-      const oldHeight = canvas.height
-      if (oldWidth !== width || oldHeight !== height) {
-        canvas.width = width
-        canvas.height = height
-      }
-      this.drawPolygon()
+    },
+
+    getPreviewCanvas() {
+      return this.$refs.previewPane && this.$refs.previewPane.getCanvas()
+    },
+
+    getPreviewVideo() {
+      return this.$refs.previewPane && this.$refs.previewPane.getVideo()
     },
 
     handleCanvasClick(event) {
-      const canvas = this.$refs.polygonCanvas
+      const canvas = this.getPreviewCanvas()
       if (!canvas || !canvas.width || !canvas.height) {
         return
       }
@@ -4768,7 +4735,7 @@ export default {
     },
 
     drawPolygon() {
-      const canvas = this.$refs.polygonCanvas
+      const canvas = this.getPreviewCanvas()
       if (!canvas) {
         return
       }
@@ -4924,7 +4891,7 @@ export default {
     },
 
     getVideoDisplayRect(canvas, fallbackWidth, fallbackHeight) {
-      const video = this.$refs.previewVideo
+      const video = this.getPreviewVideo()
       const canvasWidth = Number(canvas && canvas.width) || 0
       const canvasHeight = Number(canvas && canvas.height) || 0
       if (!canvasWidth || !canvasHeight) {
@@ -5198,11 +5165,6 @@ export default {
     overflow: visible;
   }
 
-  .video-wrapper {
-    flex: none;
-    max-height: 36dvh;
-  }
-
   .rules-workspace {
     grid-template-columns: 1fr;
   }
@@ -5263,35 +5225,6 @@ export default {
   min-height: 0;
   display: flex;
   flex-direction: column;
-}
-
-.video-wrapper {
-  position: relative;
-  width: 100%;
-  flex: 1 1 auto;
-  min-height: 200px;
-  background: #0f1115;
-  border-radius: 4px;
-  overflow: hidden;
-}
-
-.preview-video,
-.polygon-canvas {
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: 100%;
-  height: 100%;
-}
-
-.preview-video {
-  object-fit: contain;
-  background: #0f1115;
-}
-
-.polygon-canvas {
-  z-index: 2;
-  cursor: crosshair;
 }
 
 .video-rule-overlay {
