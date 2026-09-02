@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.ruoyi.system.domain.DeploymentTask;
 import com.ruoyi.system.domain.DeploymentTaskAlgorithm;
 import com.ruoyi.system.mapper.DeploymentTaskAlgorithmMapper;
+import com.ruoyi.system.mapper.DeploymentTaskEventMapper;
 import com.ruoyi.system.mapper.DeploymentTaskMapper;
 import com.ruoyi.system.service.IDeploymentTaskService;
 
@@ -25,6 +26,9 @@ public class DeploymentTaskServiceImpl implements IDeploymentTaskService
 
     @Autowired
     private DeploymentTaskAlgorithmMapper deploymentTaskAlgorithmMapper;
+
+    @Autowired
+    private DeploymentTaskEventMapper deploymentTaskEventMapper;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -86,6 +90,15 @@ public class DeploymentTaskServiceImpl implements IDeploymentTaskService
     {
         Date now = new Date();
         return deploymentTaskMapper.updateDeploymentTaskStop(deploymentId, "STOPPED", now, now);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public int deleteDeploymentTask(String deploymentId)
+    {
+        deploymentTaskEventMapper.deleteByDeploymentId(deploymentId);
+        deploymentTaskAlgorithmMapper.deleteByDeploymentId(deploymentId);
+        return deploymentTaskMapper.deleteDeploymentTaskById(deploymentId);
     }
 
     private void saveDeploymentTaskAlgorithms(DeploymentTask deploymentTask)

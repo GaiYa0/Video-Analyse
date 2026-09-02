@@ -27,4 +27,6 @@ public interface DeploymentTaskMapper
         @Param("status") String status,
         @Param("stopTime") Date stopTime,
         @Param("updateTime") Date updateTime);
+
+    public int deleteDeploymentTaskById(String deploymentId);
 }

@@ -348,6 +348,30 @@ public class DeploymentController
         return buildActionResult(true, "停止", analyzerResult.getMessage(), analyzerResult.getDetailMessage(), latest);
     }
 
+    @DeleteMapping("/{id}")
+    public AjaxResult remove(@PathVariable("id") String id)
+    {
+        DeploymentTask record = deploymentTaskService.selectDeploymentTaskById(id);
+        if (record == null)
+        {
+            return AjaxResult.error("布控任务不存在");
+        }
+        if ("RUNNING".equalsIgnoreCase(String.valueOf(record.getStatus())))
+        {
+            AjaxResult stopResult = stop(id);
+            if (!isNestedActionSuccess(stopResult))
+            {
+                return stopResult == null ? AjaxResult.error("停止布控失败，未删除") : stopResult;
+            }
+        }
+        int rows = deploymentTaskService.deleteDeploymentTask(id);
+        if (rows <= 0)
+        {
+            return AjaxResult.error("删除失败");
+        }
+        return buildActionResult(true, "删除", "删除成功", "删除成功", null);
+    }
+
     @GetMapping("/{id}")
     public AjaxResult get(@PathVariable("id") String id)
     {
@@ -1014,6 +1038,24 @@ public class DeploymentController
         data.put("createTime", record.getCreateTime());
         data.put("updateTime", record.getUpdateTime());
         return data;
+    }
+
+    private boolean isNestedActionSuccess(AjaxResult result)
+    {
+        if (result == null || !result.isSuccess())
+        {
+            return false;
+        }
+        Object data = result.get(AjaxResult.DATA_TAG);
+        if (data instanceof Map)
+        {
+            Object success = ((Map<?, ?>) data).get("success");
+            if (success instanceof Boolean)
+            {
+                return ((Boolean) success).booleanValue();
+            }
+        }
+        return true;
     }
 
     private AjaxResult buildActionResult(boolean success, String action, String message, String detailMessage,

@@ -56,7 +56,7 @@
           <span>{{ formatUpdateTime(scope.row.updateTime) }}</span>
         </template>
       </el-table-column>
-      <el-table-column label="操作" align="center" width="420" class-name="small-padding fixed-width">
+      <el-table-column label="操作" align="center" width="540" class-name="small-padding fixed-width">
         <template slot-scope="scope">
           <el-button size="mini" type="text" icon="el-icon-view" @click="handleView(scope.row)">查看详情</el-button>
           <el-button size="mini" type="text" icon="el-icon-s-operation" @click="handleEventOrchestration(scope.row)">事件编排</el-button>
@@ -80,6 +80,12 @@
             icon="el-icon-plus"
             @click="handleAddToWall(scope.row)"
           >加入监控墙</el-button>
+          <el-button
+            size="mini"
+            type="text"
+            icon="el-icon-delete"
+            @click="handleDelete(scope.row)"
+          >删除</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -96,7 +102,7 @@
 </template>
 
 <script>
-import { getDeploymentDetail, listDeployments, startDeployment, stopDeployment, updateDeploymentLiveOutput } from '@/api/deployment'
+import { deleteDeployment, getDeploymentDetail, listDeployments, startDeployment, stopDeployment, updateDeploymentLiveOutput } from '@/api/deployment'
 import { previewDeviceMonitor } from '@/api/device'
 import { upsertScreenWallStream } from '@/api/screenWall'
 import { getFieldValue } from '@/utils/fieldMap'
@@ -328,6 +334,39 @@ export default {
     },
     async handleStop(row) {
       await this.executeAction(row, 'stop')
+    },
+    async handleDelete(row) {
+      const deploymentId = row && row.deploymentId
+      if (!deploymentId) {
+        this.$modal.msgWarning('缺少 deploymentId，无法删除')
+        return
+      }
+      const running = String(row.status || '').toUpperCase() === 'RUNNING'
+      const hint = running
+        ? '当前任务正在运行，删除前会先停止。确认删除该布控？'
+        : '确认删除该布控？删除后不可恢复。'
+      try {
+        await this.$confirm(hint, '提示', {
+          confirmButtonText: '删除',
+          cancelButtonText: '取消',
+          type: 'warning'
+        })
+      } catch (error) {
+        return
+      }
+      try {
+        const response = await deleteDeployment(deploymentId)
+        const result = this.extractActionResult(response)
+        if (result.success) {
+          this.$modal.msgSuccess(result.shortMessage || '删除成功')
+        } else {
+          this.$modal.msgWarning(result.shortMessage || '删除失败')
+        }
+      } catch (error) {
+        // 拦截器已提示 HTTP 错误；刷新列表以免界面残留已删行
+      } finally {
+        await this.getList()
+      }
     },
     async handleAddToWall(row) {
       const payload = await this.resolveTaskWallPayload(row)
