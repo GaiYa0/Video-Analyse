@@ -82,6 +82,9 @@ scripts/        一键启动、局域网、告警视频补救脚本
 | `scripts/rewrite_play_url_for_lan.sh` | 把监控墙 `play_url` 改为 `ws://<IP>:8080/live/...` |
 | `scripts/backfill_alarm_video_url.sh` | 历史告警 `video_url` 与磁盘 `main.mp4` 对齐 |
 | `scripts/switch_cup_to_a_server.sh` | 水杯布控改 A-SERVER 并等待新告警验证 |
+| `scripts/add_sva_pitch_degree.sql` | #30 合入后补 `h_waring.sva_pitch_degree`（告警列表必跑） |
+| `scripts/push_webcam.bat` | 本机摄像头推 RTMP 测睡岗（需保持窗口打开） |
+| `scripts/start_webcam_monitor.sh` / `start_sleep_deployment.sh` | WSL 启工位监控与睡岗布控 |
 
 **同学连不上时**：确认双方同一 WiFi/热点、地址带 `:8080`、A 已关 VPN；仍不行则 A 以管理员运行 `setup_windows_lan_access.ps1`。
 
