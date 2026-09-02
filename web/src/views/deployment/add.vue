@@ -1117,6 +1117,8 @@ import { getDeviceList, previewDeviceMonitor } from '@/api/device'
 import { getAlgorithmList, getAlgorithmTargets } from '@/api/algorithm'
 import { createDeployment, getDeploymentDetail, updateDeployment, updateDeploymentLiveOutput } from '@/api/deployment'
 import { OVERLAY_DELAY_DEFAULT_MS, loadOverlayDelayMs } from '@/utils/systemRuntimeConfig'
+import { BEHAVIOR_TYPE_OPTIONS, getBehaviorTypeLabel, normalizeBehaviorType } from '@/utils/behaviorTypes'
+import { getFieldValue } from '@/utils/fieldMap'
 
 export default {
   name: 'DeploymentAdd',
@@ -1271,24 +1273,7 @@ export default {
       return values
     },
     behaviorTypeOptions() {
-      return [
-        { value: 'cross_line', label: '跨线' },
-        { value: 'enter_region', label: '进区' },
-        { value: 'exit_region', label: '出区' },
-        { value: 'dwell', label: '停留' },
-        { value: 'low_speed', label: '低速' },
-        { value: 'loitering', label: '徘徊' },
-        { value: 'sleep', label: '睡觉' },
-        { value: 'absence', label: '缺席' },
-        { value: 'count_threshold', label: '数量阈值' },
-        { value: 'occupancy', label: '占用' },
-        { value: 'region_motion', label: '区域运动' },
-        { value: 'direction_move', label: '定向通行' },
-        { value: 'direction_reverse', label: '逆向通行' },
-        { value: 'relation_near', label: '目标接近' },
-        { value: 'relation_apart', label: '目标远离' },
-        { value: 'relation_not_contains', label: '目标未包含' }
-      ]
+      return BEHAVIOR_TYPE_OPTIONS
     },
     sequenceBehaviorTypeOptions() {
       return this.behaviorTypeOptions.filter(item => this.isSequenceCapableBehaviorType(item.value))
@@ -1427,6 +1412,9 @@ export default {
     this.destroyPlayer()
   },
   methods: {
+    getFieldValue,
+    normalizeBehaviorType,
+    getBehaviorTypeLabel,
     async initPageData() {
       try {
         this.deploymentId = this.resolveDeploymentIdFromRoute()
@@ -1468,19 +1456,6 @@ export default {
       const query = route.query || {}
       const params = route.params || {}
       return query.deploymentId || query.id || params.deploymentId || params.id || ''
-    },
-
-    getFieldValue(source, ...keys) {
-      if (!source) {
-        return undefined
-      }
-      for (let i = 0; i < keys.length; i += 1) {
-        const key = keys[i]
-        if (source[key] !== undefined && source[key] !== null) {
-          return source[key]
-        }
-      }
-      return undefined
     },
 
     toBoolean(value, defaultValue = false) {
@@ -1661,30 +1636,6 @@ export default {
 
     normalizeBehaviorRule(rule, index = 0) {
       return this.normalizeBehaviorRuleWithGeometry(rule, index, this.createEmptyGeometryConfig())
-    },
-
-    normalizeBehaviorType(value) {
-      if ([
-        'cross_line',
-        'enter_region',
-        'exit_region',
-        'dwell',
-        'low_speed',
-        'loitering',
-        'sleep',
-        'absence',
-        'count_threshold',
-        'occupancy',
-        'region_motion',
-        'direction_move',
-        'direction_reverse',
-        'relation_near',
-        'relation_apart',
-        'relation_not_contains'
-      ].includes(value)) {
-        return value
-      }
-      return ''
     },
 
     isDirectionBehaviorType(behaviorType) {
@@ -2512,11 +2463,6 @@ export default {
 
     getCrossLineDirectionButtonText(direction) {
       return `切换方向: ${this.getLineDirectionLabel(this.normalizeLineDirection(direction))}`
-    },
-
-    getBehaviorTypeLabel(behaviorType) {
-      const matched = this.behaviorTypeOptions.find(item => item.value === behaviorType)
-      return matched ? matched.label : behaviorType
     },
 
     getBehaviorRuleGeometryOptions(rule) {

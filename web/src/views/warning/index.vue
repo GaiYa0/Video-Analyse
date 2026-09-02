@@ -221,6 +221,7 @@ import {getDeptList} from '@/api/system/kanban';
 import player from "@/components/RTSPPlayer"
 import store from '@/store'
 import { getVideoEvidenceUnavailableMessage, resolveAlarmVideoUrl } from '@/utils/alarmVideo'
+import { getBehaviorTypeLabel as resolveBehaviorTypeLabel, isKnownBehaviorType } from '@/utils/behaviorTypes'
 
 const formatDateLocal = (date) => {
   const d = date instanceof Date ? date : new Date(date)
@@ -680,21 +681,13 @@ export default {
     },
 
     getBehaviorTypeLabel(behaviorType) {
-      if (behaviorType === 'cross_line') return '跨线';
-      if (behaviorType === 'enter_region') return '进区';
-      if (behaviorType === 'exit_region') return '出区';
-      if (behaviorType === 'dwell') return '停留';
-      if (behaviorType === 'low_speed') return '低速';
-      if (behaviorType === 'loitering') return '徘徊';
-      if (behaviorType === 'absence') return '缺席';
-      if (behaviorType === 'count_threshold') return '数量阈值';
-      if (behaviorType === 'occupancy') return '占用';
-      if (behaviorType === 'direction_move') return '定向通行';
-      if (behaviorType === 'direction_reverse') return '逆向通行';
-      if (behaviorType === 'relation_near') return '目标接近';
-      if (behaviorType === 'relation_apart') return '目标远离';
-      if (behaviorType === 'relation_not_contains') return '目标未包含';
-      return '---';
+      if (behaviorType === undefined || behaviorType === null || behaviorType === '') {
+        return '---';
+      }
+      if (!isKnownBehaviorType(behaviorType)) {
+        return '---';
+      }
+      return resolveBehaviorTypeLabel(behaviorType);
     },
 
     getEventStateLabel(eventState) {
