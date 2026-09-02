@@ -3,14 +3,11 @@
 </template>
 
 <script>
-import * as echarts from 'echarts'
+import echartsLifecycle from '@/mixins/echartsLifecycle'
 
 export default {
-  data() {
-    return {
-      templateChart: null,
-    }
-  },
+  mixins: [echartsLifecycle],
+  echartsFields: ['chart'],
   props: {
     option: {
       type: Object,
@@ -19,12 +16,19 @@ export default {
   },
   methods: {
     initChart() {
-      const dom = this.$refs['templateChart']
-      this.templateChart = echarts.init(dom)
+      const chart = this.ensureChart('chart', this.$refs.templateChart)
+      if (!chart) {
+        return
+      }
       this.setOption()
+      this.bindChartResize(() => {
+        this.chart && this.chart.resize()
+      })
     },
     setOption() {
-      this.templateChart.setOption(this.option)
+      if (this.chart && this.option) {
+        this.chart.setOption(this.option)
+      }
     },
   },
 }
