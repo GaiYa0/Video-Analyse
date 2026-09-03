@@ -355,6 +355,11 @@ namespace SVAAnalyzer
         AVPacket *pkt = av_packet_alloc(); // 编码后的视频帧
         int64_t encodeSuccessCount = 0;
         int64_t frameCount = 0;
+        // Stamping by frame counter assumes we really deliver videoFps frames a second.
+        // Inference only manages about half that, so the stream clock fell behind the
+        // wall clock and the preview drifted further into the past the longer it ran.
+        int64_t firstFrameMs = 0;
+        int64_t lastPts = -1;
 
         int ret = -1;
         while (mWorker->getState() && !mStopped.load())
@@ -382,10 +387,20 @@ namespace SVAAnalyzer
                           frame_yuv420p->linesize);
                 mWorker->mVideoFramePool->giveBack(videoFrame);
 
-                frame_yuv420p->pts = frame_yuv420p->pkt_dts = av_rescale_q_rnd(frameCount,
-                                                                               mVideoCodecCtx->time_base,
-                                                                               mVideoStream->time_base,
-                                                                               (AVRounding)(AV_ROUND_NEAR_INF | AV_ROUND_PASS_MINMAX));
+                const int64_t nowMs = getCurTime();
+                if (firstFrameMs <= 0)
+                {
+                    firstFrameMs = nowMs;
+                }
+                const AVRational msTimeBase = {1, 1000};
+                int64_t pts = av_rescale_q(nowMs - firstFrameMs, msTimeBase, mVideoStream->time_base);
+                if (pts <= lastPts)
+                {
+                    pts = lastPts + 1; // the encoder needs strictly increasing timestamps
+                }
+                lastPts = pts;
+
+                frame_yuv420p->pts = frame_yuv420p->pkt_dts = pts;
 
                 frame_yuv420p->pkt_duration = av_rescale_q_rnd(1,
                                                                mVideoCodecCtx->time_base,

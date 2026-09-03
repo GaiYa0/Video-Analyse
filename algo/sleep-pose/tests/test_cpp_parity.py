@@ -26,6 +26,7 @@ EXPECTED = {
     "kMinBodyScalePx": geometry.MIN_BODY_SCALE_PX,
     "kHeadAboveNeckMinPx": geometry.HEAD_ABOVE_NECK_MIN_PX,
     "kMinMeanKeypointConf": geometry.MIN_MEAN_KEYPOINT_CONF,
+    "kHeadPointConfScale": geometry.HEAD_POINT_CONF_SCALE,
     "kMaxPitchJumpDeg": geometry.MAX_PITCH_JUMP_DEG,
     "kMinPoseKeypoints": geometry.MIN_POSE_KEYPOINTS,
     "kMinPersonBoxHeightRatio": geometry.MIN_PERSON_BOX_HEIGHT_RATIO,

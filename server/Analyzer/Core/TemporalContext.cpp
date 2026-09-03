@@ -15,10 +15,14 @@ namespace SVAAnalyzer
     namespace
     {
         static constexpr float kMinIou = 0.30f;
-        static constexpr int kMaxMissedFrames = 30;
-        static constexpr int64_t kMaxMissedMs = 4000;
+        // Sleep-on-duty needs a track to survive a full 10s hold. On a ~7fps CPU stream
+        // a face-down person drops out for a second or two at a time, and recycling the
+        // track restarts the clock.
+        static constexpr int kMaxMissedFrames = 60;
+        static constexpr int64_t kMaxMissedMs = 8000;
         static constexpr size_t kMaxTrailPoints = 32;
         static constexpr float kStillSpeedThreshold = 12.0f;
+        static constexpr int64_t kSleepDebugIntervalMs = 2000;
 
         /**
          * @brief Simple IoU calculation between a detection box and a track box.
@@ -252,6 +256,26 @@ namespace SVAAnalyzer
                      evidence.gapRatio,
                      evidence.headDriftPx,
                      evidence.validFrames);
+            }
+            else if (control.usesSleepPoseAlgorithm() &&
+                     timestampMs - track.lastSleepDebugMs >= kSleepDebugIntervalMs)
+            {
+                // Tuning these gates against real footage needs the numbers, not guesses.
+                track.lastSleepDebugMs = timestampMs;
+                LOGI("sleep_probe track=%d pitch=%s%.0f reject=%s kps=%d headAbove=%.0fpx scale=%.0fpx hip=%d hold=%lldms peak=%.0f downRatio=%.2f gapRatio=%.2f drift=%.0fpx",
+                     track.trackId,
+                     frame.valid ? "" : "x",
+                     detect.pitchDegree,
+                     SleepPose::pitchRejectName(detect.poseReject),
+                     detect.poseStrongKeypoints,
+                     detect.poseHeadAboveNeckPx,
+                     detect.poseScalePx,
+                     detect.poseHasHip ? 1 : 0,
+                     static_cast<long long>(evidence.headDownMs),
+                     evidence.peakPitchDeg,
+                     evidence.downRatio,
+                     evidence.gapRatio,
+                     evidence.headDriftPx);
             }
         }
 

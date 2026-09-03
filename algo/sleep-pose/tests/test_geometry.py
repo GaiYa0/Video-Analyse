@@ -146,12 +146,27 @@ class QualityGateTests(unittest.TestCase):
         self.assertFalse(result.both_shoulders)
         self.assertTrue(result.has_hip)
 
-    def test_lone_ear_without_hip_is_rejected(self):
+    def test_face_buried_in_arms_still_scores(self):
+        # The real desk-sleep pose: nose and eyes gone, one ear left, hips hidden
+        # behind the desk. This must still read as a deep slump.
         kps = _blank_coco17()
-        kps[LEFT_EAR] = [320, 268, 0.6]
+        kps[LEFT_EAR] = [320, 268, 0.45]
+        kps[LEFT_SHOULDER] = [200, 262, 0.8]
+        kps[RIGHT_SHOULDER] = [440, 264, 0.8]
+        pitch = pitch_from_coco17(kps)
+        self.assertIsNotNone(pitch)
+        self.assertGreater(pitch, 45.0)
+
+    def test_lone_ear_above_neck_is_gated_upright(self):
+        # Turned away but sitting up: the head is still riding above the shoulders,
+        # so the upright gate caps it however good the ear looks.
+        kps = _blank_coco17()
+        kps[LEFT_EAR] = [320, 150, 0.6]
         kps[LEFT_SHOULDER] = [200, 270, 0.8]
         kps[RIGHT_SHOULDER] = [440, 272, 0.8]
-        self.assertIsNone(pitch_from_coco17(kps))
+        pitch = pitch_from_coco17(kps)
+        self.assertIsNotNone(pitch)
+        self.assertLessEqual(pitch, 18.0)
 
     def test_low_mean_confidence_is_rejected(self):
         kps = _blank_coco17()

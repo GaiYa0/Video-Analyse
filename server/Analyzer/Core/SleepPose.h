@@ -36,13 +36,20 @@ namespace SVAAnalyzer
         // so a bad frame can never push a track towards 睡岗.
         constexpr float kMinMeanKeypointConf = 0.35f;
         constexpr float kMaxPitchJumpDeg = 45.0f;
-        constexpr int kMinPoseKeypoints = 8;
+        // Face-down on folded arms loses all five head points and the desk hides the
+        // hips, so a genuine sleeper reports as few as seven. Counting points is a
+        // blunt filter anyway; computePitch below is the one that actually decides.
+        constexpr int kMinPoseKeypoints = 4;
         constexpr float kMinPersonBoxHeightRatio = 0.18f;
+
+        // Eyes and ears are read at a lower bar than shoulders: a face buried in folded
+        // arms is exactly when the nose disappears and only a sliver of ear survives.
+        constexpr float kHeadPointConfScale = 0.7f;
 
         // Geometry hard conditions.
         // Head may sit at most this share of the body scale ABOVE the neck line and
         // still count as head-down. A facing-camera head is far higher than this.
-        constexpr float kMaxHeadAboveNeckRatio = 0.10f;
+        constexpr float kMaxHeadAboveNeckRatio = 0.18f;
         // A desk hides the hips, so the up-axis falls back to the rotated shoulder
         // line. That ruler is the known laptop-webcam false positive, so entering
         // head-down without hips needs a steeper angle.
@@ -51,7 +58,7 @@ namespace SVAAnalyzer
         // Window evidence required on top of the hold time.
         constexpr float kSleepMinDownRatio = 0.80f;
         constexpr int64_t kSleepMaxPoseGapMs = 1200;
-        constexpr float kSleepMaxGapRatio = 0.35f;
+        constexpr float kSleepMaxGapRatio = 0.50f;
         constexpr int kSleepMinValidFrames = 12;
         constexpr float kSleepPeakPitchDeg = 45.0f;
         constexpr float kSleepMaxHeadDriftRatio = 0.45f;
@@ -72,6 +79,49 @@ namespace SVAAnalyzer
         };
 
         /**
+         * @brief Why a frame carried no pitch. Diagnostic only, logged so the gates can
+         * be tuned against real footage instead of guesswork.
+         */
+        enum class PitchReject
+        {
+            None = 0,
+            NoHead = 1,
+            NoNeck = 2,
+            WeakTorso = 3,
+            LowConfidence = 4,
+            SmallScale = 5,
+            NoAxis = 6,
+            SmallBox = 7,
+            TooFewKeypoints = 8,
+        };
+
+        inline const char *pitchRejectName(PitchReject reason)
+        {
+            switch (reason)
+            {
+            case PitchReject::None:
+                return "ok";
+            case PitchReject::NoHead:
+                return "no_head";
+            case PitchReject::NoNeck:
+                return "no_neck";
+            case PitchReject::WeakTorso:
+                return "weak_torso";
+            case PitchReject::LowConfidence:
+                return "low_conf";
+            case PitchReject::SmallScale:
+                return "small_scale";
+            case PitchReject::NoAxis:
+                return "no_axis";
+            case PitchReject::SmallBox:
+                return "small_box";
+            case PitchReject::TooFewKeypoints:
+                return "few_kps";
+            }
+            return "unknown";
+        }
+
+        /**
          * @brief Per-frame geometry output. `valid` false means "this frame carries no
          * usable pitch", which is different from "the person is upright".
          */
@@ -87,7 +137,15 @@ namespace SVAAnalyzer
             bool bothShoulders = false;
             bool frontalFace = false;
             float headAboveNeckPx = 0.0f;
+            PitchReject reject = PitchReject::None;
         };
+
+        inline PitchResult rejectedPitch(PitchReject reason)
+        {
+            PitchResult result;
+            result.reject = reason;
+            return result;
+        }
 
         /**
          * @brief What updateTemporal() consumes each frame.
@@ -159,9 +217,9 @@ namespace SVAAnalyzer
 
         /**
          * @brief Head anchor. `strong` means nose, both eyes or both ears: enough to
-         * trust the head position on its own. A single eye/ear is only accepted when a
-         * real torso axis exists, because a lone low-confidence ear used to be the
-         * cheapest way to fake a desk slump on a turned-away person.
+         * trust the head position on its own. A single eye/ear is weaker and needs a
+         * torso reference, but it must still be accepted: face-down on folded arms is
+         * precisely when the nose vanishes and one ear is all that is left.
          */
         inline bool pickHead(const Keypoint *kps, int count, float minConf,
                              float &x, float &y, float &confSum, int &confCount, bool &strong)
@@ -170,6 +228,7 @@ namespace SVAAnalyzer
             {
                 return false;
             }
+            const float headConf = minConf * kHeadPointConfScale;
 
             if (usable(kps[kNose], minConf))
             {
@@ -180,14 +239,14 @@ namespace SVAAnalyzer
                 strong = true;
                 return true;
             }
-            if (count > kRightEye && midpoint(kps[kLeftEye], kps[kRightEye], minConf, x, y))
+            if (count > kRightEye && midpoint(kps[kLeftEye], kps[kRightEye], headConf, x, y))
             {
                 confSum += kps[kLeftEye].conf + kps[kRightEye].conf;
                 confCount += 2;
                 strong = true;
                 return true;
             }
-            if (count > kRightEar && midpoint(kps[kLeftEar], kps[kRightEar], minConf, x, y))
+            if (count > kRightEar && midpoint(kps[kLeftEar], kps[kRightEar], headConf, x, y))
             {
                 confSum += kps[kLeftEar].conf + kps[kRightEar].conf;
                 confCount += 2;
@@ -199,7 +258,7 @@ namespace SVAAnalyzer
             for (int i = 0; i < 4; ++i)
             {
                 const int index = singles[i];
-                if (count > index && usable(kps[index], minConf))
+                if (count > index && usable(kps[index], headConf))
                 {
                     x = kps[index].x;
                     y = kps[index].y;
@@ -344,31 +403,35 @@ namespace SVAAnalyzer
             float neckY = 0.0f;
             bool bothShoulders = false;
 
-            if (!pickHead(kps, count, minConf, headX, headY, confSum, confCount, headStrong) ||
-                !pickNeck(kps, count, minConf, neckX, neckY, confSum, confCount, bothShoulders))
+            if (!pickHead(kps, count, minConf, headX, headY, confSum, confCount, headStrong))
             {
-                return result;
+                return rejectedPitch(PitchReject::NoHead);
+            }
+            if (!pickNeck(kps, count, minConf, neckX, neckY, confSum, confCount, bothShoulders))
+            {
+                return rejectedPitch(PitchReject::NoNeck);
             }
 
             float hipX = 0.0f;
             float hipY = 0.0f;
             const bool hasHip = pickHip(kps, count, minConf, hipX, hipY, confSum, confCount);
 
-            // One shoulder alone mislocates the neck; only trust it with a hip to anchor
-            // the torso. A weak head point needs the same backup.
+            // One shoulder alone mislocates the neck, and a lone eye/ear is a shaky head.
+            // Either needs a torso reference; what stops a turned-away person from
+            // scoring as a slump is the head-above-neck condition further down.
             if (!bothShoulders && !hasHip)
             {
-                return result;
+                return rejectedPitch(PitchReject::WeakTorso);
             }
-            if (!headStrong && !hasHip)
+            if (!headStrong && !bothShoulders && !hasHip)
             {
-                return result;
+                return rejectedPitch(PitchReject::WeakTorso);
             }
 
             const float meanConf = confCount > 0 ? confSum / static_cast<float>(confCount) : 0.0f;
             if (meanConf < kMinMeanKeypointConf)
             {
-                return result;
+                return rejectedPitch(PitchReject::LowConfidence);
             }
 
             float shoulderW = 0.0f;
@@ -393,7 +456,7 @@ namespace SVAAnalyzer
             {
                 if (shoulderW < kMinBodyScalePx || count <= kRightShoulder)
                 {
-                    return result;
+                    return rejectedPitch(PitchReject::SmallScale);
                 }
                 const float sx = kps[kRightShoulder].x - kps[kLeftShoulder].x;
                 const float sy = kps[kRightShoulder].y - kps[kLeftShoulder].y;
@@ -407,7 +470,7 @@ namespace SVAAnalyzer
                 const float uNorm = std::sqrt(ux * ux + uy * uy);
                 if (uNorm < 1e-3f)
                 {
-                    return result;
+                    return rejectedPitch(PitchReject::NoAxis);
                 }
                 ux /= uNorm;
                 uy /= uNorm;
@@ -429,7 +492,7 @@ namespace SVAAnalyzer
             }
             if (scale < kMinBodyScalePx)
             {
-                return result;
+                return rejectedPitch(PitchReject::SmallScale);
             }
 
             const float elev = ux * (headX - neckX) + uy * (headY - neckY);

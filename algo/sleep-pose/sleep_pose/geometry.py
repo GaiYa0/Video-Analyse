@@ -30,11 +30,18 @@ HEAD_ABOVE_NECK_MIN_PX = 8.0
 # Frame quality gates.
 MIN_MEAN_KEYPOINT_CONF = 0.35
 MAX_PITCH_JUMP_DEG = 45.0
-MIN_POSE_KEYPOINTS = 8
+# Face-down on folded arms loses all five head points and the desk hides the hips,
+# so a genuine sleeper reports as few as seven. Counting points is a blunt filter
+# anyway; compute_pitch below is the one that actually decides.
+MIN_POSE_KEYPOINTS = 4
 MIN_PERSON_BOX_HEIGHT_RATIO = 0.18
 
+# Eyes and ears are read at a lower bar than shoulders: a face buried in folded
+# arms is exactly when the nose disappears and only a sliver of ear survives.
+HEAD_POINT_CONF_SCALE = 0.7
+
 # Geometry hard conditions.
-MAX_HEAD_ABOVE_NECK_RATIO = 0.10
+MAX_HEAD_ABOVE_NECK_RATIO = 0.18
 NO_HIP_ENTER_PENALTY_DEG = 6.0
 
 
@@ -106,30 +113,32 @@ def _pick_head(
 ) -> tuple[float, float, bool] | None:
     """Returns (x, y, strong). `strong` means nose, both eyes or both ears.
 
-    A single eye/ear is only accepted with a real torso axis: a lone low-confidence
-    ear used to be the cheapest way to fake a desk slump on a turned-away person.
+    A single eye/ear is weaker and needs a torso reference, but it must still be
+    accepted: face-down on folded arms is precisely when the nose vanishes and one
+    ear is all that is left.
     """
     if len(kps) <= NOSE:
         return None
+    head_conf = min_conf * HEAD_POINT_CONF_SCALE
 
     if _usable(kps[NOSE], min_conf):
         x, y, _ = _as_xyz(kps[NOSE])
         conf.add(kps[NOSE])
         return x, y, True
 
-    eyes = _midpoint(_at(kps, LEFT_EYE), _at(kps, RIGHT_EYE), min_conf)
+    eyes = _midpoint(_at(kps, LEFT_EYE), _at(kps, RIGHT_EYE), head_conf)
     if eyes:
         conf.add(kps[LEFT_EYE], kps[RIGHT_EYE])
         return eyes[0], eyes[1], True
 
-    ears = _midpoint(_at(kps, LEFT_EAR), _at(kps, RIGHT_EAR), min_conf)
+    ears = _midpoint(_at(kps, LEFT_EAR), _at(kps, RIGHT_EAR), head_conf)
     if ears:
         conf.add(kps[LEFT_EAR], kps[RIGHT_EAR])
         return ears[0], ears[1], True
 
     for index in (LEFT_EYE, RIGHT_EYE, LEFT_EAR, RIGHT_EAR):
         point = _at(kps, index)
-        if _usable(point, min_conf):
+        if _usable(point, head_conf):
             x, y, _ = _as_xyz(point)
             conf.add(point)
             return x, y, False
@@ -258,9 +267,12 @@ def compute_pitch(
     hip = _pick_hip(keypoints, min_conf, conf)
     has_hip = hip is not None
 
+    # One shoulder alone mislocates the neck, and a lone eye/ear is a shaky head.
+    # Either needs a torso reference; what stops a turned-away person from scoring
+    # as a slump is the head-above-neck condition further down.
     if not both_shoulders and not has_hip:
         return PitchResult()
-    if not head_strong and not has_hip:
+    if not head_strong and not both_shoulders and not has_hip:
         return PitchResult()
 
     mean_conf = conf.mean()
