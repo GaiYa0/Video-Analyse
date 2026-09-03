@@ -24,4 +24,7 @@ public interface ScreenWallStreamMapper
     public int updateScreenWallStream(ScreenWallStream stream);
 
     public int deleteScreenWallStreamById(Long id);
+
+    public int deleteBySourceTypeAndSourceId(@Param("sourceType") String sourceType,
+        @Param("sourceId") String sourceId);
 }

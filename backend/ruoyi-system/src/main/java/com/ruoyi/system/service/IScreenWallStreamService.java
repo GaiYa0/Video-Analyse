@@ -15,4 +15,6 @@ public interface IScreenWallStreamService
     public List<ScreenWallStream> selectEnabledListByWallCode(String wallCode);
 
     public int deleteScreenWallStreamById(Long id);
+
+    public int deleteBySourceTypeAndSourceId(String sourceType, String sourceId);
 }

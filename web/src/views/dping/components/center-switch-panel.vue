@@ -124,6 +124,8 @@ export default {
     return {
       streamCards: [],
       realtimeTimer: null,
+      wallSyncTimer: null,
+      wallMembershipKey: '',
       realtimeSession: 0,
       currentLayout: this.layoutSize === 3 ? 3 : 2,
       resizeHandler: null,
@@ -262,16 +264,9 @@ export default {
     async loadOverlayDelayConfig() {
       this.overlayDelayMs = await loadOverlayDelayMs(this.overlayDelayMs)
     },
-    async loadWallStreams() {
-      const response = await getScreenWallStreams('main')
-      const rawList =
-        (response && Array.isArray(response.data) && response.data) ||
-        (response && response.data && Array.isArray(response.data.rows) && response.data.rows) ||
-        (response && response.data && Array.isArray(response.data.list) && response.data.list) ||
-        (response && Array.isArray(response.rows) && response.rows) ||
-        []
-
-      const basicStreams = rawList
+    async listWallStreamBasics() {
+      const rawList = this.extractWallStreamList(await getScreenWallStreams('main'))
+      return rawList
         .map(item => {
           const normalized = normalizeScreenWallStream(item)
           return {
@@ -291,7 +286,9 @@ export default {
           return aIndex - bIndex
         })
         .slice(0, this.maxStreams)
-
+    },
+    async loadWallStreams() {
+      const basicStreams = await this.listWallStreamBasics()
       return Promise.all(basicStreams.map(stream => this.enrichWallStream(stream)))
     },
     async enrichWallStream(stream) {
@@ -365,21 +362,56 @@ export default {
       this.stopRealtimeRefresh()
       this.destroyAllPlayers()
       this.streamCards = []
+      this.wallMembershipKey = ''
     },
     startRealtimeRefresh() {
-      if (this.realtimeTimer) {
-        return
+      if (!this.realtimeTimer) {
+        this.realtimeTimer = setInterval(() => {
+          this.buildRealtimeStreams()
+        }, 60000)
       }
-      this.realtimeTimer = setInterval(() => {
-        this.buildRealtimeStreams()
-      }, 60000)
+      if (!this.wallSyncTimer) {
+        this.wallSyncTimer = setInterval(() => {
+          this.syncWallMembership()
+        }, 8000)
+      }
     },
     stopRealtimeRefresh() {
-      if (!this.realtimeTimer) {
+      if (this.realtimeTimer) {
+        clearInterval(this.realtimeTimer)
+        this.realtimeTimer = null
+      }
+      if (this.wallSyncTimer) {
+        clearInterval(this.wallSyncTimer)
+        this.wallSyncTimer = null
+      }
+    },
+    wallStreamSignature(item = {}) {
+      const id = item.id || item.streamId || item.stream_id || ''
+      const sourceId = item.sourceId || item.source_id || ''
+      return `${id}|${sourceId}`
+    },
+    extractWallStreamList(response) {
+      return (response && Array.isArray(response.data) && response.data) ||
+        (response && response.data && Array.isArray(response.data.rows) && response.data.rows) ||
+        (response && response.data && Array.isArray(response.data.list) && response.data.list) ||
+        (response && Array.isArray(response.rows) && response.rows) ||
+        []
+    },
+    async syncWallMembership() {
+      if (this.displayMode !== 'realtime') {
         return
       }
-      clearInterval(this.realtimeTimer)
-      this.realtimeTimer = null
+      try {
+        const basicStreams = await this.listWallStreamBasics()
+        const key = basicStreams.map(item => this.wallStreamSignature(item)).sort().join('||')
+        if (key === this.wallMembershipKey) {
+          return
+        }
+        await this.buildRealtimeStreams()
+      } catch (error) {
+        // 轮询失败不打断当前画面
+      }
     },
     async buildRealtimeStreams() {
       if (this.displayMode !== 'realtime') {
@@ -395,6 +427,7 @@ export default {
         if (sessionId !== this.realtimeSession || this.displayMode !== 'realtime') {
           return
         }
+        this.wallMembershipKey = streams.map(item => this.wallStreamSignature(item)).sort().join('||')
         this.resetStreamCards(streams)
         this.$nextTick(() => {
           this.syncAllOverlayCanvas()
