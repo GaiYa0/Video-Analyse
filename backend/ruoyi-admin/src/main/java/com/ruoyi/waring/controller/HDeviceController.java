@@ -7,6 +7,7 @@ import com.ruoyi.common.utils.StringUtils;
 import com.ruoyi.common.utils.poi.ExcelUtil;
 import com.ruoyi.waring.domain.HDevice;
 import com.ruoyi.waring.service.HDeviceService;
+import com.ruoyi.waring.service.IGb28181DeviceSyncService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -32,6 +33,9 @@ public class HDeviceController extends BaseController {
 
     @Autowired
     private HDeviceService hDeviceService;
+
+    @Autowired
+    private IGb28181DeviceSyncService gb28181DeviceSyncService;
 
     @Resource
     private RedisTemplate<Object, Object> redisTemplate;
@@ -83,6 +87,15 @@ public class HDeviceController extends BaseController {
     public AjaxResult getDirectLiveUrl(@PathVariable String apeId) {
         Map<String, Object> data = hDeviceService.getDirectLiveUrl(apeId);
         return success(data);
+    }
+
+    /**
+     * 同步国标设备。拉 ZLM 归同学 A；未接时返回 ready=false。
+     */
+    @PreAuthorize("@ss.hasPermi('waring:device:add')")
+    @PostMapping("/syncGb28181")
+    public AjaxResult syncGb28181() {
+        return success(gb28181DeviceSyncService.syncFromZlm());
     }
 
     /**

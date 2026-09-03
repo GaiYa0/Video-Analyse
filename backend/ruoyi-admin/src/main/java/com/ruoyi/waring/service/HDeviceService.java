@@ -16,6 +16,12 @@ public interface HDeviceService {
 
     int updateDevice(HDevice device);
 
+    /**
+     * 同学 A 同步国标行时调用：按 ape_id 或 gb_device_id+gb_platform_id 更新，否则插入。
+     * 强制 device_type=gb28181，且两个 gb 字段必填。
+     */
+    HDevice upsertGb28181Device(HDevice device);
+
     int deleteDeviceByApeIds(String[] apeIds);
 
     List<HDevice> selectDeviceList(HDevice device, Long userId);

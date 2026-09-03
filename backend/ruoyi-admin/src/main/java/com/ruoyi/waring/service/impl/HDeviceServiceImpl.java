@@ -42,6 +42,8 @@ public class HDeviceServiceImpl implements HDeviceService {
 
     private static final String STREAM_SOURCE_TYPE_DIRECT = "DIRECT";
     private static final String STREAM_SOURCE_TYPE_PLATFORM = "PLATFORM";
+    private static final String DEVICE_TYPE_RTSP = "rtsp";
+    private static final String DEVICE_TYPE_GB28181 = "gb28181";
     private static final int MAX_APE_ID_GENERATE_RETRY = 20;
     private static final Pattern STREAM_NAME_PATTERN = Pattern.compile("[^A-Za-z0-9_-]");
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
@@ -93,7 +95,9 @@ public class HDeviceServiceImpl implements HDeviceService {
     @Override
     public int insertDeviceCrud(HDevice device) {
         normalizeStreamSourceType(device, null);
+        normalizeDeviceType(device, null);
         validateStreamSourceRule(device, null);
+        validateDeviceTypeRule(device, null);
         if (StringUtils.isBlank(device.getOrg_name())) {
             throw new ServiceException("组织名称不能为空");
         }
@@ -120,10 +124,65 @@ public class HDeviceServiceImpl implements HDeviceService {
         }
 
         normalizeStreamSourceType(device, existedDevice);
+        normalizeDeviceType(device, existedDevice);
         validateStreamSourceRule(device, existedDevice);
+        validateDeviceTypeRule(device, existedDevice);
         device.setOrg_index(normalizeOrgIndex(device.getOrg_index()));
 
         return hDeviceMapper.updateDevice(device);
+    }
+
+    @Override
+    public HDevice upsertGb28181Device(HDevice incoming) {
+        if (incoming == null) {
+            throw new ServiceException("同步设备不能为空");
+        }
+        incoming.setDevice_type(DEVICE_TYPE_GB28181);
+        normalizeDeviceType(incoming, null);
+        validateDeviceTypeRule(incoming, null);
+        if (StringUtils.isBlank(incoming.getStream_source_type())) {
+            incoming.setStream_source_type(STREAM_SOURCE_TYPE_PLATFORM);
+        } else {
+            normalizeStreamSourceType(incoming, null);
+        }
+
+        HDevice existed = null;
+        if (StringUtils.isNotBlank(incoming.getApe_id())) {
+            existed = hDeviceMapper.selectDeviceByApeId(incoming.getApe_id());
+        }
+        if (existed == null && StringUtils.isNotBlank(incoming.getGb_device_id())) {
+            existed = hDeviceMapper.selectDeviceByGbDeviceId(incoming.getGb_device_id(), incoming.getGb_platform_id());
+        }
+
+        if (existed == null) {
+            if (StringUtils.isBlank(incoming.getApe_id())) {
+                incoming.setApe_id(generateUniqueApeId());
+            } else if (hDeviceMapper.selectDeviceByApeId(incoming.getApe_id()) != null) {
+                throw new ServiceException("设备编码已存在: " + incoming.getApe_id());
+            }
+            if (StringUtils.isBlank(incoming.getName())) {
+                incoming.setName(incoming.getGb_device_id());
+            }
+            if (StringUtils.isBlank(incoming.getOrg_name())) {
+                incoming.setOrg_name("国标同步");
+            }
+            if (StringUtils.isBlank(incoming.getOrg_index())) {
+                incoming.setOrg_index("10");
+            } else {
+                incoming.setOrg_index(normalizeOrgIndex(incoming.getOrg_index()));
+            }
+            hDeviceMapper.insertDeviceCrud(incoming);
+            return incoming;
+        }
+
+        incoming.setApe_id(existed.getApe_id());
+        if (StringUtils.isBlank(incoming.getOrg_index())) {
+            incoming.setOrg_index(null);
+        } else {
+            incoming.setOrg_index(normalizeOrgIndex(incoming.getOrg_index()));
+        }
+        hDeviceMapper.updateDevice(incoming);
+        return incoming;
     }
 
     private void normalizeStreamSourceType(HDevice device, HDevice existedDevice) {
@@ -140,6 +199,35 @@ public class HDeviceServiceImpl implements HDeviceService {
             throw new ServiceException("stream_source_type 仅支持 PLATFORM 或 DIRECT");
         }
         device.setStream_source_type(streamSourceType);
+    }
+
+    private void normalizeDeviceType(HDevice device, HDevice existedDevice) {
+        String deviceType = device.getDevice_type();
+        if (StringUtils.isBlank(deviceType) && existedDevice != null) {
+            deviceType = existedDevice.getDevice_type();
+        }
+        if (StringUtils.isBlank(deviceType)) {
+            deviceType = DEVICE_TYPE_RTSP;
+        }
+        deviceType = deviceType.trim().toLowerCase();
+        if (!DEVICE_TYPE_RTSP.equals(deviceType) && !DEVICE_TYPE_GB28181.equals(deviceType)) {
+            throw new ServiceException("device_type 仅支持 rtsp 或 gb28181");
+        }
+        device.setDevice_type(deviceType);
+    }
+
+    private void validateDeviceTypeRule(HDevice device, HDevice existedDevice) {
+        if (!DEVICE_TYPE_GB28181.equals(device.getDevice_type())) {
+            return;
+        }
+        String gbDeviceId = pickFinalValue(device.getGb_device_id(), existedDevice == null ? null : existedDevice.getGb_device_id());
+        String gbPlatformId = pickFinalValue(device.getGb_platform_id(), existedDevice == null ? null : existedDevice.getGb_platform_id());
+        if (StringUtils.isBlank(gbDeviceId)) {
+            throw new ServiceException("国标设备必须填写 gb_device_id");
+        }
+        if (StringUtils.isBlank(gbPlatformId)) {
+            throw new ServiceException("国标设备必须填写 gb_platform_id");
+        }
     }
 
     private void validateStreamSourceRule(HDevice device, HDevice existedDevice) {
