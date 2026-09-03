@@ -14,6 +14,7 @@ import com.ruoyi.system.mapper.DeploymentTaskAlgorithmMapper;
 import com.ruoyi.system.mapper.DeploymentTaskEventMapper;
 import com.ruoyi.system.mapper.DeploymentTaskMapper;
 import com.ruoyi.system.service.IDeploymentTaskService;
+import com.ruoyi.system.service.IScreenWallStreamService;
 
 /**
  * 布控任务服务实现
@@ -29,6 +30,9 @@ public class DeploymentTaskServiceImpl implements IDeploymentTaskService
 
     @Autowired
     private DeploymentTaskEventMapper deploymentTaskEventMapper;
+
+    @Autowired
+    private IScreenWallStreamService screenWallStreamService;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -96,6 +100,7 @@ public class DeploymentTaskServiceImpl implements IDeploymentTaskService
     @Transactional(rollbackFor = Exception.class)
     public int deleteDeploymentTask(String deploymentId)
     {
+        screenWallStreamService.deleteBySourceTypeAndSourceId("task", deploymentId);
         deploymentTaskEventMapper.deleteByDeploymentId(deploymentId);
         deploymentTaskAlgorithmMapper.deleteByDeploymentId(deploymentId);
         return deploymentTaskMapper.deleteDeploymentTaskById(deploymentId);

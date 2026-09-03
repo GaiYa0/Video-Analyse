@@ -102,4 +102,10 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         delete from h_screen_wall_stream where id = #{id}
     </delete>
 
+    <delete id="deleteBySourceTypeAndSourceId">
+        delete from h_screen_wall_stream
+         where source_type = #{sourceType}
+           and source_id = #{sourceId}
+    </delete>
+
 </mapper>

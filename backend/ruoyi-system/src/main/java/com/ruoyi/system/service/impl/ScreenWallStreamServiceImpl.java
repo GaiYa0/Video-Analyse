@@ -92,6 +92,16 @@ public class ScreenWallStreamServiceImpl implements IScreenWallStreamService
         return screenWallStreamMapper.deleteScreenWallStreamById(id);
     }
 
+    @Override
+    public int deleteBySourceTypeAndSourceId(String sourceType, String sourceId)
+    {
+        if (StringUtils.isEmpty(sourceType) || StringUtils.isEmpty(sourceId))
+        {
+            return 0;
+        }
+        return screenWallStreamMapper.deleteBySourceTypeAndSourceId(sourceType, sourceId);
+    }
+
     private String normalizeSourceType(String sourceType)
     {
         if (StringUtils.isEmpty(sourceType))
