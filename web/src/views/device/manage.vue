@@ -37,6 +37,11 @@
           @keyup.enter.native="handleQuery"
         />
       </el-form-item>
+      <el-form-item label="接入类型" prop="device_type">
+        <el-select v-model="queryParams.device_type" placeholder="直连 RTSP / 国标" clearable style="width: 200px">
+          <el-option v-for="item in deviceTypeOptions" :key="item.value" :label="item.label" :value="item.value" />
+        </el-select>
+      </el-form-item>
       <el-form-item>
         <el-button type="primary" icon="el-icon-search" size="mini" @click="handleQuery">搜索</el-button>
         <el-button icon="el-icon-refresh" size="mini" @click="resetQuery">重置</el-button>
@@ -76,13 +81,32 @@
           v-hasPermi="['waring:device:remove']"
         >删除</el-button>
       </el-col>
+      <el-col :span="1.5">
+        <el-button
+          type="warning"
+          plain
+          icon="el-icon-refresh"
+          size="mini"
+          :loading="syncing"
+          @click="handleSyncGb"
+          v-hasPermi="['waring:device:add']"
+        >同步国标设备</el-button>
+      </el-col>
     </el-row>
 
     <el-table v-loading="loading" :data="deviceList" @selection-change="handleSelectionChange">
       <el-table-column type="selection" width="50" align="center" />
       <el-table-column label="设备编码" prop="ape_id" align="center" :show-overflow-tooltip="true" />
       <el-table-column label="设备名称" prop="name" align="center" :show-overflow-tooltip="true" />
-      <el-table-column label="设备类型" prop="stream_source_type" align="center">
+      <el-table-column label="接入类型" prop="device_type" align="center" width="130">
+        <template slot-scope="scope">
+          <el-tag size="mini" :type="isGb28181(scope.row) ? 'warning' : 'info'">
+            {{ formatDeviceType(scope.row.device_type) }}
+          </el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column label="国标设备ID" prop="gb_device_id" align="center" :show-overflow-tooltip="true" width="140" />
+      <el-table-column label="拉流方式" prop="stream_source_type" align="center" width="90">
         <template slot-scope="scope">
           <el-tag size="mini" :type="scope.row.stream_source_type === 'PLATFORM' ? 'success' : 'info'">
             {{ formatSourceType(scope.row.stream_source_type) }}
@@ -172,12 +196,12 @@
       @closeProof="viewProof = false"
     />
 
-    <el-dialog :title="title" :visible.sync="open" width="620px" append-to-body>
+    <el-dialog :title="title" :visible.sync="open" width="720px" append-to-body>
       <el-form ref="form" :model="form" :rules="rules" label-width="90px">
         <el-row>
           <el-col :span="12">
-            <el-form-item label="设备类型" prop="stream_source_type">
-              <el-select v-model="form.stream_source_type" placeholder="请选择设备类型" style="width: 100%" @change="handleSourceTypeChange">
+            <el-form-item label="拉流方式" prop="stream_source_type">
+              <el-select v-model="form.stream_source_type" placeholder="直连或平台拉流" style="width: 100%" @change="handleSourceTypeChange">
                 <el-option v-for="item in streamSourceTypeOptions" :key="item.value" :label="item.label" :value="item.value" />
               </el-select>
             </el-form-item>
@@ -201,7 +225,28 @@
               <el-input v-model="form.name" placeholder="请输入设备名称" />
             </el-form-item>
           </el-col>
-          <el-col :span="12" v-if="form.stream_source_type === 'DIRECT'">
+          <el-col :span="12">
+            <el-form-item label="接入类型" prop="device_type">
+              <el-select v-model="form.device_type" placeholder="直连 RTSP 或国标" style="width: 100%" @change="handleDeviceTypeChange">
+                <el-option v-for="item in deviceTypeOptions" :key="item.value" :label="item.label" :value="item.value" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row v-if="form.device_type === 'gb28181'">
+          <el-col :span="12">
+            <el-form-item label="国标设备ID" prop="gb_device_id">
+              <el-input v-model="form.gb_device_id" placeholder="gb_device_id" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="国标平台ID" prop="gb_platform_id">
+              <el-input v-model="form.gb_platform_id" placeholder="gb_platform_id" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row v-if="form.stream_source_type === 'DIRECT'">
+          <el-col :span="24">
             <el-form-item label="视频流地址" prop="direct_source_url">
               <el-input v-model="form.direct_source_url" placeholder="请输入视频流地址" />
             </el-form-item>
@@ -273,7 +318,7 @@
 </template>
 
 <script>
-import { getDeviceList, getDevice, addDevice, updateDevice, delDevice, startDeviceMonitor, stopDeviceMonitor, previewDeviceMonitor } from '@/api/device'
+import { getDeviceList, getDevice, addDevice, updateDevice, delDevice, startDeviceMonitor, stopDeviceMonitor, previewDeviceMonitor, syncGb28181Devices } from '@/api/device'
 import { deptTreeSelect } from '@/api/system/user'
 import player from '@/components/RTSPPlayer'
 import devicewarning from './components/device-warning.vue'
@@ -296,8 +341,16 @@ export default {
       }
       callback()
     }
+    const validateGbField = (rule, value, callback) => {
+      if (this.form.device_type === 'gb28181' && !value) {
+        callback(new Error('国标设备必须填写该字段'))
+        return
+      }
+      callback()
+    }
     return {
       loading: false,
+      syncing: false,
       total: 0,
       ids: [],
       single: true,
@@ -319,6 +372,10 @@ export default {
         { value: 'DIRECT', label: '直连' },
         { value: 'PLATFORM', label: '平台' }
       ],
+      deviceTypeOptions: [
+        { value: 'rtsp', label: '直连 RTSP' },
+        { value: 'gb28181', label: '国标 GB28181' }
+      ],
       onlineOptions: [
         { value: '0', label: '登录中' },
         { value: '1', label: '在线/启用' },
@@ -330,12 +387,16 @@ export default {
         pageSize: 10,
         ape_id: undefined,
         name: undefined,
-        org_index: undefined
+        org_index: undefined,
+        device_type: undefined
       },
       form: {},
       rules: {
         name: [{ required: true, message: '设备名称不能为空', trigger: 'blur' }],
         org_name: [{ validator: validateOrgName, trigger: 'change' }],
+        device_type: [{ required: true, message: '请选择接入类型', trigger: 'change' }],
+        gb_device_id: [{ validator: validateGbField, trigger: ['blur', 'change'] }],
+        gb_platform_id: [{ validator: validateGbField, trigger: ['blur', 'change'] }],
         direct_source_url: [{ validator: validateDirectSourceUrl, trigger: ['blur', 'change'] }]
       }
     }
@@ -433,6 +494,12 @@ export default {
       }
       return value || '直连'
     },
+    isGb28181(row) {
+      return String((row && row.device_type) || '').toLowerCase() === 'gb28181'
+    },
+    formatDeviceType(value) {
+      return String(value || '').toLowerCase() === 'gb28181' ? '国标 GB28181' : '直连 RTSP'
+    },
     renderOnline(value) {
       const normalized = String(value)
       const target = this.onlineOptions.find((item) => String(item.value) === normalized)
@@ -444,6 +511,14 @@ export default {
     },
     refreshApeId() {
       this.form.ape_id = this.generateApeId()
+    },
+    handleDeviceTypeChange(value) {
+      this.form.device_type = String(value || 'rtsp').toLowerCase()
+      this.$nextTick(() => {
+        if (this.$refs.form) {
+          this.$refs.form.clearValidate(['gb_device_id', 'gb_platform_id'])
+        }
+      })
     },
     handleSourceTypeChange(value) {
       const normalized = String(value || 'DIRECT').toUpperCase()
@@ -483,6 +558,9 @@ export default {
         ape_id: undefined,
         name: undefined,
         stream_source_type: 'DIRECT',
+        device_type: 'rtsp',
+        gb_device_id: undefined,
+        gb_platform_id: undefined,
         direct_source_url: undefined,
         ip_addr: undefined,
         port: undefined,
@@ -505,7 +583,31 @@ export default {
       this.resetForm('queryForm')
       this.selectedQueryOrgIndex = undefined
       this.queryParams.org_index = undefined
+      this.queryParams.device_type = undefined
       this.handleQuery()
+    },
+    async handleSyncGb() {
+      this.syncing = true
+      try {
+        const response = await syncGb28181Devices()
+        const data = (response && response.data) || response || {}
+        const inserted = data.inserted || 0
+        const updated = data.updated || 0
+        const failed = data.failed || 0
+        const message = data.message || `新增 ${inserted}，更新 ${updated}，失败 ${failed}`
+        if (data.ready === false) {
+          this.$modal.msgWarning(message)
+        } else if (failed > 0) {
+          this.$modal.msgWarning(`新增 ${inserted}，更新 ${updated}，失败 ${failed}`)
+        } else {
+          this.$modal.msgSuccess(`新增 ${inserted}，更新 ${updated}，失败 ${failed}`)
+        }
+        this.getList()
+      } catch (error) {
+        this.$modal.msgError((error && error.message) || '同步国标设备失败')
+      } finally {
+        this.syncing = false
+      }
     },
     handleSelectionChange(selection) {
       this.ids = selection.map((item) => item.ape_id)
@@ -529,6 +631,7 @@ export default {
       getDevice(apeId).then((response) => {
         this.form = Object.assign({}, this.form, response.data || {})
         this.form.stream_source_type = (this.form.stream_source_type || 'DIRECT').toUpperCase()
+        this.form.device_type = String(this.form.device_type || 'rtsp').toLowerCase()
         this.selectedOrgIndex = this.ensureFormOrgOption(this.form.org_index, this.form.org_name)
         this.handleFormOrgChange(this.selectedOrgIndex)
         this.open = true
@@ -542,6 +645,7 @@ export default {
           return
         }
         this.form.stream_source_type = (this.form.stream_source_type || 'DIRECT').toUpperCase()
+        this.form.device_type = String(this.form.device_type || 'rtsp').toLowerCase()
         const request = this.isEdit ? updateDevice(this.form) : addDevice(this.form)
         request.then(() => {
           this.$modal.msgSuccess(this.isEdit ? '修改成功' : '新增成功')

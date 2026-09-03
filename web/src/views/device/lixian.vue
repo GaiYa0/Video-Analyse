@@ -33,6 +33,13 @@
             <el-table-column label="序号" type="index" width="50" align="center"/>
             <el-table-column label="设备名称" prop="name" align="center"/>
             <el-table-column label="设备编码" prop="ape_id" align="center" width="180px"/>
+            <el-table-column label="接入类型" prop="device_type" align="center" width="130">
+              <template slot-scope="scope">
+                <el-tag size="mini" :type="String(scope.row.device_type || '').toLowerCase() === 'gb28181' ? 'warning' : 'info'">
+                  {{ formatDeviceType(scope.row.device_type) }}
+                </el-tag>
+              </template>
+            </el-table-column>
             <el-table-column label="IP地址" prop="ip_addr" align="center" width="130px"/>
             <el-table-column label="端口号" prop="port" align="center" width="70px"/>
             <el-table-column label="设备类型" prop="sub_type" align="center">
@@ -148,6 +155,10 @@ export default {
       this.resetForm('queryForm');
       this.queryParams.org_index = undefined;
       this.handleQuery();
+    },
+
+    formatDeviceType(value) {
+      return String(value || '').toLowerCase() === 'gb28181' ? '国标 GB28181' : '直连 RTSP'
     },
 
     returnType(type) {

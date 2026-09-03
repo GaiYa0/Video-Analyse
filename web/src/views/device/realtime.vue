@@ -33,6 +33,13 @@
     <el-table v-loading="loading" :data="deviceList" style="width: 100%">
       <el-table-column label="设备名称" prop="name" align="center" :show-overflow-tooltip="true" />
       <el-table-column label="设备编码" prop="ape_id" align="center" :show-overflow-tooltip="true" />
+      <el-table-column label="接入类型" prop="device_type" align="center" width="130">
+        <template slot-scope="scope">
+          <el-tag size="mini" :type="String(scope.row.device_type || '').toLowerCase() === 'gb28181' ? 'warning' : 'info'">
+            {{ formatDeviceType(scope.row.device_type) }}
+          </el-tag>
+        </template>
+      </el-table-column>
       <el-table-column label="IP地址" prop="ip_addr" align="center" :show-overflow-tooltip="true" />
       <el-table-column label="端口号" prop="port" align="center" />
       <el-table-column label="设备类型" prop="sub_type" align="center">
@@ -203,6 +210,9 @@ export default {
     getMonitorState(row) {
       const raw = row.monitor_status || row.monitorStatus || row.run_status || row.runStatus || row.runtime_status || row.runtimeStatus || row.status
       return String(raw || 'UNKNOWN').toUpperCase()
+    },
+    formatDeviceType(value) {
+      return String(value || '').toLowerCase() === 'gb28181' ? '国标 GB28181' : '直连 RTSP'
     },
     returnType(type) {
       switch (String(type || '')) {

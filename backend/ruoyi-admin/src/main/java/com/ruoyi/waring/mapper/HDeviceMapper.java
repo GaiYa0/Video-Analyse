@@ -18,6 +18,9 @@ public interface HDeviceMapper {
 
     HDevice selectDeviceByApeId(String apeId);
 
+    HDevice selectDeviceByGbDeviceId(@Param("gbDeviceId") String gbDeviceId,
+                                    @Param("gbPlatformId") String gbPlatformId);
+
     int insertDeviceCrud(HDevice device);
 
     int updateDevice(HDevice device);

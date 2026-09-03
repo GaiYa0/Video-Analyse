@@ -16,6 +16,13 @@ public class HDevice extends BaseEntity {
     @Excel(name = "设备名称")
     private String name;
     private String stream_source_type;
+    /** rtsp / gb28181；旧行默认 rtsp，不要用 stream_source_type 冒充国标 */
+    @Excel(name = "接入类型")
+    private String device_type;
+    @Excel(name = "国标设备ID")
+    private String gb_device_id;
+    @Excel(name = "国标平台ID")
+    private String gb_platform_id;
     private String direct_source_url;
     private String play_url;
     private String zlm_proxy_key;
