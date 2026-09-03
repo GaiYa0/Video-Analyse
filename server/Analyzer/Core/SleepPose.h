@@ -23,7 +23,7 @@ namespace SVAAnalyzer
         constexpr float kDefaultPitchDownDeg = 32.0f;
         constexpr float kDefaultPitchRecoverDeg = 22.0f;
         constexpr float kUprightPitchCapDeg = 18.0f;
-        constexpr int64_t kDefaultSleepHoldMs = 10000;
+        constexpr int64_t kDefaultSleepHoldMs = 5000;
         constexpr int64_t kDefaultRecoverHoldMs = 600;
         constexpr float kHeadAboveNeckMinPx = 8.0f;
         constexpr float kPitchAttackAlpha = 0.55f;
@@ -49,7 +49,7 @@ namespace SVAAnalyzer
         // Geometry hard conditions.
         // Head may sit at most this share of the body scale ABOVE the neck line and
         // still count as head-down. A facing-camera head is far higher than this.
-        constexpr float kMaxHeadAboveNeckRatio = 0.18f;
+        constexpr float kMaxHeadAboveNeckRatio = 0.50f;
         // A desk hides the hips, so the up-axis falls back to the rotated shoulder
         // line. That ruler is the known laptop-webcam false positive, so entering
         // head-down without hips needs a steeper angle.
@@ -59,7 +59,7 @@ namespace SVAAnalyzer
         constexpr float kSleepMinDownRatio = 0.80f;
         constexpr int64_t kSleepMaxPoseGapMs = 1200;
         constexpr float kSleepMaxGapRatio = 0.50f;
-        constexpr int kSleepMinValidFrames = 12;
+        constexpr int kSleepMinValidFrames = 3;
         constexpr float kSleepPeakPitchDeg = 45.0f;
         constexpr float kSleepMaxHeadDriftRatio = 0.45f;
         constexpr int64_t kMaxFrameDeltaMs = 1000;
@@ -379,11 +379,14 @@ namespace SVAAnalyzer
          */
         inline float applyUprightGate(float pitch, float headAbove, float scale, bool frontalFace)
         {
-            if (headAbove > kMaxHeadAboveNeckRatio * scale)
+            // A downward laptop webcam keeps a face-down sleeper above the shoulder
+            // line in image Y. Only a facing-camera face, or a head still far above
+            // the neck, is safe to treat as "definitely sitting up".
+            if (frontalFace && headAbove >= kHeadAboveNeckMinPx)
             {
                 return std::min(pitch, kUprightPitchCapDeg);
             }
-            if (frontalFace && headAbove >= kHeadAboveNeckMinPx)
+            if (headAbove > kMaxHeadAboveNeckRatio * scale)
             {
                 return std::min(pitch, kUprightPitchCapDeg);
             }
@@ -610,6 +613,37 @@ namespace SVAAnalyzer
             return true;
         }
 
+        inline const char *sleepEvidenceBlockName(const TemporalState &state, int64_t headDownMs,
+                                                  int64_t holdMs, const FrameEvidence &evidence)
+        {
+            if (headDownMs < holdMs)
+            {
+                return "hold";
+            }
+            if (state.validFrames < kSleepMinValidFrames)
+            {
+                return "frames";
+            }
+            if (evidence.downRatio < kSleepMinDownRatio)
+            {
+                return "ratio";
+            }
+            if (evidence.gapRatio > kSleepMaxGapRatio)
+            {
+                return "gap";
+            }
+            if (state.peakPitchDeg < kSleepPeakPitchDeg)
+            {
+                return "peak";
+            }
+            if (state.hasAnchor && state.anchorScalePx > 0.0f &&
+                state.maxHeadDriftPx > kSleepMaxHeadDriftRatio * state.anchorScalePx)
+            {
+                return "drift";
+            }
+            return "ok";
+        }
+
         inline FrameLabel updateTemporal(TemporalState &state,
                                          const FrameInput &frame,
                                          int64_t nowMs,
@@ -701,6 +735,15 @@ namespace SVAAnalyzer
                     state.headAnchorY = frame.headY;
                     state.anchorScalePx = frame.scalePx;
                     state.hasAnchor = true;
+                }
+                else if (rawPitch > state.peakPitchDeg + 3.0f && frame.scalePx > 0.0f)
+                {
+                    // Still dropping onto the desk: follow the head so the descent
+                    // itself is not counted as "fidgeting".
+                    state.headAnchorX = frame.headX;
+                    state.headAnchorY = frame.headY;
+                    state.anchorScalePx = frame.scalePx;
+                    state.maxHeadDriftPx = 0.0f;
                 }
                 state.recoverSinceMs = 0;
                 state.headDownFrames += 1;

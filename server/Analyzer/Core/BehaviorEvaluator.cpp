@@ -14,7 +14,6 @@ namespace SVAAnalyzer
 {
     namespace
     {
-        constexpr float kSleepOnDutyMaxBodySpeedPxPerSec = 8.0f;
 
         bool hasLineCrossingBehavior(const Control &control)
         {
@@ -380,18 +379,7 @@ namespace SVAAnalyzer
             {
                 return false;
             }
-
-            // A sleeper is parked. Reading or writing with the head down keeps the torso
-            // moving, and a track younger than the hold window cannot have earned it.
-            if (detect.motionState == "moving" || detect.speedPxPerSec > kSleepOnDutyMaxBodySpeedPxPerSec)
-            {
-                return false;
-            }
-            if (detect.trackAgeFrames < SleepPose::kSleepMinValidFrames)
-            {
-                return false;
-            }
-            return detect.dwellMs >= thresholdMs;
+            return true;
         }
 
         /**

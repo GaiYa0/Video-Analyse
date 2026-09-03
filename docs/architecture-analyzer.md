@@ -100,7 +100,7 @@ CMake 说明：`server/CMakeLists.txt`。默认 `SVA_ONNXRUNTIME_GPU=ON`，依�
 
 同一路流可以挂多个布控：`Scheduler.cpp` 里 `getWorkerStreamKey()` 优先用 `streamCode`，否则用 `streamUrl`。backend 下发时 `streamCode` = 设备 `apeId`。
 
-拉流默认 `nobuffer` / `low_delay`，包队列只留 **4** 帧（旧值 32 帧，推理跟不上时画面会固定落后约 1 秒）。回推 GOP 约 5 帧、不编 B 帧。宁可丢帧，也不把旧画面堆给布控预览。
+拉流默认 `nobuffer` / `low_delay`，包队列只留 **4** 帧作解码突发缓冲。解码线程若发现队列里还有更新的包，会继续喂给 H.264 解码器，但跳过 BGR / YOLO / 回推，只对最新一帧做推理和画框。回推编码队列只留 **1** 帧，时间戳按墙钟、时长按相邻帧间隔，GOP 约 5 帧、不编 B 帧。宁可丢帧，也不把旧画面堆给布控预览。前端直播 FLV 必须把 `enableStashBuffer: false` 传给 flv.js 的 **Config（第二个参数）**，否则浏览器缓冲会一直涨。
 
 Worker 内线程（`server/Analyzer/main.cpp` 注释 + `Worker.cpp`）：
 

@@ -173,21 +173,22 @@ namespace SVAAnalyzer
                                     float &taskHappenScore,
                                     bool isKeyframe)
     {
-        taskDetects.clear();
         taskHappen = false;
         taskHappenScore = 0.0f;
         const std::string &algorithmCode = task.algorithmCode;
         const float detectFps = task.detectFps;
 
+        // false = this frame was skipped. The caller must not treat an empty
+        // detect list as "the person left", or tracks reset and sleep never fires.
         if (detectFps <= -1.5f)
         {
-            return true;
+            return false;
         }
         if (detectFps <= -0.5f)
         {
             if (!isKeyframe)
             {
-                return true;
+                return false;
             }
         }
         else if (detectFps > 0.0f)
@@ -200,11 +201,13 @@ namespace SVAAnalyzer
                 const double elapsedMs = static_cast<double>(nowMs - lastInferTimestampMs);
                 if (elapsedMs * detectFpsD < 1000.0)
                 {
-                    return true;
+                    return false;
                 }
             }
             task.lastInferTimestampMs = nowMs;
         }
+
+        taskDetects.clear();
 
         if (algorithmCode == "wensou")
         {
@@ -263,7 +266,6 @@ namespace SVAAnalyzer
     bool Analyzer::handleVideoFrame(int64_t frameCount, cv::Mat &image, std::vector<DetectObject> &happenDetects, bool &happen, float &happenScore, bool isKeyframe)
     {
         Control *control = mControl;
-        happenDetects.clear();
         happen = false;
         happenScore = 0.0f;
 
@@ -278,26 +280,33 @@ namespace SVAAnalyzer
             task.detectFps = control->detectFps;
         }
 
+        std::vector<DetectObject> mergedDetects;
         std::vector<DetectObject> taskDetects;
         bool taskHappen = false;
         float taskHappenScore = 0.0f;
+        bool anyInferred = false;
         auto &algorithmTasks = control->algorithmTasks;
         const size_t taskCount = algorithmTasks.size();
         for (size_t i = 0; i < taskCount; ++i)
         {
             AlgorithmTask &task = algorithmTasks[i];
-            runAlgorithmTask(frameCount, task, image, taskDetects, taskHappen, taskHappenScore, isKeyframe);
+            const bool inferred = runAlgorithmTask(frameCount, task, image, taskDetects, taskHappen, taskHappenScore, isKeyframe);
+            if (!inferred)
+            {
+                continue;
+            }
+            anyInferred = true;
             const size_t taskDetectCount = taskDetects.size();
             if (taskDetectCount > 0)
             {
-                const size_t baseSize = happenDetects.size();
+                const size_t baseSize = mergedDetects.size();
                 const size_t mergedSize = baseSize + taskDetectCount;
-                if (happenDetects.capacity() < mergedSize)
+                if (mergedDetects.capacity() < mergedSize)
                 {
-                    happenDetects.reserve(mergedSize);
+                    mergedDetects.reserve(mergedSize);
                 }
-                happenDetects.resize(mergedSize);
-                DetectObject *dst = happenDetects.data() + static_cast<std::ptrdiff_t>(baseSize);
+                mergedDetects.resize(mergedSize);
+                DetectObject *dst = mergedDetects.data() + static_cast<std::ptrdiff_t>(baseSize);
                 DetectObject *src = taskDetects.data();
                 std::move(src,
                           src + static_cast<std::ptrdiff_t>(taskDetectCount),
@@ -311,6 +320,12 @@ namespace SVAAnalyzer
             }
         }
 
+        if (!anyInferred)
+        {
+            return false;
+        }
+
+        happenDetects.swap(mergedDetects);
         if (happen && happenScore <= 0.0f)
         {
             happenScore = 1.0f;

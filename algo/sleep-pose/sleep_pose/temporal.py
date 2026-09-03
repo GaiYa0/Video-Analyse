@@ -14,7 +14,7 @@ from .geometry import (
     PitchResult,
 )
 
-SLEEP_HOLD_MS = 10000
+SLEEP_HOLD_MS = 5000
 RECOVER_HOLD_MS = 600
 PITCH_ATTACK_ALPHA = 0.55
 PITCH_RELEASE_ALPHA = 0.28
@@ -23,7 +23,7 @@ PITCH_RELEASE_ALPHA = 0.28
 SLEEP_MIN_DOWN_RATIO = 0.80
 SLEEP_MAX_POSE_GAP_MS = 1200
 SLEEP_MAX_GAP_RATIO = 0.50
-SLEEP_MIN_VALID_FRAMES = 12
+SLEEP_MIN_VALID_FRAMES = 3
 SLEEP_PEAK_PITCH_DEG = 45.0
 SLEEP_MAX_HEAD_DRIFT_RATIO = 0.45
 MAX_FRAME_DELTA_MS = 1000
@@ -266,6 +266,13 @@ def update_temporal(
             state.head_anchor_y = data.head_y
             state.anchor_scale_px = data.scale_px
             state.has_anchor = True
+        elif raw > state.peak_pitch_deg + 3.0 and data.scale_px > 0.0:
+            # Still dropping onto the desk: follow the head so the descent
+            # itself is not counted as fidgeting.
+            state.head_anchor_x = data.head_x
+            state.head_anchor_y = data.head_y
+            state.anchor_scale_px = data.scale_px
+            state.max_head_drift_px = 0.0
         state.recover_since_ms = 0
         state.head_down_frames += 1
         state.valid_frames += 1

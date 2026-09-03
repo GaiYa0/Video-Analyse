@@ -262,7 +262,7 @@ namespace SVAAnalyzer
             {
                 // Tuning these gates against real footage needs the numbers, not guesses.
                 track.lastSleepDebugMs = timestampMs;
-                LOGI("sleep_probe track=%d pitch=%s%.0f reject=%s kps=%d headAbove=%.0fpx scale=%.0fpx hip=%d hold=%lldms peak=%.0f downRatio=%.2f gapRatio=%.2f drift=%.0fpx",
+                LOGI("sleep_probe track=%d pitch=%s%.0f reject=%s kps=%d headAbove=%.0fpx scale=%.0fpx hip=%d hold=%lldms peak=%.0f downRatio=%.2f gapRatio=%.2f drift=%.0fpx frames=%d sleep=%d block=%s speed=%.1f age=%d dwell=%lld",
                      track.trackId,
                      frame.valid ? "" : "x",
                      detect.pitchDegree,
@@ -275,7 +275,13 @@ namespace SVAAnalyzer
                      evidence.peakPitchDeg,
                      evidence.downRatio,
                      evidence.gapRatio,
-                     evidence.headDriftPx);
+                     evidence.headDriftPx,
+                     evidence.validFrames,
+                     track.sleepOnDuty ? 1 : 0,
+                     SleepPose::sleepEvidenceBlockName(track.sleepPose, evidence.headDownMs, holdMs, evidence),
+                     track.speedPxPerSec,
+                     track.ageFrames,
+                     static_cast<long long>(std::max<int64_t>(0, track.lastSeenTimestampMs - track.firstSeenTimestampMs)));
             }
         }
 

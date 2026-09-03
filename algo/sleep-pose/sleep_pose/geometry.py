@@ -41,7 +41,7 @@ MIN_PERSON_BOX_HEIGHT_RATIO = 0.18
 HEAD_POINT_CONF_SCALE = 0.7
 
 # Geometry hard conditions.
-MAX_HEAD_ABOVE_NECK_RATIO = 0.18
+MAX_HEAD_ABOVE_NECK_RATIO = 0.50
 NO_HIP_ENTER_PENALTY_DEG = 6.0
 
 
@@ -228,14 +228,14 @@ def _apply_upright_gate(
     scale: float,
     frontal_face: bool,
 ) -> float:
-    """Cap the angle whenever the head still rides above the neck line.
+    """Cap only a facing-camera sit, or a head still far above the neck.
 
-    Desk sleep drops the head to or below the shoulders. A facing-camera head on a
-    downward laptop webcam does not, however large the shoulder ruler gets.
+    A downward laptop webcam keeps a face-down sleeper above the shoulder line
+    in image Y, so a ratio-only gate would block the real pose.
     """
-    if head_above > MAX_HEAD_ABOVE_NECK_RATIO * scale:
-        return min(pitch, UPRIGHT_PITCH_CAP_DEG)
     if frontal_face and head_above >= HEAD_ABOVE_NECK_MIN_PX:
+        return min(pitch, UPRIGHT_PITCH_CAP_DEG)
+    if head_above > MAX_HEAD_ABOVE_NECK_RATIO * scale:
         return min(pitch, UPRIGHT_PITCH_CAP_DEG)
     return pitch
 

@@ -150,17 +150,29 @@ class TruePositiveTests(unittest.TestCase):
 
     def test_short_nap_under_hold_does_not_fire(self):
         state = TemporalState()
-        frames = 8000 // FRAME_MS
+        frames = 3000 // FRAME_MS
         last = _run(state, [_frame(85.0)] * frames)
         self.assertEqual(last.label, FrameLabel.BOW)
         self.assertLess(last.head_down_ms, SLEEP_HOLD_MS)
 
     def test_brief_pose_dropout_survives(self):
-        # Losing a frame or two mid-nap must not restart the 10 second clock.
+        # Losing a frame or two mid-nap must not restart the hold clock.
         state = TemporalState()
         seq = []
         for i in range(SLEEP_HOLD_MS // FRAME_MS + 20):
             seq.append(None if i % 25 == 0 and i > 0 else _frame(85.0))
+        last = _run(state, seq)
+        self.assertEqual(last.label, FrameLabel.SLEEP)
+
+    def test_lowering_onto_desk_then_still_sleeps(self):
+        # The head travels a long way while the angle is still increasing. That
+        # descent must not spend the stillness budget.
+        state = TemporalState()
+        seq = []
+        for i in range(20):
+            seq.append(_frame(40.0 + i * 2.0, head_x=0.0, head_y=float(i * 4)))
+        parked = SLEEP_HOLD_MS // FRAME_MS + 5
+        seq.extend([_frame(80.0, head_x=0.0, head_y=80.0) for _ in range(parked)])
         last = _run(state, seq)
         self.assertEqual(last.label, FrameLabel.SLEEP)
 

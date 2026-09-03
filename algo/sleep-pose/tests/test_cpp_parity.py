@@ -66,9 +66,9 @@ class ParityTests(unittest.TestCase):
                 self.assertIn(name, self.cpp, f"{name} not found in SleepPose.h")
                 self.assertAlmostEqual(self.cpp[name], float(python_value), places=6)
 
-    def test_hold_time_is_ten_seconds(self):
-        self.assertEqual(temporal.SLEEP_HOLD_MS, 10000)
-        self.assertEqual(self.cpp["kDefaultSleepHoldMs"], 10000)
+    def test_hold_time_is_five_seconds(self):
+        self.assertEqual(temporal.SLEEP_HOLD_MS, 5000)
+        self.assertEqual(self.cpp["kDefaultSleepHoldMs"], 5000)
 
 
 if __name__ == "__main__":
