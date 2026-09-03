@@ -667,9 +667,11 @@ export default {
           const apeId = item.apeId || item.ape_id || item.deviceId || ''
           const name = item.name || item.deviceName || item.device_name || apeId
           if (!apeId) return null
+          const deviceType = String(item.device_type || item.deviceType || 'rtsp').toLowerCase()
+          const typeLabel = deviceType === 'gb28181' ? '国标 GB28181' : '直连 RTSP'
           return {
             value: apeId,
-            label: `${name} (${apeId})`,
+            label: `${name} (${apeId}) · ${typeLabel}`,
             raw: item
           }
         })

@@ -19,6 +19,13 @@
               <el-input v-model="queryParams.name" placeholder="请输入设备名称" clearable style="width: 240px" @keyup.enter.native="handleQuery"/>
             </el-form-item>
 
+            <el-form-item label="接入类型" prop="device_type">
+              <el-select v-model="queryParams.device_type" placeholder="直连 RTSP / 国标" clearable style="width: 200px">
+                <el-option label="直连 RTSP" value="rtsp"/>
+                <el-option label="国标 GB28181" value="gb28181"/>
+              </el-select>
+            </el-form-item>
+
             <el-form-item label="设备状态" prop="is_online">
               <el-select v-model="queryParams.is_online" placeholder="设备状态" clearable style="width: 240px">
                 <el-option v-for="op in onlineOptions" :key="op.value" :label="op.label" :value="op.value"/>
@@ -35,6 +42,13 @@
             <el-table-column label="序号" type="index" width="50" align="center"/>
             <el-table-column label="设备名称" prop="name" align="center"/>
             <el-table-column label="设备编码" prop="ape_id" align="center"/>
+            <el-table-column label="接入类型" prop="device_type" align="center" width="130">
+              <template slot-scope="scope">
+                <el-tag size="mini" :type="String(scope.row.device_type || '').toLowerCase() === 'gb28181' ? 'warning' : 'info'">
+                  {{ formatDeviceType(scope.row.device_type) }}
+                </el-tag>
+              </template>
+            </el-table-column>
             <el-table-column label="IP地址" prop="ip_addr" align="center"/>
             <el-table-column label="端口号" prop="port" align="center"/>
             <el-table-column label="设备类型" prop="sub_type" align="center">
@@ -91,7 +105,8 @@ export default {
         ape_id: undefined,
         name: undefined,
         is_online: undefined,
-        org_index: undefined
+        org_index: undefined,
+        device_type: undefined
       },
       deviceList: [],
       deviceListShow: true,
@@ -161,7 +176,12 @@ export default {
     resetQuery() {
       this.resetForm('queryForm');
       this.queryParams.org_index = undefined;
+      this.queryParams.device_type = undefined;
       this.handleQuery();
+    },
+
+    formatDeviceType(value) {
+      return String(value || '').toLowerCase() === 'gb28181' ? '国标 GB28181' : '直连 RTSP'
     },
 
     returnType(type) {
