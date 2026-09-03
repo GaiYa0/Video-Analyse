@@ -206,6 +206,14 @@ namespace SVAAnalyzer
                 }
                 break;
             }
+            // 旧布控常写 32°/2.5s，对衣物抖动过松；至少不低于当前默认。
+            downDeg = std::max(downDeg, SleepPose::kDefaultPitchDownDeg);
+            holdMs = std::max(holdMs, SleepPose::kDefaultSleepHoldMs);
+            recoverDeg = std::max(recoverDeg, SleepPose::kDefaultPitchRecoverDeg);
+            if (recoverDeg >= downDeg)
+            {
+                recoverDeg = std::max(1.0f, downDeg - 10.0f);
+            }
         }
 
         static void updateSleepPoseState(TemporalTrackState &track, DetectObject &detect, const Control &control, int64_t timestampMs)

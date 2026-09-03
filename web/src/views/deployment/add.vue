@@ -2513,9 +2513,9 @@ export default {
         name: '睡岗',
         behaviorType: 'sleep_on_duty',
         customEventName: '睡岗',
-        thresholdMs: 2500,
-        distanceThresholdPx: 32,
-        directionToleranceDeg: 10,
+        thresholdMs: 3500,
+        distanceThresholdPx: 38,
+        directionToleranceDeg: 12,
         geometryId: primaryRegion ? primaryRegion.id : ''
       }, geometryConfig)
       geometryConfig.behaviorRules = [...rules, nextRule]

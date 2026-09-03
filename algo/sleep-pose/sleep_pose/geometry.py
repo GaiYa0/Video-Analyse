@@ -15,9 +15,9 @@ RIGHT_SHOULDER = 6
 LEFT_HIP = 11
 RIGHT_HIP = 12
 
-MIN_KEYPOINT_CONF = 0.25
-PITCH_DOWN_DEG = 32.0
-PITCH_RECOVER_DEG = 22.0
+MIN_KEYPOINT_CONF = 0.28
+PITCH_DOWN_DEG = 38.0
+PITCH_RECOVER_DEG = 26.0
 # Keep gated upright frames below recover so the temporal machine stays UPRIGHT.
 UPRIGHT_PITCH_CAP_DEG = 18.0
 # Upright head-to-neck length vs torso (shoulder–hip) and vs shoulder width.
@@ -104,10 +104,8 @@ def _pick_head(kps: Sequence[Sequence[float]], min_conf: float) -> tuple[float, 
 def _pick_neck(kps: Sequence[Sequence[float]], min_conf: float) -> tuple[float, float] | None:
     if len(kps) <= RIGHT_SHOULDER:
         return None
-    both = _midpoint(kps[LEFT_SHOULDER], kps[RIGHT_SHOULDER], min_conf)
-    if both:
-        return both
-    return _first_usable([kps[LEFT_SHOULDER], kps[RIGHT_SHOULDER]], min_conf)
+    # Both shoulders required — single-side hits often come from clothing folds.
+    return _midpoint(kps[LEFT_SHOULDER], kps[RIGHT_SHOULDER], min_conf)
 
 
 def _pick_hip(kps: Sequence[Sequence[float]], min_conf: float) -> tuple[float, float] | None:
@@ -183,7 +181,7 @@ def pitch_from_coco17(
       * scale = max(0.42×torso, 0.5×shoulder) so a thin shoulder line cannot explode
       * image-Y drop only in profile
       * upright gate if the head is still above the neck, or both eyes+nose are visible
-      * head may fall back to eyes/ears when the nose is occluded on the desk
+      * both shoulders required; ear-only head rejected (clothing folds)
     """
     head = _pick_head(keypoints, min_conf)
     neck = _pick_neck(keypoints, min_conf)
