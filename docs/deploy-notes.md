@@ -328,6 +328,33 @@ WiFi IP 变了，或「启动监控」把 `play_url` 写回 `127.0.0.1:9992` 后
 
 
 
+
+## 10.1 P3 国标（GB28181 RTP 收流）
+
+C 已合入设备三字段与「同步国标设备」按钮（PR #35）。演示机执行：
+
+```bash
+mysql -h127.0.0.1 -P3307 -uroot -peasySVA.EZ easySVA < scripts/add_h_device_gb28181.sql
+# 重编 backend.jar + web dist 后 start_easysva.ps1
+```
+
+### 本机 ZLM 能力说明
+
+安装的 MediaServer 含 GB28181Process 与 REST：`openRtpServer` / `listRtpServer` / `getMediaList`。
+
+**没有内置 SIP UAS（5060）**。验收先走 openRtpServer + 国标 PS 推流；同步拉数走 listRtpServer。完整 SIP 可另接 WVP。
+
+### 同步接口
+
+`POST /waring/device/syncGb28181`：ZLM 可达时 ready=true；写入 device_type=gb28181、gb_device_id、gb_platform_id。
+
+### 最小自测
+
+```bash
+bash scripts/open_gb_rtp.sh gbcam001
+# 网页：设备管理 → 同步国标设备
+```
+
 ## 11. 变更记录
 
 
@@ -337,5 +364,4 @@ WiFi IP 变了，或「启动监控」把 `play_url` 写回 `127.0.0.1:9992` 后
 | 2026-08-31 | 一键启动 `start_easysva.ps1`；局域网 `:8080`；关 Clash/VPN 才能互访 |
 | 2026-09-02 | Nginx `/live/` 代理 ZLM；同学经 `:8080` 看监控墙，不改 `zlm_server.host` |
 | 2026-09-02 | §7.1 告警视频证据：录像引擎 A/M-SERVER、`/zlm/` URL、`backfill_alarm_video_url.sh` |
-
-
+| 2026-09-03 | P3：#35 加列；同步拉数接 listRtpServer；说明本机无内置 SIP 5060 |

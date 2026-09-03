@@ -157,7 +157,7 @@ P2 已关账。P3 **冻接口**（A 不能改名）：`device_type` / `gb_device
 
 A 在 MariaDB **3307** 执行 [`scripts/add_h_device_gb28181.sql`](../scripts/add_h_device_gb28181.sql) 后重启 `backend.jar`。列已存在可忽略报错。
 
-同步国标（按钮归 C，拉 ZLM 归 A）：`POST /waring/device/syncGb28181`。返回 `inserted` / `updated` / `failed` / `message` / `ready`。A 在 `IGb28181DeviceSyncService` 里调 ZLM REST/Hook，写入时必须带三个冻字段；未接 ZLM 时 `ready=false`。
+同步国标（按钮归 C，拉 ZLM 归 A）：`POST /waring/device/syncGb28181`。返回 `inserted` / `updated` / `failed` / `message` / `ready`。A 在 `IGb28181DeviceSyncService` 里调 ZLM `listRtpServer` / `getMediaList`，写入必须带三个冻字段。演示机当前 MediaServer **无内置 SIP 5060**，国标先走 `openRtpServer` 收 PS；完整 SIP 信令可另接 WVP。
 
 **布控 `deployment_task`**（`DeploymentTask.java`，`web/src/views/deployment/`）：`deployment_id`、`device_id`、`algorithm_code`、`target_code`、`geometry_config`、`stream_url`、`status`。P2 算法编码 `on_sleep_pose`（下拉仍读 `av_algorithm`，原 YOLO 不要改名）。
 
