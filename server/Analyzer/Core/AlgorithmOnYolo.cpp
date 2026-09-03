@@ -419,6 +419,9 @@ namespace SVAAnalyzer
             return false;
         }
 
+        // Keep this loose. A face-down sleeper scores worse than someone sitting up, so
+        // a high bar here just makes the detection blink and the track get recycled
+        // before the hold time is up. False positives are filtered by geometry instead.
         const float score_threshold = 0.40f;
         const float nms_threshold = 0.50f;
         const float x_factor = static_cast<float>(paddedImageSize) / static_cast<float>(mInputWidth);
@@ -479,6 +482,7 @@ namespace SVAAnalyzer
             detect.class_name = className;
             detect.class_score = confidences[pick];
             detect.hasPose = true;
+            int strongKeypoints = 0;
             for (int k = 0; k < SleepPose::kKeypointCount; ++k)
             {
                 const int base = 5 + k * 3;
@@ -487,12 +491,38 @@ namespace SVAAnalyzer
                 kp.y = det_output.at<float>(row, base + 1) * y_factor;
                 kp.conf = det_output.at<float>(row, base + 2);
                 detect.poseKeypoints[static_cast<size_t>(k)] = kp;
+                if (kp.conf >= SleepPose::kMinKeypointConf)
+                {
+                    ++strongKeypoints;
+                }
             }
-            detect.pitchValid = SleepPose::tryComputePitchDeg(
-                detect.poseKeypoints.data(),
-                SleepPose::kKeypointCount,
-                SleepPose::kMinKeypointConf,
-                detect.pitchDegree);
+
+            // Background people and half bodies still get a green box, but their pose is
+            // too coarse to judge 睡岗 on, so they never reach the temporal machine.
+            const int boxHeight = detect.y2 - detect.y1;
+            const bool bigEnough = boxHeight >= static_cast<int>(SleepPose::kMinPersonBoxHeightRatio *
+                                                                 static_cast<float>(imageHeight));
+            detect.poseStrongKeypoints = strongKeypoints;
+            if (bigEnough && strongKeypoints >= SleepPose::kMinPoseKeypoints)
+            {
+                const SleepPose::PitchResult pitch = SleepPose::computePitch(
+                    detect.poseKeypoints.data(),
+                    SleepPose::kKeypointCount,
+                    SleepPose::kMinKeypointConf);
+                detect.pitchValid = pitch.valid;
+                detect.pitchDegree = pitch.pitchDeg;
+                detect.poseHeadX = pitch.headX;
+                detect.poseHeadY = pitch.headY;
+                detect.poseScalePx = pitch.scalePx;
+                detect.poseHasHip = pitch.hasHip;
+                detect.poseHeadAboveNeckPx = pitch.headAboveNeckPx;
+                detect.poseReject = pitch.reject;
+            }
+            else
+            {
+                detect.poseReject = bigEnough ? SleepPose::PitchReject::TooFewKeypoints
+                                              : SleepPose::PitchReject::SmallBox;
+            }
             detects.push_back(detect);
         }
         return true;

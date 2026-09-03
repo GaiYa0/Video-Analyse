@@ -76,6 +76,13 @@ namespace SVAAnalyzer
         std::array<SleepPose::Keypoint, SleepPose::kKeypointCount> poseKeypoints{};
         float pitchDegree = 0.0f;
         bool pitchValid = false;
+        float poseHeadX = 0.0f;
+        float poseHeadY = 0.0f;
+        float poseScalePx = 0.0f;
+        bool poseHasHip = false;
+        float poseHeadAboveNeckPx = 0.0f;
+        int poseStrongKeypoints = 0;
+        SleepPose::PitchReject poseReject = SleepPose::PitchReject::None;
         int64_t headDownMs = 0;
         int durationFrames = 0;
         bool sleepOnDuty = false;

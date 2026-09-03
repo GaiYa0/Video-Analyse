@@ -7,8 +7,8 @@ import json
 import sys
 from pathlib import Path
 
-from .geometry import PITCH_DOWN_DEG, PITCH_RECOVER_DEG, pitch_from_coco17
-from .temporal import SLEEP_HOLD_MS, FrameLabel, TemporalState, update_temporal
+from .geometry import PITCH_DOWN_DEG, PITCH_RECOVER_DEG, compute_pitch
+from .temporal import SLEEP_HOLD_MS, FrameInput, FrameLabel, TemporalState, update_temporal
 
 
 def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -69,10 +69,10 @@ def main(argv: list[str] | None = None) -> int:
         confs = boxes.conf.cpu().numpy()
         for i, track_id in enumerate(ids):
             state = trackers.setdefault(int(track_id), TemporalState())
-            pitch = pitch_from_coco17(kpts[i])
+            frame = FrameInput.from_pitch_result(compute_pitch(kpts[i]))
             decision = update_temporal(
                 state,
-                pitch,
+                frame,
                 timestamp_ms,
                 down_deg=args.down_deg,
                 recover_deg=args.recover_deg,
@@ -95,7 +95,9 @@ def main(argv: list[str] | None = None) -> int:
                 )
                 print(
                     f"SLEEP track={track_id} frame={frame_index} "
-                    f"pitch={decision.pitch_deg} hold_ms={decision.head_down_ms}"
+                    f"pitch={decision.pitch_deg} hold_ms={decision.head_down_ms} "
+                    f"peak={decision.peak_pitch_deg:.0f} down_ratio={decision.down_ratio:.2f} "
+                    f"drift={decision.head_drift_px:.0f}px"
                 )
             if decision.label == FrameLabel.UPRIGHT:
                 sleeping_ids.discard(int(track_id))

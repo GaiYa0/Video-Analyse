@@ -52,6 +52,9 @@ namespace SVAAnalyzer
             return false;
         }
 
+        mFmtCtx->flags |= AVFMT_FLAG_NOBUFFER | AVFMT_FLAG_FLUSH_PACKETS;
+        mFmtCtx->max_delay = 0;
+
         if (avformat_find_stream_info(mFmtCtx, NULL) < 0)
         {
             LOGE("avformat_find_stream_info error");
@@ -107,6 +110,7 @@ namespace SVAAnalyzer
             // ========== 结束硬件解码支持 ==========
 
             mVideoCodecCtx->flags |= AV_CODEC_FLAG_LOW_DELAY;
+            mVideoCodecCtx->flags2 |= AV_CODEC_FLAG2_FAST;
             mVideoCodecCtx->thread_count = 1;
 
             if (avcodec_open2(mVideoCodecCtx, videoCodec, nullptr) < 0)

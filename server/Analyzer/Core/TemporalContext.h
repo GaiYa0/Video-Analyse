@@ -59,6 +59,7 @@ namespace SVAAnalyzer
         SleepPose::TemporalState sleepPose;
         int64_t headDownMs = 0;
         bool sleepOnDuty = false;
+        int64_t lastSleepDebugMs = 0;
     };
 
     /**

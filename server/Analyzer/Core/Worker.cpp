@@ -458,9 +458,14 @@ namespace SVAAnalyzer
             }
             cacheV.push(videoFrame);
 
+            int64_t alarmInterval = control->minInterval;
+            if (control->usesSleepPoseAlgorithm())
+            {
+                alarmInterval = std::min(alarmInterval, static_cast<int64_t>(8000));
+            }
             if (videoFrame->happen &&
                 static_cast<int>(cacheV.size()) >= prefix_size &&
-                    (getCurTimestamp() - last_alarm_timestamp) > control->minInterval)
+                    (getCurTimestamp() - last_alarm_timestamp) > alarmInterval)
             {
                 happening = true;
                 while (!cacheV.empty())
@@ -553,6 +558,38 @@ namespace SVAAnalyzer
                     {
                         frameCount++;
 
+                        // H.264 must still see every packet. Drop a backlog only if we
+                        // already inferred recently; otherwise sleep temporal starves and
+                        // Check FPS collapses (0.66 → throttle → even fewer frames).
+                        if (mPullStream->getVideoPktQueueSize() > 0)
+                        {
+                            const int64_t nowMs = getCurTime();
+                            bool inferredRecently = true;
+                            {
+                                std::lock_guard<std::mutex> inferLock(mControlRuntimesMtx);
+                                for (const auto &runtimeEntry : mControlRuntimes)
+                                {
+                                    WorkerControlRuntime *runtime = runtimeEntry.second;
+                                    if (!runtime || runtime->stopping)
+                                    {
+                                        continue;
+                                    }
+                                    if (runtime->lastInferTimestampMs <= 0 ||
+                                        nowMs - runtime->lastInferTimestampMs > 250)
+                                    {
+                                        inferredRecently = false;
+                                        break;
+                                    }
+                                }
+                            }
+                            if (inferredRecently)
+                            {
+                                av_packet_unref(&pkt);
+                                av_frame_unref(frame_yuv420p);
+                                continue;
+                            }
+                        }
+
                         AVFrame *src_frame = frame_yuv420p;
                         if (frame_yuv420p->hw_frames_ctx)
                         {
@@ -641,26 +678,13 @@ namespace SVAAnalyzer
                         happen = false;
                         happenScore = 0.0;
 
-                        bool shouldInfer = true;
-                        if (control.checkFps > 0.0f)
-                        {
-                            const int64_t nowMs = getCurTimestamp();
-                            const double intervalMs = 1000.0 / static_cast<double>(control.checkFps);
-                            if (runtime->lastInferTimestampMs > 0 &&
-                                static_cast<double>(nowMs - runtime->lastInferTimestampMs) < intervalMs)
-                            {
-                                shouldInfer = false;
-                            }
-                            else
-                            {
-                                runtime->lastInferTimestampMs = nowMs;
-                            }
-                        }
-
+                        // detectFps (抽帧率) is the cap. checkFps is only the measured
+                        // overlay number — never feed it back as a throttle.
                         std::vector<AggregateBehaviorMatch> aggMatches;
-                        if (shouldInfer)
+                        cur_is_check = runtime->analyzer->handleVideoFrame(frameCount, image, happenDetects, happen, happenScore, isKeyframe);
+                        if (cur_is_check)
                         {
-                            cur_is_check = runtime->analyzer->handleVideoFrame(frameCount, image, happenDetects, happen, happenScore, isKeyframe);
+                            runtime->lastInferTimestampMs = getCurTime();
 
                             if (cur_is_check)
                             {
@@ -821,7 +845,8 @@ namespace SVAAnalyzer
                         }
                         else
                         {
-                            cur_is_check = false;
+                            // Throttled: keep the last detections for overlay, do not
+                            // tell the tracker the person vanished.
                         }
 
                         int64_t continuity_check_end = getCurTime();
@@ -833,7 +858,7 @@ namespace SVAAnalyzer
                         }
                         const float currentCheckFps = control.checkFps;
 
-                        bool shouldPublishWsEvent = shouldInfer;
+                        bool shouldPublishWsEvent = cur_is_check;
                         if (shouldPublishWsEvent)
                         {
                             const float wsEventFps = control.wsEventFps;
@@ -1033,23 +1058,45 @@ namespace SVAAnalyzer
                                     int y1 = det.y1;
                                     int x2 = det.x2;
                                     int y2 = det.y2;
-                                    const cv::Scalar boxColor = det.happen ? overlayColor : cv::Scalar(0, 180, 0);
+                                    cv::Scalar boxColor = det.happen ? overlayColor : cv::Scalar(0, 180, 0);
                                     const int boxThickness = det.happen ? border_thickness : 2;
 
                                     char classScoreBuf[16];
                                     std::snprintf(classScoreBuf, sizeof(classScoreBuf), "%.2f", det.class_score);
                                     std::string title = det.class_name + " " + classScoreBuf;
-                                    if (det.happen && det.behaviorType == "sleep_on_duty")
+                                    if (control.usesSleepPoseAlgorithm())
                                     {
-                                        if (det.pitchValid)
+                                        char sleepBuf[48];
+                                        const double heldSec = static_cast<double>(det.headDownMs) / 1000.0;
+                                        if (det.sleepOnDuty || (det.happen && det.behaviorType == "sleep_on_duty"))
                                         {
-                                            char sleepBuf[32];
-                                            std::snprintf(sleepBuf, sizeof(sleepBuf), "SLEEP %.0f", det.pitchDegree);
+                                            if (det.pitchValid)
+                                            {
+                                                std::snprintf(sleepBuf, sizeof(sleepBuf), "SLEEP %.0f %.1fs", det.pitchDegree, heldSec);
+                                            }
+                                            else
+                                            {
+                                                std::snprintf(sleepBuf, sizeof(sleepBuf), "SLEEP %.1fs", heldSec);
+                                            }
                                             title = sleepBuf;
                                         }
-                                        else
+                                        else if (det.headDownMs > 0)
                                         {
-                                            title = "SLEEP";
+                                            if (det.pitchValid)
+                                            {
+                                                std::snprintf(sleepBuf, sizeof(sleepBuf), "BOW %.0f %.1fs", det.pitchDegree, heldSec);
+                                            }
+                                            else
+                                            {
+                                                std::snprintf(sleepBuf, sizeof(sleepBuf), "BOW %.1fs", heldSec);
+                                            }
+                                            title = sleepBuf;
+                                            boxColor = cv::Scalar(0, 165, 255);
+                                        }
+                                        else if (det.pitchValid)
+                                        {
+                                            std::snprintf(sleepBuf, sizeof(sleepBuf), "UP %.0f", det.pitchDegree);
+                                            title = sleepBuf;
                                         }
                                     }
 

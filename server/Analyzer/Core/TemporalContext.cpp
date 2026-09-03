@@ -3,6 +3,7 @@
 #include "Control.h"
 #include "SleepPose.h"
 #include "Utils/GeometryUtils.h"
+#include "Utils/Log.h"
 
 #include <algorithm>
 #include <cmath>
@@ -14,10 +15,14 @@ namespace SVAAnalyzer
     namespace
     {
         static constexpr float kMinIou = 0.30f;
-        static constexpr int kMaxMissedFrames = 30;
-        static constexpr int64_t kMaxMissedMs = 4000;
+        // Sleep-on-duty needs a track to survive a full 10s hold. On a ~7fps CPU stream
+        // a face-down person drops out for a second or two at a time, and recycling the
+        // track restarts the clock.
+        static constexpr int kMaxMissedFrames = 60;
+        static constexpr int64_t kMaxMissedMs = 8000;
         static constexpr size_t kMaxTrailPoints = 32;
         static constexpr float kStillSpeedThreshold = 12.0f;
+        static constexpr int64_t kSleepDebugIntervalMs = 2000;
 
         /**
          * @brief Simple IoU calculation between a detection box and a track box.
@@ -215,22 +220,69 @@ namespace SVAAnalyzer
             int64_t holdMs = SleepPose::kDefaultSleepHoldMs;
             resolveSleepPoseThresholds(control, downDeg, recoverDeg, holdMs);
 
-            int64_t headDownMs = 0;
+            SleepPose::FrameInput frame;
+            frame.valid = detect.hasPose && detect.pitchValid;
+            frame.pitchDeg = detect.pitchDegree;
+            frame.headX = detect.poseHeadX;
+            frame.headY = detect.poseHeadY;
+            frame.scalePx = detect.poseScalePx;
+            frame.hasHip = detect.poseHasHip;
+
+            SleepPose::FrameEvidence evidence;
             const SleepPose::FrameLabel label = SleepPose::updateTemporal(
                 track.sleepPose,
-                detect.hasPose && detect.pitchValid,
-                detect.pitchDegree,
+                frame,
                 timestampMs,
                 downDeg,
                 recoverDeg,
                 holdMs,
                 SleepPose::kDefaultRecoverHoldMs,
-                headDownMs);
-            track.headDownMs = headDownMs;
+                evidence);
+
+            const bool wasSleeping = track.sleepOnDuty;
+            track.headDownMs = evidence.headDownMs;
             track.sleepOnDuty = (label == SleepPose::FrameLabel::Sleep);
-            detect.headDownMs = headDownMs;
+            detect.headDownMs = evidence.headDownMs;
             detect.durationFrames = track.sleepPose.headDownFrames;
             detect.sleepOnDuty = track.sleepOnDuty;
+
+            if (track.sleepOnDuty && !wasSleeping)
+            {
+                LOGI("sleep_on_duty track=%d hold=%lldms peak=%.0fdeg downRatio=%.2f gapRatio=%.2f drift=%.0fpx frames=%d",
+                     track.trackId,
+                     static_cast<long long>(evidence.headDownMs),
+                     evidence.peakPitchDeg,
+                     evidence.downRatio,
+                     evidence.gapRatio,
+                     evidence.headDriftPx,
+                     evidence.validFrames);
+            }
+            else if (control.usesSleepPoseAlgorithm() &&
+                     timestampMs - track.lastSleepDebugMs >= kSleepDebugIntervalMs)
+            {
+                // Tuning these gates against real footage needs the numbers, not guesses.
+                track.lastSleepDebugMs = timestampMs;
+                LOGI("sleep_probe track=%d pitch=%s%.0f reject=%s kps=%d headAbove=%.0fpx scale=%.0fpx hip=%d hold=%lldms peak=%.0f downRatio=%.2f gapRatio=%.2f drift=%.0fpx frames=%d sleep=%d block=%s speed=%.1f age=%d dwell=%lld",
+                     track.trackId,
+                     frame.valid ? "" : "x",
+                     detect.pitchDegree,
+                     SleepPose::pitchRejectName(detect.poseReject),
+                     detect.poseStrongKeypoints,
+                     detect.poseHeadAboveNeckPx,
+                     detect.poseScalePx,
+                     detect.poseHasHip ? 1 : 0,
+                     static_cast<long long>(evidence.headDownMs),
+                     evidence.peakPitchDeg,
+                     evidence.downRatio,
+                     evidence.gapRatio,
+                     evidence.headDriftPx,
+                     evidence.validFrames,
+                     track.sleepOnDuty ? 1 : 0,
+                     SleepPose::sleepEvidenceBlockName(track.sleepPose, evidence.headDownMs, holdMs, evidence),
+                     track.speedPxPerSec,
+                     track.ageFrames,
+                     static_cast<long long>(std::max<int64_t>(0, track.lastSeenTimestampMs - track.firstSeenTimestampMs)));
+            }
         }
 
         static void writeTemporalFields(const TemporalTrackState &track, DetectObject &detect,

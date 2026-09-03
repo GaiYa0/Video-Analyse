@@ -150,9 +150,9 @@ namespace SVAAnalyzer
             }
             else
             {
-                // 软件x264选项
-                av_dict_set(&video_codec_options, "preset", "superfast", 0);
+                av_dict_set(&video_codec_options, "preset", "ultrafast", 0);
                 av_dict_set(&video_codec_options, "tune", "zerolatency", 0);
+                av_dict_set(&video_codec_options, "bf", "0", 0);
             }
         }
         // H.265 部分（若有需要可类似处理）
@@ -178,6 +178,9 @@ namespace SVAAnalyzer
         avcodec_parameters_from_context(mVideoStream->codecpar, mVideoCodecCtx);
         mVideoIndex = mVideoStream->id;
         // init video end
+
+        mFmtCtx->flags |= AVFMT_FLAG_NOBUFFER | AVFMT_FLAG_FLUSH_PACKETS;
+        mFmtCtx->max_delay = 0;
 
         av_dump_format(mFmtCtx, 0, pushStreamUrl.data(), 1);
 
@@ -298,6 +301,12 @@ namespace SVAAnalyzer
 
         if (!mVideoFrameQ.empty())
         {
+            while (mVideoFrameQ.size() > 1)
+            {
+                Frame *dropped = mVideoFrameQ.front();
+                mVideoFrameQ.pop();
+                mWorker->mVideoFramePool->giveBack(dropped);
+            }
             frame = mVideoFrameQ.front();
             mVideoFrameQ.pop();
             return true;
@@ -355,6 +364,11 @@ namespace SVAAnalyzer
         AVPacket *pkt = av_packet_alloc(); // 编码后的视频帧
         int64_t encodeSuccessCount = 0;
         int64_t frameCount = 0;
+        // Stamping by frame counter assumes we really deliver videoFps frames a second.
+        // Inference only manages about half that, so the stream clock fell behind the
+        // wall clock and the preview drifted further into the past the longer it ran.
+        int64_t firstFrameMs = 0;
+        int64_t lastPts = -1;
 
         int ret = -1;
         while (mWorker->getState() && !mStopped.load())
@@ -382,15 +396,26 @@ namespace SVAAnalyzer
                           frame_yuv420p->linesize);
                 mWorker->mVideoFramePool->giveBack(videoFrame);
 
-                frame_yuv420p->pts = frame_yuv420p->pkt_dts = av_rescale_q_rnd(frameCount,
-                                                                               mVideoCodecCtx->time_base,
-                                                                               mVideoStream->time_base,
-                                                                               (AVRounding)(AV_ROUND_NEAR_INF | AV_ROUND_PASS_MINMAX));
+                const int64_t nowMs = getCurTime();
+                if (firstFrameMs <= 0)
+                {
+                    firstFrameMs = nowMs;
+                }
+                const AVRational msTimeBase = {1, 1000};
+                int64_t pts = av_rescale_q(nowMs - firstFrameMs, msTimeBase, mVideoStream->time_base);
+                if (pts <= lastPts)
+                {
+                    pts = lastPts + 1; // the encoder needs strictly increasing timestamps
+                }
+                const int64_t defaultDuration = av_rescale_q_rnd(1,
+                                                                 mVideoCodecCtx->time_base,
+                                                                 mVideoStream->time_base,
+                                                                 (AVRounding)(AV_ROUND_NEAR_INF | AV_ROUND_PASS_MINMAX));
+                const int64_t duration = (lastPts >= 0 && pts > lastPts) ? (pts - lastPts) : defaultDuration;
+                lastPts = pts;
 
-                frame_yuv420p->pkt_duration = av_rescale_q_rnd(1,
-                                                               mVideoCodecCtx->time_base,
-                                                               mVideoStream->time_base,
-                                                               (AVRounding)(AV_ROUND_NEAR_INF | AV_ROUND_PASS_MINMAX));
+                frame_yuv420p->pts = frame_yuv420p->pkt_dts = pts;
+                frame_yuv420p->pkt_duration = duration > 0 ? duration : defaultDuration;
 
                 frame_yuv420p->pkt_pos = -1;
 
@@ -417,6 +442,10 @@ namespace SVAAnalyzer
 
                         ret = av_interleaved_write_frame(mFmtCtx, pkt);
                         av_packet_unref(pkt);
+                        if (mFmtCtx->pb)
+                        {
+                            avio_flush(mFmtCtx->pb);
+                        }
 
                         if (ret < 0)
                         {
