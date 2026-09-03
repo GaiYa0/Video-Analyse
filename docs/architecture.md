@@ -148,13 +148,20 @@ zlm_server.host 必须保持 127.0.0.1（Analyzer / 后端 API 用）。同学�
 
 ## 三张表
 
-P2 只动布控选项和告警类型，**不要改国标设备字段**。
+P2 已关账。P3 **冻接口**（A 不能改名）：`device_type` / `gb_device_id` / `gb_platform_id`。`stream_source_type`（`DIRECT`/`PLATFORM`）仍表示怎么进 ZLM，**不要**拿它冒充国标。
 
-**设备 `h_device`**（`HDevice.java`，`web/src/views/device/`）：`ape_id`、`name`、`stream_source_type`、`direct_source_url`、`play_url`、`zlm_proxy_key`、`zlm_server_id`、`sva_server_id`、`is_online`、`monitor_status`。P3 再加类型/国标 ID。
+**设备 `h_device`**（`HDevice.java`，`web/src/views/device/`）：`ape_id`、`name`、`stream_source_type`、`direct_source_url`、`play_url`、`zlm_proxy_key`、`zlm_server_id`、`sva_server_id`、`is_online`、`monitor_status`，以及：
+
+- `device_type`：`rtsp` / `gb28181`。旧行默认 `rtsp`。
+- `gb_device_id`、`gb_platform_id`：仅国标行必填；RTSP 行可空。
+
+A 在 MariaDB **3307** 执行 [`scripts/add_h_device_gb28181.sql`](../scripts/add_h_device_gb28181.sql) 后重启 `backend.jar`。列已存在可忽略报错。
+
+同步国标（按钮归 C，拉 ZLM 归 A）：`POST /waring/device/syncGb28181`。返回 `inserted` / `updated` / `failed` / `message` / `ready`。A 在 `IGb28181DeviceSyncService` 里调 ZLM REST/Hook，写入时必须带三个冻字段；未接 ZLM 时 `ready=false`。
 
 **布控 `deployment_task`**（`DeploymentTask.java`，`web/src/views/deployment/`）：`deployment_id`、`device_id`、`algorithm_code`、`target_code`、`geometry_config`、`stream_url`、`status`。P2 算法编码 `on_sleep_pose`（下拉仍读 `av_algorithm`，原 YOLO 不要改名）。
 
-**告警 `h_waring`**（`HWaring.java`，`web/src/views/warning/index.vue`）：`alarm_type`、`device_id`、`alarm_time`、`picture_url`、`is_handle`、`sva_behavior_type`。P2 睡岗：`alarm_type=SLEEP_ON_DUTY`，`alarm_type_name=睡岗`，`sva_behavior_type=sleep_on_duty`。不改 `h_device` 国标字段。
+**告警 `h_waring`**（`HWaring.java`，`web/src/views/warning/index.vue`）：`alarm_type`、`device_id`、`alarm_time`、`picture_url`、`is_handle`、`sva_behavior_type`。P2 睡岗：`alarm_type=SLEEP_ON_DUTY`，`alarm_type_name=睡岗`，`sva_behavior_type=sleep_on_duty`。
 
 ## 验收走查
 
@@ -171,6 +178,14 @@ P2 睡岗（2026-09-02 演示机走查，已关账）：
 - 布控选 `on_sleep_pose`、闭合主区域、规则 `sleep_on_duty`（低头 ≥32° / 2500ms），趴桌后弹出睡岗推送：[p2睡岗检测布控.png](./photo/p2睡岗检测布控.png)
 - 告警详情类型为睡岗 / `SLEEP_ON_DUTY`，规则 ID `sleep_on_duty_default`：[p2睡岗检测告警详情.png](./photo/p2睡岗检测告警详情.png)
 - 同机原 YOLO 进区告警仍可用（CCTV5 / `behavior_rule_1`）：[p2原YOLO进区告警.png](./photo/p2原YOLO进区告警.png)
+
+P3 国标（待 A 开 SIP 5060 并合入同步拉数后补截图，**未升 phase**）：
+
+1. A 执行 `scripts/add_h_device_gb28181.sql`，重启 `backend.jar`，刷前端。
+2. 设备管理能筛「直连 RTSP / 国标 GB28181」；旧设备显示 RTSP。
+3. 点「同步国标设备」：A 接好 ZLM 后应出现国标行、`gb_device_id`、在线状态；未接时提示 `ready=false`。
+4. 国标预览有画面；原 RTSP 设备、睡岗布控、原 YOLO 告警仍可用。
+5. 布控选设备的下拉里能看出哪条是国标。
 
 ## 后面改哪里
 
@@ -210,4 +225,4 @@ ALTER TABLE h_waring ADD COLUMN sva_pitch_degree DOUBLE NULL;
 A 执行 `ALTER` 后需重启 `backend.jar`。列已存在时跳过。B 未合入 Pose 前，选睡岗启动会「不支持的算法」，这是预期。
 
 - 睡岗：B 改 `server/`（Pose + 时序）；C 已改告警类型映射、布控选项默认值、`live-output`。
-- 国标：A 改 SIP 与 ZLM 同步接口；C 改设备表与列表；B 让 Analyzer 取国标播放 URL。
+- 国标：A 改 SIP 与 `IGb28181DeviceSyncService` 拉数；C 已冻 `device_type` 三字段、列表与同步按钮；B 让 Analyzer 取国标播放 URL。
