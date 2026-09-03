@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+from dataclasses import dataclass
 from typing import Sequence
 
 NOSE = 0
@@ -23,9 +24,35 @@ UPRIGHT_PITCH_CAP_DEG = 18.0
 # Upright head-to-neck length vs torso (shoulder–hip) and vs shoulder width.
 EXPECTED_HEAD_TO_TORSO = 0.42
 EXPECTED_HEAD_TO_SHOULDER = 0.50
-MIN_BODY_SCALE_PX = 8.0
+MIN_BODY_SCALE_PX = 24.0
 HEAD_ABOVE_NECK_MIN_PX = 8.0
-HEAD_ABOVE_NECK_RATIO = 0.20
+
+# Frame quality gates.
+MIN_MEAN_KEYPOINT_CONF = 0.35
+MAX_PITCH_JUMP_DEG = 45.0
+MIN_POSE_KEYPOINTS = 8
+MIN_PERSON_BOX_HEIGHT_RATIO = 0.18
+
+# Geometry hard conditions.
+MAX_HEAD_ABOVE_NECK_RATIO = 0.10
+NO_HIP_ENTER_PENALTY_DEG = 6.0
+
+
+@dataclass
+class PitchResult:
+    """Per-frame geometry output. `valid` False means the frame carries no usable
+    pitch, which is not the same as "the person is upright"."""
+
+    valid: bool = False
+    pitch_deg: float = 0.0
+    scale_px: float = 0.0
+    head_x: float = 0.0
+    head_y: float = 0.0
+    mean_conf: float = 0.0
+    has_hip: bool = False
+    both_shoulders: bool = False
+    frontal_face: bool = False
+    head_above_neck_px: float = 0.0
 
 
 def _as_xyz(point: Sequence[float]) -> tuple[float, float, float]:
@@ -42,6 +69,10 @@ def _usable(point: Sequence[float] | None, min_conf: float) -> bool:
     return conf >= min_conf
 
 
+def _at(kps: Sequence[Sequence[float]], index: int) -> Sequence[float] | None:
+    return kps[index] if len(kps) > index else None
+
+
 def _midpoint(
     a: Sequence[float] | None,
     b: Sequence[float] | None,
@@ -54,69 +85,101 @@ def _midpoint(
     return 0.5 * (ax + bx), 0.5 * (ay + by)
 
 
-def _first_usable(points: Sequence[Sequence[float] | None], min_conf: float) -> tuple[float, float] | None:
-    for point in points:
+class _ConfAccumulator:
+    def __init__(self) -> None:
+        self.total = 0.0
+        self.count = 0
+
+    def add(self, *points: Sequence[float]) -> None:
+        for point in points:
+            self.total += _as_xyz(point)[2]
+            self.count += 1
+
+    def mean(self) -> float:
+        return self.total / self.count if self.count else 0.0
+
+
+def _pick_head(
+    kps: Sequence[Sequence[float]],
+    min_conf: float,
+    conf: _ConfAccumulator,
+) -> tuple[float, float, bool] | None:
+    """Returns (x, y, strong). `strong` means nose, both eyes or both ears.
+
+    A single eye/ear is only accepted with a real torso axis: a lone low-confidence
+    ear used to be the cheapest way to fake a desk slump on a turned-away person.
+    """
+    if len(kps) <= NOSE:
+        return None
+
+    if _usable(kps[NOSE], min_conf):
+        x, y, _ = _as_xyz(kps[NOSE])
+        conf.add(kps[NOSE])
+        return x, y, True
+
+    eyes = _midpoint(_at(kps, LEFT_EYE), _at(kps, RIGHT_EYE), min_conf)
+    if eyes:
+        conf.add(kps[LEFT_EYE], kps[RIGHT_EYE])
+        return eyes[0], eyes[1], True
+
+    ears = _midpoint(_at(kps, LEFT_EAR), _at(kps, RIGHT_EAR), min_conf)
+    if ears:
+        conf.add(kps[LEFT_EAR], kps[RIGHT_EAR])
+        return ears[0], ears[1], True
+
+    for index in (LEFT_EYE, RIGHT_EYE, LEFT_EAR, RIGHT_EAR):
+        point = _at(kps, index)
         if _usable(point, min_conf):
             x, y, _ = _as_xyz(point)
-            return x, y
+            conf.add(point)
+            return x, y, False
     return None
 
 
-def _pick_head(kps: Sequence[Sequence[float]], min_conf: float) -> tuple[float, float] | None:
-    head_conf = min_conf * 0.7
-    if len(kps) <= NOSE:
-        return None
-    if _usable(kps[NOSE], min_conf):
-        x, y, _ = _as_xyz(kps[NOSE])
-        return x, y
-    eyes = _midpoint(
-        kps[LEFT_EYE] if len(kps) > LEFT_EYE else None,
-        kps[RIGHT_EYE] if len(kps) > RIGHT_EYE else None,
-        head_conf,
-    )
-    if eyes:
-        return eyes
-    found = _first_usable(
-        [
-            kps[LEFT_EYE] if len(kps) > LEFT_EYE else None,
-            kps[RIGHT_EYE] if len(kps) > RIGHT_EYE else None,
-        ],
-        head_conf,
-    )
-    if found:
-        return found
-    ears = _midpoint(
-        kps[LEFT_EAR] if len(kps) > LEFT_EAR else None,
-        kps[RIGHT_EAR] if len(kps) > RIGHT_EAR else None,
-        head_conf,
-    )
-    if ears:
-        return ears
-    return _first_usable(
-        [
-            kps[LEFT_EAR] if len(kps) > LEFT_EAR else None,
-            kps[RIGHT_EAR] if len(kps) > RIGHT_EAR else None,
-        ],
-        head_conf,
-    )
-
-
-def _pick_neck(kps: Sequence[Sequence[float]], min_conf: float) -> tuple[float, float] | None:
+def _pick_neck(
+    kps: Sequence[Sequence[float]],
+    min_conf: float,
+    conf: _ConfAccumulator,
+) -> tuple[float, float, bool] | None:
+    """Returns (x, y, both_shoulders). One shoulder puts the neck off to one side,
+    which silently defeats the upright gate, so callers pair it with a hip."""
     if len(kps) <= RIGHT_SHOULDER:
         return None
+
     both = _midpoint(kps[LEFT_SHOULDER], kps[RIGHT_SHOULDER], min_conf)
     if both:
-        return both
-    return _first_usable([kps[LEFT_SHOULDER], kps[RIGHT_SHOULDER]], min_conf)
+        conf.add(kps[LEFT_SHOULDER], kps[RIGHT_SHOULDER])
+        return both[0], both[1], True
+
+    for index in (LEFT_SHOULDER, RIGHT_SHOULDER):
+        point = _at(kps, index)
+        if _usable(point, min_conf):
+            x, y, _ = _as_xyz(point)
+            conf.add(point)
+            return x, y, False
+    return None
 
 
-def _pick_hip(kps: Sequence[Sequence[float]], min_conf: float) -> tuple[float, float] | None:
+def _pick_hip(
+    kps: Sequence[Sequence[float]],
+    min_conf: float,
+    conf: _ConfAccumulator,
+) -> tuple[float, float] | None:
     if len(kps) <= RIGHT_HIP:
         return None
+
     both = _midpoint(kps[LEFT_HIP], kps[RIGHT_HIP], min_conf)
     if both:
+        conf.add(kps[LEFT_HIP], kps[RIGHT_HIP])
         return both
-    return _first_usable([kps[LEFT_HIP], kps[RIGHT_HIP]], min_conf)
+
+    for index in (LEFT_HIP, RIGHT_HIP):
+        point = _at(kps, index)
+        if _usable(point, min_conf):
+            x, y, _ = _as_xyz(point)
+            conf.add(point)
+            return x, y
+    return None
 
 
 def _map_elev_to_pitch(elev: float, scale: float) -> float:
@@ -142,7 +205,7 @@ def _is_frontal_face(kps: Sequence[Sequence[float]], min_conf: float) -> bool:
         _usable(kps[NOSE], min_conf)
         and _usable(kps[LEFT_EYE], min_conf)
         and _usable(kps[RIGHT_EYE], min_conf)
-        and _eye_distance(kps, min_conf) >= MIN_BODY_SCALE_PX
+        and _eye_distance(kps, min_conf) >= HEAD_ABOVE_NECK_MIN_PX
     )
 
 
@@ -152,46 +215,58 @@ def _is_profile_view(shoulder_w: float, torso_len: float) -> bool:
 
 def _apply_upright_gate(
     pitch: float,
-    head_y: float,
-    neck_y: float,
+    head_above: float,
     scale: float,
     frontal_face: bool,
 ) -> float:
-    """Laptop webcams look down: shoulder width explodes and a facing-camera
-    head still scores like a desk slump. If the head is clearly above the neck,
-    or both eyes+nose are visible, this is not 睡岗.
+    """Cap the angle whenever the head still rides above the neck line.
+
+    Desk sleep drops the head to or below the shoulders. A facing-camera head on a
+    downward laptop webcam does not, however large the shoulder ruler gets.
     """
-    head_above = neck_y - head_y
-    if frontal_face and head_above >= HEAD_ABOVE_NECK_MIN_PX:
+    if head_above > MAX_HEAD_ABOVE_NECK_RATIO * scale:
         return min(pitch, UPRIGHT_PITCH_CAP_DEG)
-    if head_above >= max(HEAD_ABOVE_NECK_MIN_PX, HEAD_ABOVE_NECK_RATIO * scale):
+    if frontal_face and head_above >= HEAD_ABOVE_NECK_MIN_PX:
         return min(pitch, UPRIGHT_PITCH_CAP_DEG)
     return pitch
 
 
-def pitch_from_coco17(
+def compute_pitch(
     keypoints: Sequence[Sequence[float]],
     min_conf: float = MIN_KEYPOINT_CONF,
-) -> float | None:
+) -> PitchResult:
     """View-adaptive head-drop score in degrees (0 ≈ upright, ~90 ≈ head at the neck).
 
-    Frontal sitting used to work because shoulder width is a stable ruler. In profile
-    that width collapses, so the old 0.5×shoulder-width pitch jumped around.
-    Close-up downward webcams do the opposite: shoulders explode and a facing-camera
-    head looks like a slump. Now:
+    Sitting frontally used to work because shoulder width is a stable ruler. In profile
+    that width collapses; close-up downward webcams do the opposite and make a
+    facing-camera head look like a slump. So:
       * torso-up from hip→shoulder when hips are visible (stable in profile)
       * scale = max(0.42×torso, 0.5×shoulder) so a thin shoulder line cannot explode
       * image-Y drop only in profile
-      * upright gate if the head is still above the neck, or both eyes+nose are visible
-      * head may fall back to eyes/ears when the nose is occluded on the desk
+      * the head must not still be riding above the neck line
+      * one shoulder or a lone eye/ear is only trusted alongside a hip
     """
-    head = _pick_head(keypoints, min_conf)
-    neck = _pick_neck(keypoints, min_conf)
-    if head is None or neck is None:
-        return None
+    conf = _ConfAccumulator()
 
-    hx, hy = head
-    nx, ny = neck
+    head = _pick_head(keypoints, min_conf, conf)
+    neck = _pick_neck(keypoints, min_conf, conf)
+    if head is None or neck is None:
+        return PitchResult()
+
+    hx, hy, head_strong = head
+    nx, ny, both_shoulders = neck
+    hip = _pick_hip(keypoints, min_conf, conf)
+    has_hip = hip is not None
+
+    if not both_shoulders and not has_hip:
+        return PitchResult()
+    if not head_strong and not has_hip:
+        return PitchResult()
+
+    mean_conf = conf.mean()
+    if mean_conf < MIN_MEAN_KEYPOINT_CONF:
+        return PitchResult()
+
     shoulder_w = 0.0
     if (
         len(keypoints) > RIGHT_SHOULDER
@@ -205,7 +280,6 @@ def pitch_from_coco17(
     torso_len = 0.0
     ux = 0.0
     uy = 0.0
-    hip = _pick_hip(keypoints, min_conf)
     if hip is not None:
         ux = nx - hip[0]
         uy = ny - hip[1]
@@ -214,7 +288,7 @@ def pitch_from_coco17(
     if torso_len < MIN_BODY_SCALE_PX:
         # No usable hip axis: rotate the shoulder line 90° (old frontal fallback).
         if shoulder_w < MIN_BODY_SCALE_PX:
-            return None
+            return PitchResult()
         lsx, lsy, _ = _as_xyz(keypoints[LEFT_SHOULDER])
         rsx, rsy, _ = _as_xyz(keypoints[RIGHT_SHOULDER])
         ux = -(rsy - lsy)
@@ -224,7 +298,7 @@ def pitch_from_coco17(
             uy = -uy
         u_norm = math.hypot(ux, uy)
         if u_norm < 1e-3:
-            return None
+            return PitchResult()
         ux /= u_norm
         uy /= u_norm
     else:
@@ -237,23 +311,39 @@ def pitch_from_coco17(
     if shoulder_w >= MIN_BODY_SCALE_PX:
         scale = max(scale, EXPECTED_HEAD_TO_SHOULDER * shoulder_w)
     if scale < MIN_BODY_SCALE_PX:
-        return None
+        return PitchResult()
 
     elev = ux * (hx - nx) + uy * (hy - ny)
-    pitch_along_up = _map_elev_to_pitch(elev, scale)
-    pitch = pitch_along_up
+    pitch = _map_elev_to_pitch(elev, scale)
     # Image-Y drop helps profile. On a close frontal webcam it uses the huge
     # shoulder ruler and turns "looking at the camera" into 60°+.
     if _is_profile_view(shoulder_w, torso_len):
         pitch = max(pitch, _map_elev_to_pitch(-(hy - ny), scale))
-    pitch = _apply_upright_gate(
-        pitch,
-        hy,
-        ny,
-        scale,
-        _is_frontal_face(keypoints, min_conf),
+
+    head_above = ny - hy
+    frontal_face = _is_frontal_face(keypoints, min_conf)
+    pitch = _apply_upright_gate(pitch, head_above, scale, frontal_face)
+
+    return PitchResult(
+        valid=True,
+        pitch_deg=max(0.0, min(135.0, pitch)),
+        scale_px=scale,
+        head_x=hx,
+        head_y=hy,
+        mean_conf=mean_conf,
+        has_hip=has_hip,
+        both_shoulders=both_shoulders,
+        frontal_face=frontal_face,
+        head_above_neck_px=head_above,
     )
-    return max(0.0, min(135.0, pitch))
+
+
+def pitch_from_coco17(
+    keypoints: Sequence[Sequence[float]],
+    min_conf: float = MIN_KEYPOINT_CONF,
+) -> float | None:
+    result = compute_pitch(keypoints, min_conf)
+    return result.pitch_deg if result.valid else None
 
 
 def try_compute_pitch_deg(

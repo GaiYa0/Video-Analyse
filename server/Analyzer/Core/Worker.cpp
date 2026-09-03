@@ -1041,16 +1041,17 @@ namespace SVAAnalyzer
                                     std::string title = det.class_name + " " + classScoreBuf;
                                     if (det.happen && det.behaviorType == "sleep_on_duty")
                                     {
+                                        char sleepBuf[48];
+                                        const double heldSec = static_cast<double>(det.headDownMs) / 1000.0;
                                         if (det.pitchValid)
                                         {
-                                            char sleepBuf[32];
-                                            std::snprintf(sleepBuf, sizeof(sleepBuf), "SLEEP %.0f", det.pitchDegree);
-                                            title = sleepBuf;
+                                            std::snprintf(sleepBuf, sizeof(sleepBuf), "SLEEP %.0f %.1fs", det.pitchDegree, heldSec);
                                         }
                                         else
                                         {
-                                            title = "SLEEP";
+                                            std::snprintf(sleepBuf, sizeof(sleepBuf), "SLEEP %.1fs", heldSec);
                                         }
+                                        title = sleepBuf;
                                     }
 
                                     cv::rectangle(image, cv::Rect(x1, y1, x2 - x1, y2 - y1), boxColor, boxThickness, cv::LINE_AA);

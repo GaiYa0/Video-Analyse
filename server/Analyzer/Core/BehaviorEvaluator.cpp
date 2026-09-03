@@ -14,6 +14,8 @@ namespace SVAAnalyzer
 {
     namespace
     {
+        constexpr float kSleepOnDutyMaxBodySpeedPxPerSec = 8.0f;
+
         bool hasLineCrossingBehavior(const Control &control)
         {
             for (size_t i = 0; i < control.lines.size(); ++i)
@@ -374,7 +376,22 @@ namespace SVAAnalyzer
                 return false;
             }
             const int64_t thresholdMs = std::max<int64_t>(1, rule.thresholdMs > 0 ? rule.thresholdMs : SleepPose::kDefaultSleepHoldMs);
-            return detect.headDownMs >= thresholdMs;
+            if (detect.headDownMs < thresholdMs)
+            {
+                return false;
+            }
+
+            // A sleeper is parked. Reading or writing with the head down keeps the torso
+            // moving, and a track younger than the hold window cannot have earned it.
+            if (detect.motionState == "moving" || detect.speedPxPerSec > kSleepOnDutyMaxBodySpeedPxPerSec)
+            {
+                return false;
+            }
+            if (detect.trackAgeFrames < SleepPose::kSleepMinValidFrames)
+            {
+                return false;
+            }
+            return detect.dwellMs >= thresholdMs;
         }
 
         /**

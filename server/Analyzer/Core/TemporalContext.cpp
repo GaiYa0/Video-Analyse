@@ -3,6 +3,7 @@
 #include "Control.h"
 #include "SleepPose.h"
 #include "Utils/GeometryUtils.h"
+#include "Utils/Log.h"
 
 #include <algorithm>
 #include <cmath>
@@ -215,22 +216,43 @@ namespace SVAAnalyzer
             int64_t holdMs = SleepPose::kDefaultSleepHoldMs;
             resolveSleepPoseThresholds(control, downDeg, recoverDeg, holdMs);
 
-            int64_t headDownMs = 0;
+            SleepPose::FrameInput frame;
+            frame.valid = detect.hasPose && detect.pitchValid;
+            frame.pitchDeg = detect.pitchDegree;
+            frame.headX = detect.poseHeadX;
+            frame.headY = detect.poseHeadY;
+            frame.scalePx = detect.poseScalePx;
+            frame.hasHip = detect.poseHasHip;
+
+            SleepPose::FrameEvidence evidence;
             const SleepPose::FrameLabel label = SleepPose::updateTemporal(
                 track.sleepPose,
-                detect.hasPose && detect.pitchValid,
-                detect.pitchDegree,
+                frame,
                 timestampMs,
                 downDeg,
                 recoverDeg,
                 holdMs,
                 SleepPose::kDefaultRecoverHoldMs,
-                headDownMs);
-            track.headDownMs = headDownMs;
+                evidence);
+
+            const bool wasSleeping = track.sleepOnDuty;
+            track.headDownMs = evidence.headDownMs;
             track.sleepOnDuty = (label == SleepPose::FrameLabel::Sleep);
-            detect.headDownMs = headDownMs;
+            detect.headDownMs = evidence.headDownMs;
             detect.durationFrames = track.sleepPose.headDownFrames;
             detect.sleepOnDuty = track.sleepOnDuty;
+
+            if (track.sleepOnDuty && !wasSleeping)
+            {
+                LOGI("sleep_on_duty track=%d hold=%lldms peak=%.0fdeg downRatio=%.2f gapRatio=%.2f drift=%.0fpx frames=%d",
+                     track.trackId,
+                     static_cast<long long>(evidence.headDownMs),
+                     evidence.peakPitchDeg,
+                     evidence.downRatio,
+                     evidence.gapRatio,
+                     evidence.headDriftPx,
+                     evidence.validFrames);
+            }
         }
 
         static void writeTemporalFields(const TemporalTrackState &track, DetectObject &detect,
