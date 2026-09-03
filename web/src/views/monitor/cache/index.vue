@@ -111,15 +111,28 @@ export default {
             {
               name: "命令",
               type: "pie",
-              roseType: "radius",
-              radius: [15, 95],
-              center: ["50%", "38%"],
+              radius: ["42%", "68%"],
+              center: ["50%", "50%"],
+              avoidLabelOverlap: true,
+              minAngle: 4,
+              itemStyle: {
+                borderColor: "#161b22",
+                borderWidth: 2
+              },
+              label: {
+                color: SVA_CHART_TEXT
+              },
+              labelLine: {
+                length: 12,
+                length2: 10,
+                lineStyle: { color: SVA_CHART_MUTED }
+              },
               data: response.data.commandStats,
               animationEasing: "cubicInOut",
               animationDuration: 1000,
             }
           ]
-          });
+          }, true);
         }
         const usedmemory = this.ensureChart('usedmemory', this.$refs.usedmemory);
         if (usedmemory) {
