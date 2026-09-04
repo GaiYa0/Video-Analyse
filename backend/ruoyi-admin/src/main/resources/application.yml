@@ -157,3 +157,13 @@ xss:
 
 image:
   localUrlPath: E:/work/images
+
+# P3 国标：外挂 WVP 提供 SIP 5060；ZLM 仍做媒体。enabled=false 时仅 listRtpServer。
+gb28181:
+  wvp:
+    enabled: true
+    base-url: http://127.0.0.1:18080
+    username: admin
+    password: SvaDemo@2026
+    # 与 WVP sip.id / 国标域对应；空则用 wvp-{zlmId}
+    platform-id: "34020000002000000001"

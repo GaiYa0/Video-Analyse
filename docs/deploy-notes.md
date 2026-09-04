@@ -329,7 +329,7 @@ WiFi IP 变了，或「启动监控」把 `play_url` 写回 `127.0.0.1:9992` 后
 
 
 
-## 10.1 P3 国标（GB28181 RTP 收流）
+## 10.1 P3 国标（GB28181：WVP SIP + ZLM 媒体）
 
 C 已合入设备三字段与「同步国标设备」按钮（PR #35）。演示机执行：
 
@@ -342,17 +342,64 @@ mysql -h127.0.0.1 -P3307 -uroot -peasySVA.EZ easySVA < scripts/add_h_device_gb28
 
 安装的 MediaServer 含 GB28181Process 与 REST：`openRtpServer` / `listRtpServer` / `getMediaList`。
 
-**没有内置 SIP UAS（5060）**。验收先走 openRtpServer + 国标 PS 推流；同步拉数走 listRtpServer。完整 SIP 可另接 WVP。
+**没有内置 SIP UAS（5060）**。完整国标注册/保活/离线由外挂 **WVP-GB28181-pro** 提供；ZLM 只收 PS/RTP 并转 WS-FLV。
+
+### WVP 部署（演示机）
+
+| 项 | 值 |
+| --- | --- |
+| 源码/安装 | `/opt/wvp-GB28181-pro`（需 **JDK 21** 编译） |
+| 配置 profile | `easysva` → `application-easysva.yml` |
+| Web / API | `http://127.0.0.1:18080`（默认账号 `admin`/`admin`） |
+| SIP | **UDP/TCP 5060**；平台 ID `34020000002000000001`；域 `3402000000`；设备密码 `12345678` |
+| 库 | MariaDB `3307` / 库名 `wvp`（与 easySVA 同实例） |
+| Redis | `127.0.0.1:6379` DB **7**（无密码） |
+| 对接 ZLM | API `127.0.0.1:9992`；`media.id` = `config.ini` 的 `mediaServerId`；`secret` 与 `[api] secret` 一致 |
+| 演示配置 | `interface-authentication: false`（默认 admin 密码未改时否则 API 仅允许改密）；配置放 `/opt/SVA/wvp/config/` 外挂（jar 内可能不含 yml） |
+| 编译 | 需 **JDK 21**：`bash scripts/build_wvp.sh` |
+
+一键脚本：
+
+```bash
+bash scripts/setup_wvp.sh          # 建库 + 写 easysva 配置
+# JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 mvn -DskipTests package  # 在 /opt/wvp-GB28181-pro
+bash scripts/start_wvp.sh          # 起 WVP + 写 ZLM hook 指向 :18080
+```
+
+Windows 防火墙 / WSL 端口转发需放行 **5060**（及可选 18080）。
+
+字段映射（冻接口，不改名）：
+
+| 业务字段 | 来源 |
+| --- | --- |
+| `device_type` | 固定 `gb28181` |
+| `gb_device_id` | WVP 通道/设备国标编码 |
+| `gb_platform_id` | WVP `sip.id`（配置 `gb28181.wvp.platform-id`） |
+| `play_url` | `ws://<zlm>/rtp/<stream>.live.flv` |
+| `stream_source_type` | `PLATFORM` |
 
 ### 同步接口
 
-`POST /waring/device/syncGb28181`：ZLM 可达时 ready=true；写入 device_type=gb28181、gb_device_id、gb_platform_id。
+`POST /waring/device/syncGb28181`：
 
-### 最小自测
+1. 必须 ZLM 可达（`listRtpServer` / `getMediaList`），否则 `ready=false`
+2. `gb28181.wvp.enabled=true` 时再拉 WVP 设备目录；WVP 不可达则回退 RTP 通道
+3. 写入继续走 `HDeviceService.upsertGb28181Device`
+
+### 验收走查
+
+1. 模拟器/IPC：SIP 服务器 = 演示机局域网 IP:**5060**，平台/设备 ID 与 WVP 一致  
+2. WVP 设备列表可见 **注册成功**；过一段时间仍 **在线（保活）**  
+3. WVP 点播后 ZLM `getMediaList` 有 `app=rtp`；网页预览有画面  
+4. 断设备后 WVP/同步结果体现 **离线**  
+5. 网页「同步国标设备」出现国标行 + `gb_device_id`
+
+### 媒体半程（无 SIP 时自证）
 
 ```bash
-bash scripts/open_gb_rtp.sh gbcam001
-# 网页：设备管理 → 同步国标设备
+bash scripts/verify_gb_rtp.sh gbcam001
+# 向返回的 port 推 GB28181 PS 后，预览 ws://127.0.0.1:9992/rtp/gbcam001.live.flv
+# 无推流时黑屏是预期
 ```
 
 ## 11. 变更记录
@@ -365,3 +412,4 @@ bash scripts/open_gb_rtp.sh gbcam001
 | 2026-09-02 | Nginx `/live/` 代理 ZLM；同学经 `:8080` 看监控墙，不改 `zlm_server.host` |
 | 2026-09-02 | §7.1 告警视频证据：录像引擎 A/M-SERVER、`/zlm/` URL、`backfill_alarm_video_url.sh` |
 | 2026-09-03 | P3：#35 加列；同步拉数接 listRtpServer；说明本机无内置 SIP 5060 |
+| 2026-09-03 | P3：外挂 WVP SIP 5060；sync 接 WVP+RTP；setup/start_wvp 脚本 |

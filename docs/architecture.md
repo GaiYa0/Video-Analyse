@@ -4,7 +4,7 @@
 
 五层与课件一致：**监控设备 → ZLMediaKit → SVA-server（C++）→ SVA-backend → Vue**。紫色为原系统（P1 已跑通），蓝色为学生增量（按 phase 点亮）。
 
-课件算法是 **睡岗**（YOLO-Pose + 多帧时序），不是跌倒。国标设备进业务库是 **backend 调 ZLM REST/Hook**，不是 Analyzer 去同步。
+课件算法是 **睡岗**（YOLO-Pose + 多帧时序），不是跌倒。国标设备进业务库是 **backend 调 WVP 目录 + ZLM REST**，不是 Analyzer 去同步。
 
 ## 总图（终态，按 phase 点亮）
 
@@ -61,7 +61,7 @@ flowchart TB
 | --- | --- |
 | P1 已完成 | RTSP/直连 → ZLM 拉流 → WS-FLV 预览；Analyzer 原 YOLO；backend 告警入库；Vue 原页面 |
 | P2 已完成 | Pose 睡岗 + 时序防误报；布控增加睡岗类型；告警页展示睡岗 |
-| P3 当前 | SIP 5060、国标 IPC；backend 从 ZLM 同步设备；列表区分 RTSP/国标；Analyzer 向 ZLM 取播放 URL |
+| P3 当前 | SIP 5060（外挂 WVP）；国标 IPC；backend 从 WVP 目录 + ZLM listRtpServer 同步设备；列表区分 RTSP/国标；Analyzer 向 ZLM 取播放 URL |
 
 P2 已过，正在做国标。睡岗与原 YOLO 保留。布控详情 `POST /deployments/{id}/live-output` 已补，返回已有 `algorithmStreamUrl`；同学访问演示机用 `http://<IP>:8080/`（先关 Clash/VPN）。
 
@@ -69,7 +69,7 @@ P2 已过，正在做国标。睡岗与原 YOLO 保留。布控详情 `POST /dep
 
 - Analyzer **向 ZLM 拉流**，不是 ZLM 专线吐帧。
 - 预览用 **WS-FLV**（本组 ZLM HTTP 9992，RTSP 9994，RTMP 9995），不是只写 FLV。
-- 国标同步：A 写 ZLM 客户端，C 做设备表和「同步」按钮；Analyzer 不负责设备目录。
+- 国标：ZLM **无内置 SIP**；演示机用 **WVP** 监听 5060，ZLM 收流。同步：A 写 WVP+ZLM 客户端，C 做设备表和「同步」按钮；Analyzer 不负责设备目录、不做 SIP。
 - 睡岗判定：关键点 → 头部俯仰角 → 连续多帧，再走原告警 HTTP；原 YOLO 保留。
 - 库是 **MariaDB**（演示机 3307）。
 
@@ -157,7 +157,7 @@ P2 已关账。P3 **冻接口**（A 不能改名）：`device_type` / `gb_device
 
 A 在 MariaDB **3307** 执行 [`scripts/add_h_device_gb28181.sql`](../scripts/add_h_device_gb28181.sql) 后重启 `backend.jar`。列已存在可忽略报错。
 
-同步国标（按钮归 C，拉 ZLM 归 A）：`POST /waring/device/syncGb28181`。返回 `inserted` / `updated` / `failed` / `message` / `ready`。A 在 `IGb28181DeviceSyncService` 里调 ZLM `listRtpServer` / `getMediaList`，写入必须带三个冻字段。演示机当前 MediaServer **无内置 SIP 5060**，国标先走 `openRtpServer` 收 PS；完整 SIP 信令可另接 WVP。
+同步国标（按钮归 C，拉数归 A）：`POST /waring/device/syncGb28181`。返回 `inserted` / `updated` / `failed` / `message` / `ready`。A 在 `IGb28181DeviceSyncService` 里：**先探活 ZLM**（`listRtpServer` / `getMediaList`），再按配置拉 **WVP 设备目录**，并保留 RTP 通道兜底；写入必须带三个冻字段。演示机 MediaServer **无内置 SIP 5060**，SIP 由 `/opt/wvp-GB28181-pro`（5060）提供，见 [deploy-notes.md](./deploy-notes.md) §10.1。
 
 **布控 `deployment_task`**（`DeploymentTask.java`，`web/src/views/deployment/`）：`deployment_id`、`device_id`、`algorithm_code`、`target_code`、`geometry_config`、`stream_url`、`status`。P2 算法编码 `on_sleep_pose`（下拉仍读 `av_algorithm`，原 YOLO 不要改名）。
 
@@ -179,12 +179,12 @@ P2 睡岗（2026-09-02 演示机走查，已关账）：
 - 告警详情类型为睡岗 / `SLEEP_ON_DUTY`，规则 ID `sleep_on_duty_default`：[p2睡岗检测告警详情.png](./photo/p2睡岗检测告警详情.png)
 - 同机原 YOLO 进区告警仍可用（CCTV5 / `behavior_rule_1`）：[p2原YOLO进区告警.png](./photo/p2原YOLO进区告警.png)
 
-P3 国标（待 A 开 SIP 5060 并合入同步拉数后补截图，**未升 phase**）：
+P3 国标（演示机 WVP SIP + ZLM 媒体，**未升 phase**）：
 
-1. A 执行 `scripts/add_h_device_gb28181.sql`，重启 `backend.jar`，刷前端。
+1. A 执行 `scripts/add_h_device_gb28181.sql`，部署 WVP（`setup_wvp.sh` / `start_wvp.sh`），重启 `backend.jar`，刷前端。
 2. 设备管理能筛「直连 RTSP / 国标 GB28181」；旧设备显示 RTSP。
-3. 点「同步国标设备」：A 接好 ZLM 后应出现国标行、`gb_device_id`、在线状态；未接时提示 `ready=false`。
-4. 国标预览有画面；原 RTSP 设备、睡岗布控、原 YOLO 告警仍可用。
+3. 点「同步国标设备」：应出现国标行、`gb_device_id`、在线状态；仅 ZLM 不可达时 `ready=false`。
+4. 国标模拟器注册到 **SIP 5060** 后预览有画面（无推流时黑屏是预期）；原 RTSP、睡岗、原 YOLO 仍可用。
 5. 布控选设备的下拉里能看出哪条是国标。
 
 ## 后面改哪里
