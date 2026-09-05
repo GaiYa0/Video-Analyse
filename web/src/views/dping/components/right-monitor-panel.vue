@@ -119,8 +119,22 @@ export default {
       const name = item.name || item.deviceName || item.device_name || apeId || '未命名设备'
       return {
         apeId,
-        name
+        name,
+        deviceType: String(item.device_type || item.deviceType || 'rtsp').toLowerCase(),
+        isOnline: String(item.is_online ?? item.isOnline ?? '') === '1'
       }
+    },
+
+    pickRealtimeDevices(devices) {
+      const slotCount = 4
+      const list = (devices || []).filter(item => item.apeId)
+      const gbOnline = list.find(item => item.deviceType === 'gb28181' && item.isOnline)
+      const others = list.filter(item => !(item.deviceType === 'gb28181' && item.isOnline))
+      const picked = others.slice(0, gbOnline ? slotCount - 1 : slotCount)
+      if (gbOnline) {
+        picked.push(gbOnline)
+      }
+      return picked
     },
 
     normalizeAlarm(item) {
@@ -191,7 +205,7 @@ export default {
     },
 
     async loadTopDevices() {
-      const response = await getDeviceList({ pageNum: 1, pageSize: 4 })
+      const response = await getDeviceList({ pageNum: 1, pageSize: 20 })
       let rows = []
       if (response && Array.isArray(response.rows)) {
         rows = response.rows
@@ -202,7 +216,7 @@ export default {
       } else if (response && Array.isArray(response.data)) {
         rows = response.data
       }
-      return rows.map(this.normalizeDevice).filter(item => item.apeId).slice(0, 4)
+      return this.pickRealtimeDevices(rows.map(this.normalizeDevice))
     },
 
     resetStreamCards(devices) {
