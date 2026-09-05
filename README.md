@@ -4,13 +4,28 @@
 
 **一句话：同学 A 守住演示机并主攻国标流媒体；同学 B 主攻睡岗并与 A 完成 C++ 集成；同学 C 主攻前后端与合稿。**
 
+## 怎么打开网页（先看这里）
+
+演示机日常启动：Windows 上 `.\scripts\start_easysva.ps1`。详细对照表见 [docs/启动手册.md](docs/启动手册.md) **§1.1**。
+
+| 谁 | 打开 | 账号 |
+| --- | --- | --- |
+| **A 本机**（Clash 开着时） | 业务 [http://localhost:8080/](http://localhost:8080/) | `admin` / `admin123` |
+| **A 本机 · 国标 SIP 页** | [http://127.0.0.1:18080/](http://127.0.0.1:18080/) | `admin` / `SvaDemo@2026` |
+| **同学 B / C** | `http://<A 的局域网 IP>:8080/`（**必须带 8080**） | `admin` / `admin123` |
+
+发给 B/C：关 Clash/VPN，打开 `http://<A当前IP>:8080/`。看画面用**监控墙**；设备列表「实时预览」弹窗在别人电脑上会黑屏（地址是 `127.0.0.1`）。WVP `:18080` 不对局域网开放，B/C 不用开。
+
+现网 IP 随 DHCP 变；A 用 `ipconfig` 看 WLAN IPv4 再发给同学（示例曾为 `10.21.184.30`）。连不上时 A 用管理员跑 `.\scripts\setup_windows_lan_access.ps1`。
+
 | 文档 | 说明 |
 | --- | --- |
 | [docs/当前阶段.md](docs/当前阶段.md) | 当前 `phase` 与阶段禁令（AI 以这份为准） |
+| [docs/启动手册.md](docs/启动手册.md) | **同学 A**：一键/分项启动、网页地址、国标模拟器；**B/C 看 §1.1** |
 | [docs/architecture.md](docs/architecture.md) | 架构总图 + 直连流媒体实测（C 合稿，A 并入） |
 | [docs/分工.md](docs/分工.md) | 三人分工总览 |
 | [docs/PR规范.md](docs/PR规范.md) | 分支、commit、PR 要求 |
-| [docs/deploy-notes.md](docs/deploy-notes.md) | **同学 A**：演示机部署与日常启动 |
+| [docs/deploy-notes.md](docs/deploy-notes.md) | 演示机部署细节与排障 |
 | [AGENTS.md](AGENTS.md) | 给协作 AI 的须知 |
 
 ```text
@@ -22,7 +37,7 @@ docs/           分工、架构、角色手册、验收截图
 scripts/        一键启动、局域网、告警视频补救脚本
 ```
 
-上游见 [docs/UPSTREAM.md](docs/UPSTREAM.md)。验收与编译在同学 A 的 **WSL2 Ubuntu 22.04 x86_64**，不要在 Apple 芯片 Mac 上执行官方 `install_source.sh`。阶段规划只看 [docs/当前阶段.md](docs/当前阶段.md)（现为 **phase 2**，做睡岗、不做国标）。
+上游见 [docs/UPSTREAM.md](docs/UPSTREAM.md)。验收与编译在同学 A 的 **WSL2 Ubuntu 22.04 x86_64**，不要在 Apple 芯片 Mac 上执行官方 `install_source.sh`。阶段规划只看 [docs/当前阶段.md](docs/当前阶段.md)（现为 **phase 3**，做国标；不要拆掉睡岗/原 YOLO）。
 
 ---
 
@@ -34,8 +49,8 @@ scripts/        一键启动、局域网、告警视频补救脚本
 | 服务 | MariaDB **3307**、Redis、Nginx、backend 9114、ZLM、Analyzer |
 | 闭环 | 直连/RTMP 测试流预览 + `yolo11n_80` 布控 + 报警列表截图 |
 | 截图 | [docs/photo/](docs/photo/) |
-| 本机网页 | `http://localhost/` 或 `http://localhost:8080/`，`admin` / `admin123` |
-| 同学访问 | `http://<A 的局域网 IP>:8080/`（**带 8080**；演示前请 **关闭 Clash/VPN**） |
+| 本机网页 | `http://localhost:8080/`（Clash 时不要用局域网 `:80`），`admin` / `admin123` |
+| 同学访问 | `http://<A 的局域网 IP>:8080/`（**带 8080**；先 **关闭 Clash/VPN**）；详见 [启动手册 §1.1](docs/启动手册.md) |
 | 一键启动 | Windows：`.\scripts\start_easysva.ps1`（可选 `-WithStream`）；详见 [deploy-notes.md](docs/deploy-notes.md) |
 
 已知：布控详情可能 `live-output` 404，以报警列表为准。
