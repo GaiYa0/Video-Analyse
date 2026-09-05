@@ -110,6 +110,8 @@ jdbc:mysql://127.0.0.1:3307/easySVA?...
 
 ## 5. 日常启动（重启电脑 / 重启 WSL 后）
 
+**按组件拆开的启动/关闭对照表**见 [启动手册.md](./启动手册.md)（哪条命令起哪一部分写清楚了）。
+
 在 **Windows PowerShell** 进入仓库根目录，一键启动：
 
 ```powershell
@@ -299,7 +301,7 @@ WSL IP 查看：`wsl -d Ubuntu-22.04 -- hostname -I`
 
 正确做法（已在演示机落地，一键启动会补 Nginx）：
 
-1. Nginx `location /live/` 把 ZLM 的 HTTP-FLV / WS-FLV 代理到 80，复用 `8080 → 80`。片段见 `scripts/nginx-live-proxy.conf`。
+1. Nginx `location /live/` 与 `location /rtp/` 把 ZLM 的 HTTP-FLV / WS-FLV 代理到 80，复用 `8080 → 80`。片段见 `scripts/nginx-live-proxy.conf`。
 2. **不要改** `zlm_server.host`。从 WSL 访问 `局域网IP:9992` 不通，改了会弄断 Analyzer 拉流和后端调 ZLM API。
 3. 把库里的播放地址改成 `ws://<局域网IP>:8080/live/<流>.live.flv`：
 
@@ -320,7 +322,7 @@ WiFi IP 变了，或「启动监控」把 `play_url` 写回 `127.0.0.1:9992` 后
 | 保存布控报「geometryConfig 至少需要一个 3 点以上的主区域」 | 未画检测区域                                                        | 左侧点「区域对齐」或手动画区并设主区域               |
 | 顶部 `live-output` 404                   | 前端调用 `POST /deployments/{id}/live-output`，当前安装的后端 **未实现** 该接口 | 可忽略；以报警列表为准，勿依赖布控详情页算法预览流         |
 | 本机 / 同学打不开 `http://<IP>/` 或 `:8080` | WSL mirrored；**Clash/VPN 劫持局域网**；防火墙未放行 | **先关 VPN/Clash**；同学用 `http://<IP>:8080/`；管理员运行 `setup_windows_lan_access.ps1` 或 `open_lan_firewall.bat` |
-| 同学打开网页但监控墙黑屏 | `play_url` 是 `ws://127.0.0.1:9992/...`；9992 未对局域网开放 | Nginx `/live/` 代理 + `rewrite_play_url_for_lan.sh <IP>`；关 Clash；走监控墙不要依赖设备列表弹窗 |
+| 同学打开网页但监控墙/国标黑屏 | `play_url` 是 `ws://127.0.0.1:9992/...`；9992 未对局域网开放 | Nginx `/live/`、`/rtp/` 代理 + `rewrite_play_url_for_lan.sh <IP>`；关 Clash |
 | 告警有截图但点「视频证据」提示不存在 | 默认 M-SERVER 时 ZLM 录像失败，或 A-SERVER 回调未写 `video_url` | 布控改 A-SERVER 复测；查 `sva_media_status` / 后端日志；跑 `backfill_alarm_video_url.sh`；见 §7.1 |
 | 重启后网页 502 | 后端未起或连错数据库 | 执行 `start_easysva.ps1` |
 | MariaDB 启动失败                           | Windows MySQL 占 3306                                          | 使用 MariaDB **3307** + 后端 JDBC 改端口 |
@@ -330,6 +332,8 @@ WiFi IP 变了，或「启动监控」把 `play_url` 写回 `127.0.0.1:9992` 后
 
 
 ## 10.1 P3 国标（GB28181：WVP SIP + ZLM 媒体）
+
+**怎么用**见 [国标功能使用说明书.md](./国标功能使用说明书.md)。下面是部署与接口。
 
 C 已合入设备三字段与「同步国标设备」按钮（PR #35）。演示机执行：
 
@@ -350,8 +354,8 @@ mysql -h127.0.0.1 -P3307 -uroot -peasySVA.EZ easySVA < scripts/add_h_device_gb28
 | --- | --- |
 | 源码/安装 | `/opt/wvp-GB28181-pro`（需 **JDK 21** 编译） |
 | 配置 profile | `easysva` → `application-easysva.yml` |
-| Web / API | `http://127.0.0.1:18080`（默认账号 `admin`/`admin`） |
-| SIP | **UDP/TCP 5060**；平台 ID `34020000002000000001`；域 `3402000000`；设备密码 `12345678` |
+| Web / API | `http://127.0.0.1:18080`；演示机账号 **`admin` / `SvaDemo@2026`**（API 登录密码为该明文的 MD5） |
+| SIP | **UDP/TCP 5060**，本机只监听 **局域网 IP**（`sip.ip`，如 `10.21.235.102`），**不是** `0.0.0.0`/`127.0.0.1`；平台 ID `34020000002000000001`；域 `3402000000`；设备密码 `12345678` |
 | 库 | MariaDB `3307` / 库名 `wvp`（与 easySVA 同实例） |
 | Redis | `127.0.0.1:6379` DB **7**（无密码） |
 | 对接 ZLM | API `127.0.0.1:9992`；`media.id` = `config.ini` 的 `mediaServerId`；`secret` 与 `[api] secret` 一致 |
@@ -367,6 +371,19 @@ bash scripts/start_wvp.sh          # 起 WVP + 写 ZLM hook 指向 :18080
 ```
 
 Windows 防火墙 / WSL 端口转发需放行 **5060**（及可选 18080）。
+
+### 无真机：SIP 模拟器（真 REGISTER + 点播出画面）
+
+```powershell
+wsl -d Ubuntu-22.04 -u root -- bash /mnt/e/video-analysis/Video-Analyse-main/scripts/start_gb_sim.sh
+```
+
+- 设备/通道国标编码默认 `34020000001320000001`，Contact `LAN_IP:15060`
+- 推 `cup.mp4`：H.264 → MPEG-PS → RTP 到 WVP INVITE 给出的端口
+- 成功时 ZLM `getMediaList` 出现 `app=rtp`，预览  
+  `http://127.0.0.1:9992/rtp/34020000001320000001_34020000001320000001.live.flv`
+- **`seed_wvp_device.sh` 不是真注册**：只写库，WVP 点播无 PS，黑屏是预期
+- 模拟器进程需保持；`stop_all.sh` 会一并停掉
 
 字段映射（冻接口，不改名）：
 
@@ -391,8 +408,9 @@ Windows 防火墙 / WSL 端口转发需放行 **5060**（及可选 18080）。
 1. 模拟器/IPC：SIP 服务器 = 演示机局域网 IP:**5060**，平台/设备 ID 与 WVP 一致  
 2. WVP 设备列表可见 **注册成功**；过一段时间仍 **在线（保活）**  
 3. WVP 点播后 ZLM `getMediaList` 有 `app=rtp`；网页预览有画面  
-4. 断设备后 WVP/同步结果体现 **离线**  
+4. 断设备后 WVP/同步结果体现 **离线**（模拟器 SIGTERM 会注销；同步跟 SIP 在线，不跟 rtp 是否还在）
 5. 网页「同步国标设备」出现国标行 + `gb_device_id`
+6. 国标布控：ZLM 无 rtp 时走 `on_stream_not_found` 自动 INVITE
 
 ### 媒体半程（无 SIP 时自证）
 
@@ -412,4 +430,4 @@ bash scripts/verify_gb_rtp.sh gbcam001
 | 2026-09-02 | Nginx `/live/` 代理 ZLM；同学经 `:8080` 看监控墙，不改 `zlm_server.host` |
 | 2026-09-02 | §7.1 告警视频证据：录像引擎 A/M-SERVER、`/zlm/` URL、`backfill_alarm_video_url.sh` |
 | 2026-09-03 | P3：#35 加列；同步拉数接 listRtpServer；说明本机无内置 SIP 5060 |
-| 2026-09-03 | P3：外挂 WVP SIP 5060；sync 接 WVP+RTP；setup/start_wvp 脚本 |
+| 2026-09-04 | P3：`start_gb_sim.sh` 真 SIP REGISTER + WVP 点播；ZLM `app=rtp` 有 cup 画面 |
