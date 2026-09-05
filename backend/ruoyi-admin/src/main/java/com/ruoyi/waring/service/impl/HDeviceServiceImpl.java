@@ -17,9 +17,11 @@ import com.ruoyi.waring.domain.ZlmServer;
 import com.ruoyi.waring.mapper.HDeviceMapper;
 import com.ruoyi.waring.mapper.ZlmServerMapper;
 import com.ruoyi.waring.service.HDeviceService;
+import com.ruoyi.waring.service.IGb28181DeviceSyncService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -46,6 +48,8 @@ public class HDeviceServiceImpl implements HDeviceService {
     private static final String DEVICE_TYPE_GB28181 = "gb28181";
     private static final int MAX_APE_ID_GENERATE_RETRY = 20;
     private static final Pattern STREAM_NAME_PATTERN = Pattern.compile("[^A-Za-z0-9_-]");
+    private static final Pattern GB_PLAY_URL_PATH = Pattern.compile(
+        "(?i)/(rtp)/([^/?#]+?)(?:\\.live\\.flv)?(?:[?#]|$)");
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final String MONITOR_STATUS_RUNNING = "RUNNING";
     private static final String MONITOR_STATUS_STOPPED = "STOPPED";
@@ -66,6 +70,10 @@ public class HDeviceServiceImpl implements HDeviceService {
 
     @Autowired
     ZlmServerMapper zlmServerMapper;
+
+    @Lazy
+    @Autowired(required = false)
+    private IGb28181DeviceSyncService gb28181DeviceSyncService;
 
     @Autowired(required = false)
     private RestTemplate restTemplate;
@@ -587,7 +595,9 @@ public class HDeviceServiceImpl implements HDeviceService {
             throw new ServiceException("停止监控失败: " + apeId);
         }
 
-        hDeviceMapper.updatePlayUrlByApeId(apeId, null);
+        if (isDirectDevice(existedDevice)) {
+            hDeviceMapper.updatePlayUrlByApeId(apeId, null);
+        }
         if (directProxyDeleted) {
             hDeviceMapper.updateZlmProxyKeyByApeId(apeId, null);
         }
@@ -630,11 +640,28 @@ public class HDeviceServiceImpl implements HDeviceService {
             MONITOR_STATUS_STOPPING,
             MONITOR_STATUS_ERROR
         });
+        if (DEVICE_TYPE_GB28181.equalsIgnoreCase(device.getDevice_type()) && gb28181DeviceSyncService != null) {
+            gb28181DeviceSyncService.warmRtp(resolveGbPreviewStream(device, previewPlayUrl));
+        }
         return result;
     }
 
     private boolean isDirectDevice(HDevice device) {
         return device != null && STREAM_SOURCE_TYPE_DIRECT.equalsIgnoreCase(device.getStream_source_type());
+    }
+
+    private String resolveGbPreviewStream(HDevice device, String playUrl) {
+        if (StringUtils.isNotBlank(playUrl)) {
+            java.util.regex.Matcher matcher = GB_PLAY_URL_PATH.matcher(playUrl.trim());
+            if (matcher.find()) {
+                return matcher.group(2);
+            }
+        }
+        String gbId = device == null ? "" : StringUtils.nvl(device.getGb_device_id(), "").trim();
+        if (StringUtils.isNotBlank(gbId)) {
+            return gbId.contains("_") ? gbId : gbId + "_" + gbId;
+        }
+        return device == null ? "" : StringUtils.nvl(device.getApe_id(), "").trim();
     }
 
     private String normalizeOrgIndex(String orgIndex) {

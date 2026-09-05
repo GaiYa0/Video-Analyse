@@ -125,7 +125,8 @@ public class Gb28181DeviceSyncServiceImpl implements IGb28181DeviceSyncService {
             if (rtpData.isArray()) {
                 for (JsonNode item : rtpData) {
                     String streamId = firstText(item, "stream_id", "stream", "streamId");
-                    if (StringUtils.isBlank(streamId) || !seen.add(streamId)) {
+                    if (StringUtils.isBlank(streamId) || skipRtpResidue(streamId) || alreadyCovered(seen, streamId)
+                        || !seen.add(streamId)) {
                         continue;
                     }
                     int[] counts = upsertOne(zlmServer, platformId, streamId, streamId,
@@ -145,7 +146,8 @@ public class Gb28181DeviceSyncServiceImpl implements IGb28181DeviceSyncService {
                         continue;
                     }
                     String streamId = firstText(item, "stream");
-                    if (StringUtils.isBlank(streamId) || !seen.add(streamId)) {
+                    if (StringUtils.isBlank(streamId) || skipRtpResidue(streamId) || alreadyCovered(seen, streamId)
+                        || !seen.add(streamId)) {
                         continue;
                     }
                     int[] counts = upsertOne(zlmServer, platformId, streamId, streamId,
@@ -231,24 +233,163 @@ public class Gb28181DeviceSyncServiceImpl implements IGb28181DeviceSyncService {
                     if (StringUtils.isBlank(chName)) {
                         chName = deviceName + "-" + channelId;
                     }
-                    boolean online = deviceOnline && asOnline(ch);
-                    boolean mediaAlive = mediaHasStream(mediaList, channelId)
-                        || mediaHasStream(mediaList, deviceId);
-                    int[] counts = upsertOne(zlmServer, platformId, channelId, deviceId, chName,
-                        online || mediaAlive);
+                    boolean online = deviceOnline && channelOnline(ch);
+                    String playStream = deviceId + "_" + channelId;
+                    seen.add(deviceId);
+                    seen.add(playStream);
+                    String urlStream = playStream;
+                    if (!mediaHasStream(mediaList, playStream) && mediaHasStream(mediaList, channelId)) {
+                        urlStream = channelId;
+                    }
+                    int[] counts = upsertOne(zlmServer, platformId, channelId, urlStream, chName, online);
                     inserted += counts[0];
                     updated += counts[1];
                     failed += counts[2];
                 }
             } else if (seen.add(deviceId)) {
-                int[] counts = upsertOne(zlmServer, platformId, deviceId, deviceId, deviceName,
-                    deviceOnline || mediaHasStream(mediaList, deviceId));
+                int[] counts = upsertOne(zlmServer, platformId, deviceId, deviceId, deviceName, deviceOnline);
                 inserted += counts[0];
                 updated += counts[1];
                 failed += counts[2];
             }
         }
         return new int[]{inserted, updated, failed};
+    }
+
+    @Override
+    public boolean ensureRtpReady(String streamId) {
+        return ensureRtpReadyInternal(streamId, true);
+    }
+
+    @Override
+    public void warmRtp(String streamId) {
+        if (StringUtils.isBlank(streamId)) {
+            return;
+        }
+        Thread t = new Thread(() -> ensureRtpReadyInternal(streamId, false), "gb-warm-" + streamId);
+        t.setDaemon(true);
+        t.start();
+    }
+
+    private boolean ensureRtpReadyInternal(String streamId, boolean wait) {
+        if (StringUtils.isBlank(streamId)) {
+            return false;
+        }
+        ZlmServer zlmServer = resolveEnabledZlmServer();
+        if (zlmServer == null) {
+            log.warn("ensureRtpReady 无可用 ZLM, stream={}", streamId);
+            return false;
+        }
+        try {
+            if (zlmHasRtpStream(zlmServer, streamId)) {
+                return true;
+            }
+            log.info("ZLM 无 rtp 流，触发 on_stream_not_found: {}", streamId);
+            triggerStreamNotFound(zlmServer, streamId);
+            if (wait && waitForRtpStream(zlmServer, streamId, 3)) {
+                return true;
+            }
+            if (wvpEnabled) {
+                log.info("hook 等待未就绪，回退 WVP play/start: {}", streamId);
+                try {
+                    playViaWvp(streamId);
+                } catch (Exception ex) {
+                    log.warn("WVP 点播失败 stream={}: {}", streamId, ex.getMessage());
+                }
+            }
+            if (!wait) {
+                return zlmHasRtpStream(zlmServer, streamId);
+            }
+            return waitForRtpStream(zlmServer, streamId, 8);
+        } catch (Exception ex) {
+            log.warn("ensureRtpReady 失败 stream={}: {}", streamId, ex.getMessage());
+            return false;
+        }
+    }
+
+    private boolean zlmHasRtpStream(ZlmServer zlmServer, String streamId) {
+        try {
+            JsonNode mediaList = getJson(buildApiUrl(zlmServer, "/index/api/getMediaList"));
+            return parseCode(mediaList.path("code")) == 0 && mediaHasStream(mediaList, streamId);
+        } catch (Exception ex) {
+            log.debug("getMediaList 失败: {}", ex.getMessage());
+            return false;
+        }
+    }
+
+    private boolean waitForRtpStream(ZlmServer zlmServer, String streamId, int seconds) {
+        for (int i = 0; i < seconds; i++) {
+            if (zlmHasRtpStream(zlmServer, streamId)) {
+                log.info("国标 rtp 已就绪 stream={} after {}s", streamId, i + 1);
+                return true;
+            }
+            try {
+                Thread.sleep(1000L);
+            } catch (InterruptedException ie) {
+                Thread.currentThread().interrupt();
+                return false;
+            }
+        }
+        return false;
+    }
+
+    private void triggerStreamNotFound(ZlmServer zlmServer, String streamId) {
+        String host = zlmServer.getHost() == null ? "127.0.0.1" : zlmServer.getHost().trim();
+        Integer httpPort = zlmServer.getMedia_http_port() != null
+            ? zlmServer.getMedia_http_port()
+            : zlmServer.getApi_port();
+        if (httpPort == null) {
+            return;
+        }
+        System.setProperty("http.nonProxyHosts", "localhost|127.*|[::1]");
+        String flv = "http://" + host + ":" + httpPort + "/" + RTP_APP + "/" + streamId + ".live.flv";
+        java.net.HttpURLConnection conn = null;
+        try {
+            conn = (java.net.HttpURLConnection) new java.net.URL(flv).openConnection();
+            conn.setConnectTimeout(2000);
+            conn.setReadTimeout(2000);
+            conn.setInstanceFollowRedirects(false);
+            conn.setRequestMethod("GET");
+            conn.connect();
+            conn.getResponseCode();
+        } catch (Exception ignore) {
+            // 短超时故意打断下载；ZLM 已发 on_stream_not_found
+        } finally {
+            if (conn != null) {
+                conn.disconnect();
+            }
+        }
+    }
+
+    private void playViaWvp(String streamId) throws Exception {
+        String deviceId;
+        String channelId;
+        int u = streamId.indexOf('_');
+        if (u > 0) {
+            deviceId = streamId.substring(0, u);
+            channelId = streamId.substring(u + 1);
+        } else {
+            deviceId = streamId;
+            channelId = streamId;
+        }
+        String token = loginWvp();
+        String stopPath = "/api/play/stop/" + deviceId + "/" + channelId;
+        String startPath = "/api/play/start/" + deviceId + "/" + channelId;
+        Thread waiter = new Thread(() -> {
+            try {
+                try {
+                    wvpGet(stopPath, token);
+                    Thread.sleep(400L);
+                } catch (Exception ignore) {
+                    // 没有在播的会话时 stop 可能失败，继续 start
+                }
+                wvpGet(startPath, token);
+            } catch (Exception ex) {
+                log.warn("WVP play/start 异步调用结束 stream={}: {}", streamId, ex.getMessage());
+            }
+        }, "wvp-play-" + streamId);
+        waiter.setDaemon(true);
+        waiter.start();
     }
 
     private String loginWvp() throws Exception {
@@ -369,6 +510,24 @@ public class Gb28181DeviceSyncServiceImpl implements IGb28181DeviceSyncService {
         }
     }
 
+    private boolean skipRtpResidue(String streamId) {
+        // ZLM 在 WVP stream_replace 前会用 8 位 SSRC hex 当 stream_id
+        return streamId.matches("(?i)^[0-9a-f]{8}$");
+    }
+
+    private boolean alreadyCovered(Set<String> seen, String streamId) {
+        if (seen.contains(streamId)) {
+            return true;
+        }
+        int u = streamId.indexOf('_');
+        if (u > 0) {
+            String left = streamId.substring(0, u);
+            String right = streamId.substring(u + 1);
+            return seen.contains(left) || seen.contains(right);
+        }
+        return false;
+    }
+
     private String buildApeId(String streamId) {
         String apeId = "camgb" + Integer.toHexString(streamId.hashCode()).replace("-", "n");
         return apeId.length() > 32 ? apeId.substring(0, 32) : apeId;
@@ -387,35 +546,65 @@ public class Gb28181DeviceSyncServiceImpl implements IGb28181DeviceSyncService {
         return false;
     }
 
-    private boolean asOnline(JsonNode node) {
+    private boolean channelOnline(JsonNode channel) {
+        if (hasOnlineHint(channel)) {
+            return asOnline(channel);
+        }
+        return true;
+    }
+
+    private boolean hasOnlineHint(JsonNode node) {
         if (node == null || node.isMissingNode()) {
             return false;
         }
-        JsonNode onLine = node.get("onLine");
-        if (onLine != null && !onLine.isNull()) {
-            if (onLine.isBoolean()) {
-                return onLine.asBoolean();
+        for (String field : new String[]{"onLine", "online", "on_line", "status"}) {
+            JsonNode child = node.get(field);
+            if (child != null && !child.isNull() && !child.isMissingNode()) {
+                return true;
             }
-            String t = onLine.asText("").trim();
-            return "1".equals(t) || "true".equalsIgnoreCase(t) || "online".equalsIgnoreCase(t);
-        }
-        JsonNode status = node.get("status");
-        if (status != null && !status.isNull()) {
-            if (status.isBoolean()) {
-                return status.asBoolean();
-            }
-            String t = status.asText("").trim();
-            return "1".equals(t) || "ON".equalsIgnoreCase(t) || "ONLINE".equalsIgnoreCase(t);
         }
         return false;
     }
 
+    private boolean asOnline(JsonNode node) {
+        if (node == null || node.isMissingNode()) {
+            return false;
+        }
+        for (String field : new String[]{"onLine", "online", "on_line"}) {
+            JsonNode value = node.get(field);
+            if (value != null && !value.isNull() && !value.isMissingNode()) {
+                return parseOnlineValue(value);
+            }
+        }
+        JsonNode status = node.get("status");
+        if (status != null && !status.isNull() && !status.isMissingNode()) {
+            return parseOnlineValue(status);
+        }
+        return false;
+    }
+
+    private boolean parseOnlineValue(JsonNode value) {
+        if (value == null || value.isNull() || value.isMissingNode()) {
+            return false;
+        }
+        if (value.isBoolean()) {
+            return value.asBoolean();
+        }
+        if (value.isNumber()) {
+            return value.asInt() == 1;
+        }
+        String t = value.asText("").trim();
+        return "1".equals(t) || "true".equalsIgnoreCase(t) || "ON".equalsIgnoreCase(t)
+            || "ONLINE".equalsIgnoreCase(t) || "online".equalsIgnoreCase(t);
+    }
+
     private String buildPlayUrl(ZlmServer zlmServer, String streamId) {
         String host = zlmServer.getHost();
-        Integer httpPort = zlmServer.getMedia_http_port() != null
-            ? zlmServer.getMedia_http_port()
-            : zlmServer.getApi_port();
-        return "ws://" + host + ":" + httpPort + "/" + RTP_APP + "/" + streamId + ".live.flv";
+        if (StringUtils.isBlank(host)) {
+            host = "127.0.0.1";
+        }
+        // 浏览器走 Nginx :8080，不要直连 ZLM 9992（Clash / 局域网都过不去）
+        return "ws://" + host.trim() + ":8080/" + RTP_APP + "/" + streamId + ".live.flv";
     }
 
     private ZlmServer resolveEnabledZlmServer() {
