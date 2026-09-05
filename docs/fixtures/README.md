@@ -66,3 +66,7 @@ YOLO 要出「人」的框，画面里需要能看清人体；纯色条或空办
 ## 本机模型（不要提交）
 
 `Analyzer-lib/models/yolo11n.onnx`、`yolo26s.onnx` 拷到虚拟机 `/opt/SVA/models/`。不要 `git add Analyzer-lib`。
+
+## 验收点 3：国标原 YOLO
+
+步骤、责任切分与本机 WSL24 探测记录见 [gb28181-yolo-verify.md](./gb28181-yolo-verify.md)。睡岗走国标源另开 PR，不要和本文混。
