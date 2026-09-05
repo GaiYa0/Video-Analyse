@@ -47,23 +47,26 @@ function safePlay(videoElement) {
 }
 
 function stopLiveWatchdog(player) {
-  const timer = liveWatchdogs.get(player)
-  if (timer) {
-    clearInterval(timer)
+  const stop = liveWatchdogs.get(player)
+  if (stop) {
+    stop()
     liveWatchdogs.delete(player)
   }
 }
 
-// 直播流卡死后 flv.js 不会自己恢复：重新拉一次流。
-// MIN_RELOAD_INTERVAL_MS 防止流不存在时把媒体服务打爆。
+// 只按 currentTime 卡顿重拉。不要订 ERROR：unload 自己会抛，再 reload 会把已销毁的播放器救活。
 function startLiveWatchdog(player, videoElement) {
   stopLiveWatchdog(player)
 
+  let dead = false
   let lastTime = -1
   let stalledTicks = 0
   let lastReloadAt = 0
 
   const reload = () => {
+    if (dead || document.hidden) {
+      return
+    }
     const now = Date.now()
     if (now - lastReloadAt < MIN_RELOAD_INTERVAL_MS) {
       return
@@ -80,16 +83,18 @@ function startLiveWatchdog(player, videoElement) {
   }
 
   const timer = setInterval(() => {
+    if (dead) {
+      return
+    }
     if (!videoElement.isConnected) {
       stopLiveWatchdog(player)
       return
     }
-    // 直播不该有 ended，出现就说明播放位置跑到了缓冲区外面
     if (videoElement.ended) {
       reload()
       return
     }
-    if (videoElement.paused) {
+    if (document.hidden || videoElement.paused) {
       stalledTicks = 0
       lastTime = videoElement.currentTime
       return
@@ -108,11 +113,10 @@ function startLiveWatchdog(player, videoElement) {
     lastTime = current
   }, STALL_CHECK_MS)
 
-  liveWatchdogs.set(player, timer)
-
-  if (typeof player.on === 'function') {
-    player.on(flvjs.Events.ERROR, reload)
-  }
+  liveWatchdogs.set(player, () => {
+    dead = true
+    clearInterval(timer)
+  })
 }
 
 export function attachFlvPlayer(player, videoElement) {
@@ -140,9 +144,13 @@ export function destroyFlvPlayer(player) {
     return
   }
   stopLiveWatchdog(player)
-  player.unload()
-  player.detachMediaElement()
-  player.destroy()
+  try {
+    player.unload()
+    player.detachMediaElement()
+    player.destroy()
+  } catch (e) {
+    // 卸流失败不能挡住监控墙切格子
+  }
 }
 
 export function resetVideoElement(videoElement) {
