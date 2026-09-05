@@ -8,7 +8,7 @@
       <el-col>
         <div class="grid-content bg-purple">
           <div class="block" style="margin-top: 25px;">
-            <video ref="flvVideo" id="flv-1" height="500" muted playsinline autoplay></video>
+            <video ref="flvVideo" height="500" muted controls playsinline></video>
           </div>
         </div>
       </el-col>
@@ -158,7 +158,7 @@ export default {
     },
 
     closeProof() {
-      this.closeFLVPlayer(false);
+      this.closeFLVPlayer(true);
       this.$emit('closeProof');
     },
 
