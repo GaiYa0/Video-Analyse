@@ -8,7 +8,7 @@
       <el-col>
         <div class="grid-content bg-purple">
           <div class="block" style="margin-top: 25px;">
-            <video ref="flvVideo" id="flv-1" height="500" muted controls loop></video>
+            <video ref="flvVideo" id="flv-1" height="500" muted playsinline autoplay></video>
           </div>
         </div>
       </el-col>
