@@ -14,7 +14,7 @@
 | **A 本机 · 国标 SIP 页** | [http://127.0.0.1:18080/](http://127.0.0.1:18080/) | `admin` / `SvaDemo@2026` |
 | **同学 B / C** | `http://<A 的局域网 IP>:8080/`（**必须带 8080**） | `admin` / `admin123` |
 
-发给 B/C：关 Clash/VPN，打开 `http://<A当前IP>:8080/`。看画面用**监控墙**；设备列表「实时预览」弹窗在别人电脑上会黑屏（地址是 `127.0.0.1`）。WVP `:18080` 不对局域网开放，B/C 不用开。
+发给 B/C：关 Clash/VPN，打开 `http://<A当前IP>:8080/`。直连看**监控墙**；国标预览需 A 已跑 `rewrite_play_url_for_lan.sh`。WVP `:18080` 不对局域网开放，B/C 不用开。国标操作见 [docs/国标功能使用说明书.md](docs/国标功能使用说明书.md)。
 
 现网 IP 随 DHCP 变；A 用 `ipconfig` 看 WLAN IPv4 再发给同学（示例曾为 `10.21.184.30`）。连不上时 A 用管理员跑 `.\scripts\setup_windows_lan_access.ps1`。
 
@@ -22,6 +22,7 @@
 | --- | --- |
 | [docs/当前阶段.md](docs/当前阶段.md) | 当前 `phase` 与阶段禁令（AI 以这份为准） |
 | [docs/启动手册.md](docs/启动手册.md) | **同学 A**：一键/分项启动、网页地址、国标模拟器；**B/C 看 §1.1** |
+| [docs/国标功能使用说明书.md](docs/国标功能使用说明书.md) | 国标预览 / 布控 / 模拟器 / 真机 / 故障（phase 3） |
 | [docs/architecture.md](docs/architecture.md) | 架构总图 + 直连流媒体实测（C 合稿，A 并入） |
 | [docs/分工.md](docs/分工.md) | 三人分工总览 |
 | [docs/PR规范.md](docs/PR规范.md) | 分支、commit、PR 要求 |
@@ -61,7 +62,7 @@ scripts/        一键启动、局域网、告警视频补救脚本
 
 ### 局域网实时预览（PR #14，已合入）
 
-- Nginx `location /live/` 代理 ZLM HTTP-FLV / WS-FLV，同学经 `:8080` 看监控墙
+- Nginx `location /live/`、`location /rtp/` 代理 ZLM HTTP-FLV / WS-FLV，同学经 `:8080` 看监控墙与国标预览
 - **不改** `zlm_server.host`（须保持 `127.0.0.1`）；用 `rewrite_play_url_for_lan.sh` 改写库内 `play_url`
 - 脚本：`scripts/nginx-live-proxy.conf`、`apply_nginx_live_proxy.sh`、`rewrite_play_url_for_lan.sh`
 
@@ -94,7 +95,7 @@ scripts/        一键启动、局域网、告警视频补救脚本
 | `scripts/start_easysva.sh` | WSL 内启动；支持 `--with-stream` 推 cup.mp4 测试流 |
 | `scripts/setup_windows_lan_access.ps1` | 管理员：防火墙 + `8080→80` 端口转发 |
 | `scripts/open_lan_firewall.bat` | 管理员：仅放行 80/8080 防火墙 |
-| `scripts/rewrite_play_url_for_lan.sh` | 把监控墙 `play_url` 改为 `ws://<IP>:8080/live/...` |
+| `scripts/rewrite_play_url_for_lan.sh` | 把直连/国标 `play_url` 改为 `ws://<IP>:8080/live/...` 或 `/rtp/...` |
 | `scripts/backfill_alarm_video_url.sh` | 历史告警 `video_url` 与磁盘 `main.mp4` 对齐 |
 | `scripts/switch_cup_to_a_server.sh` | 水杯布控改 A-SERVER 并等待新告警验证 |
 | `scripts/add_sva_pitch_degree.sql` | #30 合入后补 `h_waring.sva_pitch_degree`（告警列表必跑） |

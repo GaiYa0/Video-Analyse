@@ -85,7 +85,7 @@ server/      C++ Analyzer     mediaServer/  ZLMediaKit
 | ZLMediaKit | `/opt/SVA/mediaServer/MediaServer` | 拉流、转协议、HTTP-FLV/RTSP |
 | 后端 | `/opt/SVA/backend/backend.jar` | 设备、布控、调 ZLM、存告警 |
 | Analyzer | `/opt/SVA/server/Analyzer` | 拉流、YOLO、上报告警 |
-| Nginx | 系统包 | `dist` + `/prod-api/` → 9114；`/live/` → ZLM 9992 |
+| Nginx | 系统包 | `dist` + `/prod-api/` → 9114；`/live/`、`/rtp/` → ZLM 9992 |
 | MariaDB | 端口 3307 | 设备、布控、`zlm_server` |
 
 登录 `admin` / `admin123`。
@@ -110,7 +110,7 @@ server/      C++ Analyzer     mediaServer/  ZLMediaKit
 
 ### 布控与 Analyzer
 
-布控选设备、算法（如 `yolo11n_80`）、目标（如 `cup`）、数量阈值 + 直接告警、`geometryConfig`（主区域 ≥3 点）。启动后 backend 把 ZLM 侧可拉 URL、区域、规则发给 Analyzer。Analyzer 拉流 → ONNX/YOLO → 规则命中 → `POST http://127.0.0.1:9114/waring/waring/addFromSvaSimple` → `h_waring` + 截图。配置：`/opt/SVA/config.json`（`host=127.0.0.1`，`mediaRtspPort=9994`）。
+布控选设备、算法（如 `yolo11n_80`）、目标（如 `cup`）、数量阈值 + 直接告警、`geometryConfig`（主区域 ≥3 点）。启动后 backend 把 ZLM 侧可拉 URL、区域、规则发给 Analyzer。直连 RTSP 拉 `rtsp://127.0.0.1:9994/live/<apeId>`；国标从 `play_url` 解析 stream，拉 `rtsp://127.0.0.1:9994/rtp/<设备_通道>`。ZLM 无该 rtp 流时走 `on_stream_not_found`，WVP 自动 INVITE。`is_online` 跟 WVP 注册/保活，不跟「当前有没有画面」。Analyzer 拉流 → ONNX/YOLO → 规则命中 → `POST http://127.0.0.1:9114/waring/waring/addFromSvaSimple` → `h_waring` + 截图。配置：`/opt/SVA/config.json`（`host=127.0.0.1`，`mediaRtspPort=9994`）。
 
 ### ZLM 端口（安装脚本未用 554）
 
@@ -140,8 +140,8 @@ ffmpeg 循环 cup.mp4 → RTMP 推到 ZLM :9995 live/test1
 
 ```text
 zlm_server: host=127.0.0.1, api_port=9992, media_http_port=9992, media_rtsp_port=9994, app=live
-nginx: location /prod-api/ → 9114；location /live/ → 9992（HTTP-FLV/WS-FLV）；location /alarm/ → upload/alarm/；root dist/
-zlm_server.host 必须保持 127.0.0.1（Analyzer / 后端 API 用）。同学看流走 Nginx `/live/`，不要把 host 改成局域网 IP。
+nginx: location /prod-api/ → 9114；location /live/ 与 /rtp/ → 9992（HTTP-FLV/WS-FLV）；location /alarm/ → upload/alarm/；root dist/
+zlm_server.host 必须保持 127.0.0.1（Analyzer / 后端 API 用）。同学看流走 Nginx `/live/`（直连）或 `/rtp/`（国标），不要把 host 改成局域网 IP。
 ```
 
 睡岗不改变「流如何进 ZLM」这条路径，只改 Analyzer 判定和告警类型。国标在 P3 开 SIP 5060。
