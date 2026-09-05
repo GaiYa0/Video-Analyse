@@ -21,18 +21,33 @@ import threading
 import time
 import uuid
 
+# 多少次 ECONNREFUSED 才认定 ZLM 的收流端口真的没了。
+# 不能要求「连续」：内核对 ICMP port unreachable 限速，实测只有约一半的 send
+# 会抛出来，连续计数永远凑不满，模拟器就会一直朝空端口推流。改成窗口内累计。
+RTP_REFUSED_LIMIT = 20
+RTP_REFUSED_WINDOW_S = 3.0
+
 
 def md5_hex(text: str) -> str:
     return hashlib.md5(text.encode("utf-8")).hexdigest()
 
 
 def sip_header(msg: str, name: str) -> str:
-    m = re.search(rf"(?im)^{re.escape(name)}\s*:\s*(.+)$", msg)
+    m = re.search(rf"(?im)^{re.escape(name)}\s*:\s*([^\r\n]*)", msg)
     return m.group(1).strip() if m else ""
 
 
 def sip_headers(msg: str, name: str) -> list[str]:
-    return re.findall(rf"(?im)^{re.escape(name)}\s*:\s*(.+)$", msg)
+    """取出某个头的全部取值，绝不能带上行尾的 \\r。
+
+    不要写成 `(.+)$`：Python 在 MULTILINE 下 `$` 匹配在 \\n 之前，`.` 又能吃 \\r，
+    于是捕获值会带一个尾随 \\r。回抄进应答的 Via 就变成 `\\r\\r\\n`，WVP 的
+    GBStringMsgParser 把多出来的空行当成头部区结束，From/To/CSeq/Content-Length
+    全部丢失，getCSeqHeader() 为空并抛 NullPointerException——整条应答被丢弃。
+    后果是 WVP 收不到 INVITE 的 200 OK，60 秒后按「-1024 消息超时未回复」拆流，
+    画面正好冻在最后一帧。
+    """
+    return [v.strip() for v in re.findall(rf"(?im)^{re.escape(name)}\s*:\s*([^\r\n]*)", msg)]
 
 
 def xml_tag(body: str, tag: str) -> str:
@@ -192,11 +207,26 @@ class Gb28181Sim:
             self.send_message(xml)
             self.log("Keepalive sent")
 
+    def echo_via(self, via: str) -> str:
+        """回抄请求的 Via，并按 RFC 3581 给 rport 填上端口值。
+
+        WVP 发请求时 Via 带的是无值的 `;rport` 标志。原样抄回去，WVP 的
+        jain-sip 解析应答时会对空值 rport 抛 NullPointerException，整条应答
+        被丢弃：INVITE 拿不到 200 OK，60s 后按「-1024 消息超时未回复」把流拆掉，
+        画面就冻在最后一帧；MESSAGE 同理，目录同步也会超时。
+        """
+        if re.search(r"(?i);\s*rport\s*=", via):
+            return via
+        return re.sub(r"(?i);\s*rport(?=\s*;|\s*$)", f";rport={self.server_port}", via)
+
     def reply(self, req: str, code: str, reason: str, extra: list[str] | None = None, body: bytes = b"") -> None:
-        vias = sip_headers(req, "Via")
+        vias = [self.echo_via(v) for v in sip_headers(req, "Via")]
         from_h = sip_header(req, "From")
         to_h = sip_header(req, "To")
-        if "tag=" not in to_h.lower():
+        # 只有终结性应答才补 To tag。100 Trying 按 RFC 3261 不建立对话，带上 tag
+        # 会让 WVP 的 jain-sip 去建 early dialog 并抛 NullPointerException，
+        # 整条 INVITE 事务作废：WVP 收不到应答，60s 后按「消息超时未回复」拆掉流。
+        if not code.startswith("1") and "tag=" not in to_h.lower():
             to_h = f"{to_h};tag={self.tag}"
         lines = [f"SIP/2.0 {code} {reason}"]
         for v in vias:
@@ -327,19 +357,28 @@ class Gb28181Sim:
         self.media_stop.clear()
 
     def pump_mpegps(self, proc: subprocess.Popen, dest: tuple[str, int], ssrc: int) -> None:
-        """ffmpeg -f vob → RTP payload 96。用官方 MPEG-2 PS，避免手写 PES 堆帧。"""
+        """ffmpeg -f vob 字节流连续塞进 RTP。不要按 pack 切/打 marker：ZLM 会只解出第一段 GOP 然后冻帧。"""
         assert proc.stdout is not None
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        # connect 而不是 sendto：ZLM 无人观看 60s 会关掉收流端口，之后内核回 ICMP
+        # port unreachable。只有 connected UDP 才会把它变成 ECONNREFUSED，
+        # 否则模拟器会朝着已关闭的端口一直空推，日志看着正常、画面却是死的。
+        sock.connect(dest)
         seq = random.randint(0, 0xFFFF)
         sent = 0
-        t0 = time.time()
+        refused = 0
+        refused_since = 0.0
+        # 必须用单调时钟：WSL 的墙上时钟会不时倒退一两秒（实测 90s 内两次 -1.3s），
+        # 用 time.time() 算出来的 RTP 时间戳会跟着倒退，ZLM 会报
+        # 「Stamp expired is abnormal」并把这条流的时间轴判废。
+        t0 = time.monotonic()
         last_log = t0
         try:
             while not self.media_stop.is_set() and proc.poll() is None:
                 chunk = proc.stdout.read(1400)
                 if not chunk:
                     break
-                ts = int((time.time() - t0) * 90000) & 0xFFFFFFFF
+                ts = int((time.monotonic() - t0) * 90000) & 0xFFFFFFFF
                 header = struct.pack(
                     "!HHII",
                     (0x80 << 8) | 96,
@@ -348,9 +387,21 @@ class Gb28181Sim:
                     ssrc & 0xFFFFFFFF,
                 )
                 seq = (seq + 1) & 0xFFFF
-                sock.sendto(header + chunk, dest)
+                try:
+                    sock.send(header + chunk)
+                except ConnectionRefusedError:
+                    now = time.monotonic()
+                    if now - refused_since > RTP_REFUSED_WINDOW_S:
+                        refused, refused_since = 0, now
+                    refused += 1
+                    if refused >= RTP_REFUSED_LIMIT:
+                        self.log(f"收流端口 {dest} 已关闭，停止推流，等待下一次 INVITE")
+                        # 不留着 ffmpeg 堵在满管道上，下一次 INVITE 会重新拉起
+                        proc.terminate()
+                        break
+                    continue
                 sent += 1
-                now = time.time()
+                now = time.monotonic()
                 if now - last_log >= 2:
                     self.log(f"vob RTP pkts={sent} dest={dest}")
                     last_log = now
@@ -379,7 +430,7 @@ class Gb28181Sim:
                 self.video,
                 "-an",
                 "-vf",
-                "scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2",
+                video_filter(),
                 "-c:v",
                 "libx264",
                 "-preset",
@@ -411,7 +462,7 @@ class Gb28181Sim:
             self.video,
             "-an",
             "-vf",
-            "scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2",
+            video_filter(),
             "-c:v",
             "libx264",
             "-preset",
@@ -431,8 +482,14 @@ class Gb28181Sim:
             "pipe:1",
         ]
         self.log(f"ffmpeg vob/RTP → {ip}:{port} ssrc={ssrc_i}")
+        err_path = "/opt/SVA/wvp/gb_ffmpeg.err"
+        try:
+            os.makedirs("/opt/SVA/wvp", exist_ok=True)
+            err_f = open(err_path, "ab")
+        except OSError:
+            err_f = subprocess.DEVNULL
         self.ffmpeg = subprocess.Popen(
-            cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, bufsize=0
+            cmd, stdout=subprocess.PIPE, stderr=err_f, bufsize=0
         )
         self.pump = threading.Thread(
             target=self.pump_mpegps,
@@ -525,6 +582,25 @@ class Gb28181Sim:
             self.sock.close()
         except OSError:
             pass
+
+
+def video_filter() -> str:
+    """横屏 pad，底边加一条来回走的指示条。
+
+    静帧片源（水杯、大树）光看画面分不清「流断了」和「片源本身不动」，
+    指示条一停就说明流真的停了。答辩要干净画面时 MOTION_BAR=0 关掉。
+    真机不走模拟器，这里只影响演示片源。
+    """
+    chain = [
+        "scale=1280:720:force_original_aspect_ratio=decrease",
+        "pad=1280:720:(ow-iw)/2:(oh-ih)/2",
+    ]
+    if os.environ.get("MOTION_BAR", "1") != "0":
+        chain.append(
+            "drawbox=x='(iw-180)*(0.5-0.5*cos(2*PI*t/6))':y='ih-20'"
+            ":w=180:h=14:color=lime@0.9:t=fill"
+        )
+    return ",".join(chain)
 
 
 def guess_lan_ip() -> str:

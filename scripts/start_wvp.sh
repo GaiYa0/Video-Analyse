@@ -37,8 +37,11 @@ for line in p.read_text(encoding='utf-8').splitlines():
         section = s[:-1]
     if section == 'sip' and (s.startswith('ip:') or s.startswith('show-ip:')):
         line = line.split(':', 1)[0] + ': ' + lan
-    if section == 'media' and (s.startswith('stream-ip:') or s.startswith('sdp-ip:')):
+    if section == 'media' and s.startswith('sdp-ip:'):
         line = line.split(':', 1)[0] + ': ' + lan
+    if section == 'media' and s.startswith('stream-ip:'):
+        # 浏览器在演示机本机播；LAN:9992 不通（Clash / 未转发）
+        line = line.split(':', 1)[0] + ': 127.0.0.1'
     out.append(line)
 p.write_text('\\n'.join(out) + '\\n', encoding='utf-8')
 print('WVP SIP 绑定 %s:5060' % lan)
