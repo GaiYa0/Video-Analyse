@@ -374,7 +374,7 @@ namespace SVAAnalyzer
             {
                 return false;
             }
-            const int64_t thresholdMs = std::max<int64_t>(1, rule.thresholdMs > 0 ? rule.thresholdMs : SleepPose::kDefaultSleepHoldMs);
+            const int64_t thresholdMs = SleepPose::clampSleepHoldMs(rule.thresholdMs);
             if (detect.headDownMs < thresholdMs)
             {
                 return false;

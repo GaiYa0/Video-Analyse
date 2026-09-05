@@ -24,6 +24,17 @@ namespace SVAAnalyzer
         constexpr float kDefaultPitchRecoverDeg = 22.0f;
         constexpr float kUprightPitchCapDeg = 18.0f;
         constexpr int64_t kDefaultSleepHoldMs = 5000;
+        constexpr int64_t kMaxSleepHoldMs = 3600000;
+
+        // 布控页会下发 2500ms，盖掉 5 秒口径。空值或过短都抬到默认。
+        inline int64_t clampSleepHoldMs(int64_t thresholdMs)
+        {
+            if (thresholdMs <= 0)
+            {
+                return kDefaultSleepHoldMs;
+            }
+            return std::max<int64_t>(kDefaultSleepHoldMs, std::min<int64_t>(kMaxSleepHoldMs, thresholdMs));
+        }
         constexpr int64_t kDefaultRecoverHoldMs = 600;
         constexpr float kHeadAboveNeckMinPx = 8.0f;
         constexpr float kPitchAttackAlpha = 0.55f;
