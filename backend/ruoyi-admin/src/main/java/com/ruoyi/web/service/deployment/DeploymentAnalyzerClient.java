@@ -11,6 +11,7 @@ import com.ruoyi.waring.mapper.HDeviceMapper;
 import com.ruoyi.waring.mapper.SvaServerMapper;
 import com.ruoyi.waring.mapper.ZlmServerMapper;
 import com.ruoyi.waring.service.HAlgorithmService;
+import com.ruoyi.waring.service.IGb28181DeviceSyncService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,6 +29,8 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import com.ruoyi.system.domain.DeploymentTaskAlgorithm;
 
 @Service
@@ -40,6 +43,10 @@ public class DeploymentAnalyzerClient
     private static final String ENGINE_M_SERVER = "M-SERVER";
     private static final String DEFAULT_ZLM_APP = "live";
     private static final String DEFAULT_SVA_APP = "analyzer";
+    private static final String DEVICE_TYPE_GB28181 = "gb28181";
+    private static final String GB_RTP_APP = "rtp";
+    private static final Pattern GB_PLAY_URL_PATH = Pattern.compile(
+        "(?i)/(rtp)/([^/?#]+?)(?:\\.live\\.flv)?(?:[?#]|$)");
     private static final int DEFAULT_ALARM_INTERVAL_SEC = 180;
 
     @Autowired
@@ -57,6 +64,9 @@ public class DeploymentAnalyzerClient
     @Autowired
     private SvaServerMapper svaServerMapper;
 
+    @Autowired
+    private IGb28181DeviceSyncService gb28181DeviceSyncService;
+
     public AnalyzerResult addControl(DeploymentTask task, String recognitionRegion)
     {
         if (task == null)
@@ -71,6 +81,12 @@ public class DeploymentAnalyzerClient
         }
 
         String apeId = task.getDeviceId();
+        if (GB_RTP_APP.equalsIgnoreCase(bindingConfig.pullApp)
+            && StringUtils.isNotBlank(bindingConfig.pullStream))
+        {
+            // 不阻塞布控 HTTP：INVITE 与 Analyzer 25s stimeout 并行
+            gb28181DeviceSyncService.warmRtp(bindingConfig.pullStream);
+        }
         String streamUrl = buildStreamUrl(bindingConfig, apeId);
 
         boolean pushStream = Boolean.TRUE.equals(task.getPushEnabled());
@@ -94,8 +110,8 @@ public class DeploymentAnalyzerClient
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("code", task.getDeploymentId());
         payload.put("streamCode", apeId);
-        payload.put("streamApp", bindingConfig.zlmApp);
-        payload.put("streamName", apeId);
+        payload.put("streamApp", bindingConfig.pullApp);
+        payload.put("streamName", bindingConfig.pullStream);
         payload.put("streamUrl", streamUrl);
         payload.put("pushStream", pushStream);
         if (pushStream)
@@ -478,17 +494,47 @@ public class DeploymentAnalyzerClient
 
         String zlmApp = StringUtils.isBlank(zlmServer.getApp()) ? DEFAULT_ZLM_APP : zlmServer.getApp().trim();
         String svaApp = StringUtils.isBlank(svaServer.getApp()) ? DEFAULT_SVA_APP : svaServer.getApp().trim();
+        String pullApp = zlmApp;
+        String pullStream = apeId;
+        if (DEVICE_TYPE_GB28181.equalsIgnoreCase(device.getDevice_type()))
+        {
+            String[] rtp = resolveGbRtpPull(device);
+            pullApp = rtp[0];
+            pullStream = rtp[1];
+        }
         return new BindingConfig(zlmServer.getHost().trim(), zlmApp, zlmServer.getMedia_rtsp_port(),
-            zlmServer.getMedia_http_port(), svaServer.getHost().trim(), svaApp, svaServer.getAnalyzer_port());
+            zlmServer.getMedia_http_port(), svaServer.getHost().trim(), svaApp, svaServer.getAnalyzer_port(),
+            pullApp, pullStream);
+    }
+
+    static String[] resolveGbRtpPull(HDevice device)
+    {
+        if (device != null && StringUtils.isNotBlank(device.getPlay_url()))
+        {
+            Matcher matcher = GB_PLAY_URL_PATH.matcher(device.getPlay_url().trim());
+            if (matcher.find())
+            {
+                return new String[]{matcher.group(1), matcher.group(2)};
+            }
+        }
+        String gbId = device == null ? "" : StringUtils.nvl(device.getGb_device_id(), "").trim();
+        if (StringUtils.isNotBlank(gbId))
+        {
+            String stream = gbId.contains("_") ? gbId : gbId + "_" + gbId;
+            return new String[]{GB_RTP_APP, stream};
+        }
+        String apeId = device == null ? "" : StringUtils.nvl(device.getApe_id(), "").trim();
+        return new String[]{GB_RTP_APP, apeId};
     }
 
     private String buildStreamUrl(BindingConfig config, String apeId)
     {
-        if (StringUtils.isBlank(apeId))
+        if (config == null || StringUtils.isBlank(config.pullApp) || StringUtils.isBlank(config.pullStream))
         {
             return null;
         }
-        return "rtsp://" + config.zlmHost + ":" + config.zlmMediaRtspPort + "/" + config.zlmApp + "/" + apeId;
+        return "rtsp://" + config.zlmHost + ":" + config.zlmMediaRtspPort + "/"
+            + config.pullApp + "/" + config.pullStream;
     }
 
     private String buildPushStreamUrl(BindingConfig config, String deploymentId)
@@ -528,9 +574,11 @@ public class DeploymentAnalyzerClient
         private final String svaHost;
         private final String svaApp;
         private final int svaAnalyzerPort;
+        private final String pullApp;
+        private final String pullStream;
 
         private BindingConfig(String zlmHost, String zlmApp, int zlmMediaRtspPort, int zlmMediaHttpPort,
-            String svaHost, String svaApp, int svaAnalyzerPort)
+            String svaHost, String svaApp, int svaAnalyzerPort, String pullApp, String pullStream)
         {
             this.zlmHost = zlmHost;
             this.zlmApp = zlmApp;
@@ -539,6 +587,8 @@ public class DeploymentAnalyzerClient
             this.svaHost = svaHost;
             this.svaApp = svaApp;
             this.svaAnalyzerPort = svaAnalyzerPort;
+            this.pullApp = pullApp;
+            this.pullStream = pullStream;
         }
 
         private String getAnalyzerBaseUrl()
