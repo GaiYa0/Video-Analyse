@@ -98,6 +98,10 @@ namespace SVAAnalyzer
         int64_t lastSnapshotTimestampMs = 0;
         int continuityCheckCount = 0;
         int64_t continuityCheckStartMs = 0;
+        // Last inferred alarm flag. detectFps / catch-up must not clear this, or
+        // handleGenerateAlarm treats the event as a one-frame pulse.
+        bool lastAlarmHappen = false;
+        float lastAlarmHappenScore = 0.0f;
     };
 
     Worker::Worker(Scheduler *scheduler, Control *control) : mControl(control),
@@ -336,9 +340,9 @@ namespace SVAAnalyzer
 
         int64_t last_alarm_timestamp = 0;
         bool happening = false;
-        // Sleep-on-duty already waits on pose hold; keep a short preroll so the first
-        // alarm is not delayed by ~30 extra decoded frames.
-        const int prefix_size = control->usesSleepPoseAlgorithm() ? 10 : 30;
+        // Keep the original 30-frame preroll. Sleep already held for thresholdMs;
+        // at decode rate this is ~1s of context, not a start delay.
+        const int prefix_size = 30;
         const int max_alarm_seconds = 12;
         const int max_happen_frames = std::max(prefix_size,
                                                std::max(1, control->videoFps) * max_alarm_seconds);
@@ -393,6 +397,10 @@ namespace SVAAnalyzer
             }
 
             alarm->happenImageIndex = firstHappenIndex;
+            LOGI("alarm clip queued: control=%s frames=%zu cover=%d",
+                 control->code.c_str(),
+                 alarm->frames.size(),
+                 firstHappenIndex);
             for (Frame *alarmFrame : alarm->frames)
             {
                 if (!alarmFrame || !alarmFrame->happen)
@@ -477,6 +485,10 @@ namespace SVAAnalyzer
             }
         }
 
+        if (happening)
+        {
+            flushHappenFrames();
+        }
         while (!happenV.empty())
         {
             Frame *p = happenV.front();
@@ -558,9 +570,10 @@ namespace SVAAnalyzer
                     {
                         frameCount++;
 
-                        // H.264 must still see every packet. Drop a backlog only if we
-                        // already inferred recently; otherwise sleep temporal starves and
-                        // Check FPS collapses (0.66 → throttle → even fewer frames).
+                        // H.264 must still see every packet. Skip YOLO on backlog if we
+                        // inferred recently, but keep BGR + alarm frames so evidence is a
+                        // real clip instead of one I-frame.
+                        bool skipInferCatchUp = false;
                         if (mPullStream->getVideoPktQueueSize() > 0)
                         {
                             const int64_t nowMs = getCurTime();
@@ -582,12 +595,7 @@ namespace SVAAnalyzer
                                     }
                                 }
                             }
-                            if (inferredRecently)
-                            {
-                                av_packet_unref(&pkt);
-                                av_frame_unref(frame_yuv420p);
-                                continue;
-                            }
+                            skipInferCatchUp = inferredRecently;
                         }
 
                         AVFrame *src_frame = frame_yuv420p;
@@ -681,7 +689,11 @@ namespace SVAAnalyzer
                         // detectFps (抽帧率) is the cap. checkFps is only the measured
                         // overlay number — never feed it back as a throttle.
                         std::vector<AggregateBehaviorMatch> aggMatches;
-                        cur_is_check = runtime->analyzer->handleVideoFrame(frameCount, image, happenDetects, happen, happenScore, isKeyframe);
+                        cur_is_check = false;
+                        if (!skipInferCatchUp)
+                        {
+                            cur_is_check = runtime->analyzer->handleVideoFrame(frameCount, image, happenDetects, happen, happenScore, isKeyframe);
+                        }
                         if (cur_is_check)
                         {
                             runtime->lastInferTimestampMs = getCurTime();
@@ -842,11 +854,15 @@ namespace SVAAnalyzer
                                     happenScore = std::max(happenScore, aggMatches[ai].score);
                                 }
                             }
+                            runtime->lastAlarmHappen = happen;
+                            runtime->lastAlarmHappenScore = happenScore;
                         }
                         else
                         {
-                            // Throttled: keep the last detections for overlay, do not
-                            // tell the tracker the person vanished.
+                            // Throttled / catch-up: keep last detections and last happen
+                            // so alarm recording is not cut into a single frame.
+                            happen = runtime->lastAlarmHappen;
+                            happenScore = runtime->lastAlarmHappenScore;
                         }
 
                         int64_t continuity_check_end = getCurTime();

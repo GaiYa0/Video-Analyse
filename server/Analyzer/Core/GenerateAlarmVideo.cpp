@@ -2,6 +2,7 @@
 #include "Config.h"
 #include "Utils/Log.h"
 #include "Utils/Common.h"
+#include <algorithm>
 #include <json/json.h>
 #include "Utils/Request.h"
 #include "Frame.h"
@@ -145,14 +146,11 @@ namespace SVAAnalyzer
         mVideoCodecCtx->height = mAlarm->height;
         mVideoCodecCtx->time_base = {1, mAlarm->fps};
         mVideoCodecCtx->framerate = {mAlarm->fps, 1};
-        mVideoCodecCtx->gop_size = mAlarm->fps; // 一个 GOP 长度
-        mVideoCodecCtx->max_b_frames = 5;       // 允许 B 帧（离线编码可用）
-        mVideoCodecCtx->thread_count = 1;       // 硬件编码器通常内部管理线程，可保持默认
-
-        // 通用基本设置
-        mVideoCodecCtx->gop_size = 1;     // 与推流一致
-        mVideoCodecCtx->max_b_frames = 0; // 禁用 B 帧
-        mVideoCodecCtx->thread_count = 1; // 硬件编码器通常忽略此值
+        // Offline MP4: keep a real GOP, no B-frames. gop=1 + software B-frames
+        // without an encoder flush used to leave only the first I-frame on disk.
+        mVideoCodecCtx->gop_size = std::max(8, mAlarm->fps);
+        mVideoCodecCtx->max_b_frames = 0;
+        mVideoCodecCtx->thread_count = 1;
 
         AVDictionary *video_codec_options = NULL;
 
@@ -204,8 +202,8 @@ namespace SVAAnalyzer
                 mVideoCodecCtx->height = mAlarm->height;
                 mVideoCodecCtx->time_base = {1, mAlarm->fps};
                 mVideoCodecCtx->framerate = {mAlarm->fps, 1};
-                mVideoCodecCtx->gop_size = mAlarm->fps;
-                mVideoCodecCtx->max_b_frames = 5;
+                mVideoCodecCtx->gop_size = std::max(8, mAlarm->fps);
+                mVideoCodecCtx->max_b_frames = 0;
                 mVideoCodecCtx->thread_count = 1;
 
                 // 软件编码选项
@@ -575,6 +573,31 @@ namespace SVAAnalyzer
         }
 
         mAlarm->frames.clear();
+
+        // Delayed packets stay in the encoder until a NULL flush. Without this,
+        // a short clip (or software x264) becomes a single-frame MP4.
+        if (mVideoCodecCtx && pkt)
+        {
+            ret = avcodec_send_frame(mVideoCodecCtx, nullptr);
+            if (ret >= 0)
+            {
+                while (true)
+                {
+                    ret = avcodec_receive_packet(mVideoCodecCtx, pkt);
+                    if (ret < 0)
+                    {
+                        break;
+                    }
+                    pkt->stream_index = mVideoIndex;
+                    const int wframe = av_write_frame(mFmtCtx, pkt);
+                    if (wframe < 0)
+                    {
+                        LOGE("writePkt flush : wframe=%d", wframe);
+                    }
+                    av_packet_unref(pkt);
+                }
+            }
+        }
 
         av_write_trailer(mFmtCtx); // 写文件尾
 
