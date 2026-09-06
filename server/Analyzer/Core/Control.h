@@ -1058,8 +1058,7 @@ namespace SVAAnalyzer
 					}
 					else if (rule.behaviorType == "sleep_on_duty")
 					{
-						rule.thresholdMs = std::max<int64_t>(500, std::min<int64_t>(3600000,
-							rule.thresholdMs > 0 ? rule.thresholdMs : SleepPose::kDefaultSleepHoldMs));
+						rule.thresholdMs = SleepPose::clampSleepHoldMs(rule.thresholdMs);
 						rule.thresholdCount = 0;
 						rule.maxSpeedPxPerSec = 0.0;
 						rule.maxDisplacementPx = 0.0;

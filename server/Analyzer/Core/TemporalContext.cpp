@@ -199,7 +199,7 @@ namespace SVAAnalyzer
                 }
                 if (rule.thresholdMs > 0)
                 {
-                    holdMs = rule.thresholdMs;
+                    holdMs = SleepPose::clampSleepHoldMs(rule.thresholdMs);
                 }
                 if (rule.distanceThresholdPx > 0.0)
                 {
