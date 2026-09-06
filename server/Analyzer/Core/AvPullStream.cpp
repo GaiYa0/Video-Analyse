@@ -5,8 +5,28 @@
 #include "Scheduler.h"
 #include "Control.h"
 #include "Worker.h"
+
+extern "C"
+{
+#include "libavutil/error.h"
+}
+
 namespace SVAAnalyzer
 {
+    static void logAvError(const char *what, int err, const char *url)
+    {
+        char errbuf[AV_ERROR_MAX_STRING_SIZE];
+        av_strerror(err, errbuf, sizeof(errbuf));
+        if (url && url[0])
+        {
+            LOGE("%s: url=%s err=%s (%d)", what, url, errbuf, err);
+        }
+        else
+        {
+            LOGE("%s: err=%s (%d)", what, errbuf, err);
+        }
+    }
+
     AvPullStream::AvPullStream(Worker *worker) : mWorker(worker),
                                                  mHwDeviceCtx(nullptr)
     {
@@ -48,16 +68,17 @@ namespace SVAAnalyzer
 
         if (ret != 0)
         {
-            LOGE("avformat_open_input error: url=%s ", streamUrl.data());
+            logAvError("avformat_open_input error", ret, streamUrl.data());
             return false;
         }
 
         mFmtCtx->flags |= AVFMT_FLAG_NOBUFFER | AVFMT_FLAG_FLUSH_PACKETS;
         mFmtCtx->max_delay = 0;
 
-        if (avformat_find_stream_info(mFmtCtx, NULL) < 0)
+        ret = avformat_find_stream_info(mFmtCtx, NULL);
+        if (ret < 0)
         {
-            LOGE("avformat_find_stream_info error");
+            logAvError("avformat_find_stream_info error", ret, streamUrl.data());
             return false;
         }
 
