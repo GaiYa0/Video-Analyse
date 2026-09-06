@@ -1,6 +1,6 @@
 # 分析器架构（同学 B）
 
-验收点 1 产出。本文根据仓库源码整理，描述 **SVA-server Analyzer** 如何取流、加载模型、上报告警。睡岗（YOLO-Pose）属于验收点 2，这里不改推理管线。
+验收点 1 产出，并随验收点 2/3 补取流与模型。本文根据仓库源码整理，描述 **SVA-server Analyzer** 如何取流、加载模型、上报告警。睡岗公式见 [algorithm-sleep.md](./algorithm-sleep.md)；国标取流见第 11 节。
 
 维护：同学 B。总图由同学 C 写在 [architecture.md](./architecture.md)（若该文件尚未合入，以本文 + [分工.md](./分工.md) 为准）。
 
@@ -11,30 +11,33 @@
 ## 1. 它在整条链路里的位置
 
 ```text
-摄像头 / 测试文件 RTSP
+直连 RTSP / 国标 SIP（WVP）
         │
         ▼
-ZLMediaKit  addStreamProxy          ← 同学 A，backend 调 REST
+ZLMediaKit  live 代理 或 rtp 点播     ← 同学 A
         │
-        │  rtsp://{zlmHost}:{rtspPort}/{app}/{apeId}
+        │  直连: rtsp://{zlm}:{rtspPort}/live/{apeId}
+        │  国标: rtsp://{zlm}:{rtspPort}/rtp/{设备_通道}
         ▼
-Analyzer 拉流 → 解码 → YOLO → 行为规则 → 告警图/视频
+Analyzer 拉流 → 解码 → YOLO / 睡岗 → 行为规则 → 告警图/视频
         │
         ├─ HTTP POST  告警媒体  → backend :9114 /waring/waring/addFromSvaSimple
         └─ WebSocket  检测帧    → backend :9114 /websocket/sva/noop
 ```
 
-Analyzer **不调用** ZLM REST。播放 URL 由 backend 按设备绑定的 `zlm_server` / `sva_server` 拼好，再 `POST /api/control/add` 下发。拼装逻辑见：
+Analyzer **不调用** ZLM REST，也不做 SIP。播放 URL 由 backend 按 `device_type` 拼好，再 `POST /api/control/add` 下发。拼装逻辑见：
 
-- `backend/ruoyi-admin/src/main/java/com/ruoyi/web/service/deployment/DeploymentAnalyzerClient.java`
+- `backend/ruoyi-admin/src/main/java/com/ruoyi/web/service/deployment/DeploymentAnalyzerClient.java`（`resolveGbRtpPull` / `buildStreamUrl`）
 
-默认形态（`DEFAULT_ZLM_APP=live`，`DEFAULT_SVA_APP=analyzer`）：
+默认形态（直连 `app=live`，国标 `app=rtp`，回推 `DEFAULT_SVA_APP=analyzer`）：
 
 | 用途 | URL |
 |------|-----|
-| 分析输入 | `rtsp://{zlmHost}:{media_rtsp_port}/live/{apeId}` |
+| 分析输入（直连 RTSP） | `rtsp://{zlmHost}:{media_rtsp_port}/live/{apeId}` |
+| 分析输入（国标 GB28181） | `rtsp://{zlmHost}:{media_rtsp_port}/rtp/{设备_通道}` |
 | 画框回推（可选） | `rtsp://{zlmHost}:{media_rtsp_port}/analyzer/{deploymentId}` |
 | 前端看算法流 | `ws://{zlmHost}:{media_http_port}/analyzer/{deploymentId}.live.flv` |
+| 前端看国标源（Nginx） | `ws://{host}:8080/rtp/{设备_通道}.live.flv`（演示机；本机 WSL24 常见 8088） |
 
 官方样例端口见 `server/config.json`：HTTP/API 9992、Analyzer 9993、RTSP 9994。样例里的 `host`、`mediaSecret` 是上游开发机残留，**部署时必须改成虚拟机真实 IP**；Analyzer C++ **不读取** `mediaSecret`。
 
@@ -96,7 +99,7 @@ CMake 说明：`server/CMakeLists.txt`。默认 `SVA_ONNXRUNTIME_GPU=ON`，依�
 布控下发后，`AvPullStream::connect()`（`server/Analyzer/Core/AvPullStream.cpp`）用 FFmpeg `avformat_open_input` 打开 `Control.streamUrl`：
 
 - RTSP 使用 **TCP**（`rtsp_transport=tcp`）
-- 连接超时约 10s；可尝试 CUDA 硬解，失败回退 CPU
+- 连接超时约 **25s**（`stimeout=25000000`），给国标 INVITE / `on_stream_not_found` 留窗口；可尝试 CUDA 硬解，失败回退 CPU
 
 同一路流可以挂多个布控：`Scheduler.cpp` 里 `getWorkerStreamKey()` 优先用 `streamCode`，否则用 `streamUrl`。backend 下发时 `streamCode` = 设备 `apeId`。
 
@@ -356,3 +359,40 @@ systemctl start easysva-analyzer
 - 不要把 `Analyzer-lib/`、`*.onnx`、`*.pt`、工位大视频推进 git  
 - 不要把本机 8088 当成 A 演示机的 80/8080 写进验收记录  
 - 不要 `git push` 到 `main`
+
+---
+
+## 11. 验收点 3：国标播放 URL 与「有注册无画面」
+
+课件要求推理链路复用：国标不另起一套检测，只换 Analyzer 打开的 `streamUrl`。URL **由 backend 拼**，Analyzer 只拉。
+
+国标行：`device_type=gb28181`。`DeploymentAnalyzerClient.resolveGbRtpPull` 从 `play_url` 解析 `/rtp/<stream>`；解析不到则用 `gb_device_id`（无下划线时拼成 `{id}_{id}`）。发给 Analyzer 的是：
+
+```text
+rtsp://{zlmHost}:{media_rtsp_port}/rtp/{设备_通道}
+```
+
+演示机业务库常见：`demo-ipc`（`ape_id=camgbf0b09a04`），stream 形如 `34020000001320000001_34020000001320000001`。网页预览走 Nginx `/rtp/` 的 WS-FLV，**不要**把 WS 地址塞给 Analyzer。
+
+布控启动时 backend 对国标 `warmRtp`（后台 INVITE，不堵 HTTP）。ZLM 还没有该 rtp 时，拉流会触发 WVP `on_stream_not_found` 再 INVITE。Analyzer `stimeout` 25s 就是在等这场点播。
+
+### 11.1 验证步骤（注册成功 → 分析器有画面 → 能布控）
+
+以同学 A 演示机为准（本机 WSL24 通常没有 WVP，不要当验收环境装一套）：
+
+1. 国标设备在线：业务列表 `device_type=gb28181`、`is_online=1`（跟 WVP SIP，不跟「此刻有没有画面」）。
+2. 设备预览有画面（Nginx `/rtp/…live.flv`）。`getMediaList` 里应有 `app=rtp` 对应 stream。
+3. 布控选该国标设备 + **原 YOLO**（`on_yolo11n_80` / `on_yolo26n_80`），画闭合区域，录像引擎用算法服务器。启动后 Analyzer 日志里 `streamUrl` 必须是 `rtsp://127.0.0.1:9994/rtp/…`，不能是 `live/camgb…`。
+4. 布控预览出框，或告警列表能出原 YOLO 记录。睡岗放到单独联调，不要和本条验证绑死。
+
+操作细节见 [国标功能使用说明书.md](./国标功能使用说明书.md)、[启动手册.md](./启动手册.md) §2.5–2.7。媒体半程可用 A 的 `scripts/verify_gb_rtp.sh`；Analyzer 能否打开那条 RTSP 用 `scripts/probe_analyzer_pull.sh`（另 PR）。
+
+### 11.2 「有注册无画面」谁排
+
+| 现象 | 归谁 | 怎么看 |
+|------|------|--------|
+| WVP / 列表已注册，`getMediaList` 没有 `rtp/{stream}` | 同学 A | SIP 未点播、模拟器没推 PS、INVITE 失败 |
+| ZLM 有 rtp、网页预览有画，Analyzer 仍 `pull stream connect error` 或打开的是 `live/{apeId}` | 同学 B | 看下发的 `streamUrl`、FFmpeg 错误串、`stimeout` |
+| 预览有画、Analyzer 已连上但 YOLO/睡岗不出 | 先确认区域与算法代号；公式问题归 B，前端选错归 C | 框是否画出、`on_sleep_pose` 是否加载 |
+
+不要改 `zlm_server.host`（须 `127.0.0.1`）。不要把国标和睡岗大改塞进同一个 PR。
