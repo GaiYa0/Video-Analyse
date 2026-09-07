@@ -179,7 +179,7 @@ P2 睡岗（2026-09-02 演示机走查，已关账）：
 - 告警详情类型为睡岗 / `SLEEP_ON_DUTY`，规则 ID `sleep_on_duty_default`：[p2睡岗检测告警详情.png](./photo/p2睡岗检测告警详情.png)
 - 同机原 YOLO 进区告警仍可用（CCTV5 / `behavior_rule_1`）：[p2原YOLO进区告警.png](./photo/p2原YOLO进区告警.png)
 
-P3 国标（演示机 WVP SIP + ZLM 媒体，**未升 phase**）：
+P3 国标（演示机 WVP SIP + ZLM 媒体，2026-09-07 已关账；无真机，走水杯模拟器）：
 
 1. A 执行 `scripts/add_h_device_gb28181.sql`，部署 WVP（`setup_wvp.sh` / `start_wvp.sh`），重启 `backend.jar`，刷前端。
 2. 设备管理能筛「直连 RTSP / 国标 GB28181」；旧设备显示 RTSP。
