@@ -1,0 +1,111 @@
+/* easySVA 石墨皮肤覆盖 WVP 管理页。播放器画布保持黑。 */
+:root {
+  --sva-bg: #0e1116;
+  --sva-surface: #161b22;
+  --sva-surface-2: #1c2128;
+  --sva-border: rgba(255, 255, 255, 0.08);
+  --sva-text: #e6edf3;
+  --sva-text-muted: #8b949e;
+  --sva-accent: #6b9bb8;
+  --el-color-primary: #6b9bb8;
+  --el-color-primary-light-3: #8bb3c8;
+  --el-color-primary-light-5: #a9c7d6;
+  --el-color-primary-light-7: #c7dbe4;
+  --el-color-primary-light-8: #d6e4eb;
+  --el-color-primary-light-9: #e5eef2;
+  --el-color-primary-dark-2: #567c93;
+  --el-bg-color: #161b22;
+  --el-bg-color-page: #0e1116;
+  --el-bg-color-overlay: #1c2128;
+  --el-text-color-primary: #e6edf3;
+  --el-text-color-regular: #e6edf3;
+  --el-text-color-secondary: #8b949e;
+  --el-text-color-placeholder: #8b949e;
+  --el-border-color: rgba(255, 255, 255, 0.08);
+  --el-border-color-light: rgba(255, 255, 255, 0.08);
+  --el-border-color-lighter: rgba(255, 255, 255, 0.06);
+  --el-fill-color: #1c2128;
+  --el-fill-color-blank: #161b22;
+  --el-fill-color-light: #1c2128;
+  --el-fill-color-lighter: #161b22;
+  --el-fill-color-dark: #0e1116;
+  --el-mask-color: rgba(14, 17, 22, 0.72);
+  --el-box-shadow: none;
+  --el-menu-bg-color: #0e1116;
+  --el-menu-hover-bg-color: #1c2128;
+  --el-menu-text-color: #8b949e;
+  --el-menu-active-color: #e6edf3;
+}
+
+html,
+body,
+#app {
+  background: var(--sva-bg) !important;
+  color: var(--sva-text) !important;
+}
+
+.el-container,
+.el-aside,
+.el-header,
+.el-main,
+.el-footer,
+.el-menu,
+.el-menu--vertical,
+.el-card,
+.el-dialog,
+.el-drawer,
+.el-table,
+.el-table tr,
+.el-table th.el-table__cell,
+.el-table td.el-table__cell {
+  background-color: var(--sva-surface) !important;
+  color: var(--sva-text);
+  border-color: var(--sva-border) !important;
+}
+
+.el-aside,
+.el-menu {
+  background-color: var(--sva-bg) !important;
+}
+
+.el-header {
+  background-color: var(--sva-surface) !important;
+  border-bottom: 1px solid var(--sva-border);
+}
+
+.el-main {
+  background-color: var(--sva-bg) !important;
+}
+
+.el-table th.el-table__cell {
+  background-color: var(--sva-surface-2) !important;
+  color: var(--sva-text-muted) !important;
+}
+
+.el-input__wrapper,
+.el-select__wrapper,
+.el-textarea__inner,
+.el-input__inner {
+  background-color: var(--sva-surface-2) !important;
+  box-shadow: 0 0 0 1px var(--sva-border) inset !important;
+  color: var(--sva-text) !important;
+}
+
+.el-button--primary {
+  --el-button-bg-color: var(--sva-accent);
+  --el-button-border-color: var(--sva-accent);
+}
+
+.el-overlay,
+.el-overlay-dialog {
+  background-color: rgba(14, 17, 22, 0.72);
+}
+
+/* 直播/点播画布保持黑，不要洗成石墨 */
+video,
+canvas,
+.video-js,
+.jessibuca-container,
+[class*="player"] video {
+  background: #000 !important;
+}

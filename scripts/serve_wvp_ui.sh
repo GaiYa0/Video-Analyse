@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-if grep -q $'\r' "$0" 2>/dev/null; then tmp=$(mktemp); tr -d '\r' <"$0" >"$tmp"; exec bash "$tmp" "$@"; fi
+SVA_REPO_SCRIPTS="$(cd "$(dirname "$0")" && pwd)"
+if grep -q $'\r' "$0" 2>/dev/null; then tmp=$(mktemp); tr -d '\r' <"$0" >"$tmp"; exec env SVA_REPO_SCRIPTS="$SVA_REPO_SCRIPTS" bash "$tmp" "$@"; fi
 set -euo pipefail
 export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
 export PATH="$JAVA_HOME/bin:/usr/bin:/bin"
@@ -8,6 +9,7 @@ SRC=/opt/wvp-GB28181-pro/src/main/resources/static
 rm -rf /opt/SVA/wvp/static
 mkdir -p /opt/SVA/wvp/static
 cp -a "$SRC"/. /opt/SVA/wvp/static/
+bash "$SVA_REPO_SCRIPTS/wvp-ui/inject_theme.sh" /opt/SVA/wvp/static "$SVA_REPO_SCRIPTS/wvp-ui/sva-theme.css"
 ls /opt/SVA/wvp/static | head
 head -c 300 /opt/SVA/wvp/static/index.html; echo
 
