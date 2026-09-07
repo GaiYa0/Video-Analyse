@@ -61,7 +61,7 @@
                     </div>
                   </div>
                   <div class="center-panel-body">
-                    <CenterSwitchPanel :display-mode="centerDisplayMode" video-fit="contain"/>
+                    <CenterSwitchPanel :display-mode="backgroundDisplayMode" video-fit="contain"/>
                   </div>
                 </div>
                 <!-- <Detect/> -->
@@ -178,6 +178,14 @@ export default {
     };
   },
 
+  computed: {
+    backgroundDisplayMode() {
+      if (this.realtimeFullscreenVisible && this.centerDisplayMode === 'realtime') {
+        return 'history'
+      }
+      return this.centerDisplayMode
+    }
+  },
   filters: {
     numsFilter(msg) {
       return msg || 0;

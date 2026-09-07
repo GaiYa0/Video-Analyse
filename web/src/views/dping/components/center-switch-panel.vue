@@ -34,6 +34,7 @@
           :key="`stream-${card.sourceId || card.id || 'empty'}-${index}`"
           class="stream-card"
           :class="`card-${card.status}`"
+          @click="promoteDecode(index)"
         >
           <div class="stream-header">
             <div class="stream-header-main">
@@ -69,7 +70,7 @@
               v-if="card.status !== 'empty' && card.playUrl"
               type="button"
               class="single-fullscreen-btn"
-              @click="handleSingleFullscreen(index)"
+              @click.stop="handleSingleFullscreen(index)"
             >
               全屏
             </button>
@@ -89,7 +90,7 @@ import { getDeploymentDetail, updateDeploymentLiveOutput } from '@/api/deploymen
 import { getScreenWallStreams, normalizeScreenWallStream } from '@/api/screenWall'
 import { OVERLAY_DELAY_DEFAULT_MS, loadOverlayDelayMs } from '@/utils/systemRuntimeConfig'
 import { getFieldValue } from '@/utils/fieldMap'
-import { applyContainStyle, destroyFlvPlayer, playHttpFlv, resetVideoElement } from '@/utils/flvPlayer'
+import { applyContainStyle, destroyFlvPlayer, pauseFlvPlayer, playHttpFlv, resetVideoElement, resumeFlvPlayer } from '@/utils/flvPlayer'
 
 export default {
   name: 'CenterSwitchPanel',
@@ -126,6 +127,7 @@ export default {
       realtimeTimer: null,
       wallSyncTimer: null,
       wallMembershipKey: '',
+      wallPlaybackKey: '',
       realtimeSession: 0,
       currentLayout: this.layoutSize === 3 ? 3 : 2,
       resizeHandler: null,
@@ -140,6 +142,9 @@ export default {
       return {
         objectFit: this.videoFit
       }
+    },
+    maxLiveDecode() {
+      return this.currentLayout === 3 ? 4 : this.maxStreams
     }
   },
   watch: {
@@ -163,6 +168,15 @@ export default {
         this.buildRealtimeStreams()
       }
     }
+  },
+  created() {
+    this._overlayFrames = Object.create(null)
+    this._overlayPending = Object.create(null)
+    this._overlayClearTimer = Object.create(null)
+    this._overlayDelayTimer = Object.create(null)
+    this._overlayRaf = 0
+    this._overlayDirty = Object.create(null)
+    this.decodeIndexes = []
   },
   mounted() {
     this.resizeHandler = () => {
@@ -361,8 +375,11 @@ export default {
       this.realtimeSession += 1
       this.stopRealtimeRefresh()
       this.destroyAllPlayers()
+      this.clearAllOverlayState()
       this.streamCards = []
       this.wallMembershipKey = ''
+      this.wallPlaybackKey = ''
+      this.decodeIndexes = []
     },
     startRealtimeRefresh() {
       if (!this.realtimeTimer) {
@@ -391,6 +408,10 @@ export default {
       const sourceId = item.sourceId || item.source_id || ''
       return `${id}|${sourceId}`
     },
+    wallPlaybackSignature(item = {}) {
+      const playUrl = item.playUrl || item.play_url || ''
+      return `${this.wallStreamSignature(item)}|${playUrl}`
+    },
     extractWallStreamList(response) {
       return (response && Array.isArray(response.data) && response.data) ||
         (response && response.data && Array.isArray(response.data.rows) && response.data.rows) ||
@@ -404,7 +425,7 @@ export default {
       }
       try {
         const basicStreams = await this.listWallStreamBasics()
-        const key = basicStreams.map(item => this.wallStreamSignature(item)).sort().join('||')
+        const key = `${this.currentLayout}:${this.maxStreams}|${basicStreams.map(item => this.wallStreamSignature(item)).sort().join('||')}`
         if (key === this.wallMembershipKey) {
           return
         }
@@ -418,18 +439,30 @@ export default {
         return
       }
 
-      const sessionId = this.realtimeSession + 1
-      this.realtimeSession = sessionId
-      this.destroyAllPlayers()
-
       try {
         const streams = await this.loadWallStreams()
-        if (sessionId !== this.realtimeSession || this.displayMode !== 'realtime') {
+        if (this.displayMode !== 'realtime') {
           return
         }
-        this.wallMembershipKey = streams.map(item => this.wallStreamSignature(item)).sort().join('||')
+        const memberKey = `${this.currentLayout}:${this.maxStreams}|${streams.map(item => this.wallStreamSignature(item)).sort().join('||')}`
+        const playbackKey = streams.map(item => this.wallPlaybackSignature(item)).sort().join('||')
+        if (playbackKey === this.wallPlaybackKey && this.streamCards.length) {
+          this.wallMembershipKey = memberKey
+          return
+        }
+
+        const sessionId = this.realtimeSession + 1
+        this.realtimeSession = sessionId
+        this.destroyAllPlayers()
+        this.clearAllOverlayState()
+
+        this.wallMembershipKey = memberKey
+        this.wallPlaybackKey = playbackKey
         this.resetStreamCards(streams)
         this.$nextTick(() => {
+          if (sessionId !== this.realtimeSession || this.displayMode !== 'realtime') {
+            return
+          }
           this.syncAllOverlayCanvas()
           this.openRealtimeStreams(sessionId)
         })
@@ -438,15 +471,27 @@ export default {
       }
     },
     async openRealtimeStreams(sessionId) {
+      const liveIndexes = []
+      for (let index = 0; index < this.streamCards.length; index += 1) {
+        const card = this.streamCards[index]
+        if (card && card.playUrl) {
+          liveIndexes.push(index)
+        }
+      }
+      this.decodeIndexes = liveIndexes.slice(0, this.maxLiveDecode)
       for (let index = 0; index < this.streamCards.length; index += 1) {
         const card = this.streamCards[index]
         if (!card || !card.playUrl) {
           continue
         }
-        this.updateStreamCard(index, { status: 'loading' })
         if (sessionId !== this.realtimeSession || this.displayMode !== 'realtime') {
           return
         }
+        if (this.decodeIndexes.indexOf(index) === -1) {
+          this.updateStreamCard(index, { status: 'playing' })
+          continue
+        }
+        this.updateStreamCard(index, { status: 'loading' })
         this.playStream(index, card.playUrl, sessionId)
       }
     },
@@ -481,6 +526,9 @@ export default {
         })
         player.play().then(() => {
           this.updateStreamCard(index, { status: 'playing', player })
+          if (this.decodeIndexes.indexOf(index) === -1) {
+            this.pauseStream(index)
+          }
         }).catch(() => {
           this.updateStreamCard(index, { status: 'failed', player: null })
           this.destroyStreamPlayer(index)
@@ -527,7 +575,67 @@ export default {
         this.destroyStreamPlayer(index)
       }
     },
+    applyDecodeBudget() {
+      const liveIndexes = []
+      for (let index = 0; index < this.streamCards.length; index += 1) {
+        const card = this.streamCards[index]
+        if (card && card.playUrl) {
+          liveIndexes.push(index)
+        }
+      }
+      const kept = this.decodeIndexes.filter(index => liveIndexes.indexOf(index) !== -1)
+      liveIndexes.forEach(index => {
+        if (kept.indexOf(index) === -1 && kept.length < this.maxLiveDecode) {
+          kept.push(index)
+        }
+      })
+      this.decodeIndexes = kept.slice(0, this.maxLiveDecode)
+      liveIndexes.forEach(index => {
+        if (this.decodeIndexes.indexOf(index) === -1) {
+          this.pauseStream(index)
+        }
+      })
+    },
+    pauseStream(index) {
+      const card = this.streamCards[index]
+      const videoElement = this.getVideoElement(index)
+      pauseFlvPlayer(card && card.player, videoElement)
+    },
+    resumeStream(index) {
+      const card = this.streamCards[index]
+      const videoElement = this.getVideoElement(index)
+      if (!card || !card.playUrl) {
+        return
+      }
+      if (card.player && videoElement) {
+        resumeFlvPlayer(card.player, videoElement)
+        return
+      }
+      this.playStream(index, card.playUrl, this.realtimeSession)
+    },
+    promoteDecode(index) {
+      if (this.displayMode !== 'realtime' || this.currentLayout !== 3) {
+        return
+      }
+      const card = this.streamCards[index]
+      if (!card || !card.playUrl) {
+        return
+      }
+      if (this.decodeIndexes.indexOf(index) !== -1) {
+        this.resumeStream(index)
+        return
+      }
+      const evicted = this.decodeIndexes.length >= this.maxLiveDecode ? this.decodeIndexes[0] : null
+      const next = this.decodeIndexes.filter(item => item !== evicted)
+      next.push(index)
+      this.decodeIndexes = next.slice(-this.maxLiveDecode)
+      if (evicted !== null && evicted !== index) {
+        this.pauseStream(evicted)
+      }
+      this.resumeStream(index)
+    },
     handleSingleFullscreen(index) {
+      this.promoteDecode(index)
       const card = this.streamCards[index]
       if (!card || card.status === 'empty' || !card.playUrl) {
         return
@@ -590,7 +698,8 @@ export default {
         }
 
         const nextSeq = Number(frame.frameSeq || 0)
-        const currentSeq = Number(card.detectFrame && card.detectFrame.frameSeq)
+        const current = this._overlayFrames[index]
+        const currentSeq = Number(current && current.frameSeq)
         if (Number.isFinite(currentSeq) && Number.isFinite(nextSeq) && nextSeq > 0 && currentSeq > nextSeq) {
           continue
         }
@@ -615,43 +724,31 @@ export default {
       return false
     },
     applyDetectFrame(index, frame) {
-      const card = this.streamCards[index]
-      if (!card) {
-        return
+      if (this._overlayDelayTimer[index]) {
+        clearTimeout(this._overlayDelayTimer[index])
+        this._overlayDelayTimer[index] = null
       }
-      if (card.detectFrameRenderTimer) {
-        clearTimeout(card.detectFrameRenderTimer)
-      }
-      this.updateStreamCard(index, {
-        detectFrame: frame,
-        pendingDetectFrame: null,
-        detectFrameRenderTimer: null
-      })
-      this.drawDetectOverlayForCard(index)
+      this._overlayPending[index] = null
+      this._overlayFrames[index] = frame
+      this.queueOverlayDraw(index)
       this.scheduleDetectFrameClear(index)
     },
     scheduleDetectFrameRender(index, frame) {
-      const card = this.streamCards[index]
-      if (!card) {
-        return
-      }
       const delayMs = Number(this.overlayDelayMs || 0)
-      if (!delayMs || card.detectFrame) {
+      if (!delayMs || this._overlayFrames[index]) {
         this.applyDetectFrame(index, frame)
         return
       }
-      this.updateStreamCard(index, { pendingDetectFrame: frame })
-      if (card.detectFrameRenderTimer) {
+      this._overlayPending[index] = frame
+      if (this._overlayDelayTimer[index]) {
         return
       }
-      const timer = setTimeout(() => {
-        const currentCard = this.streamCards[index]
-        const pendingFrame = currentCard && currentCard.pendingDetectFrame
-        this.updateStreamCard(index, {
-          detectFrameRenderTimer: null,
-          pendingDetectFrame: null
-        })
-        if (!this.shouldUseFrontendOverlay(currentCard)) {
+      this._overlayDelayTimer[index] = setTimeout(() => {
+        this._overlayDelayTimer[index] = null
+        const card = this.streamCards[index]
+        const pendingFrame = this._overlayPending[index]
+        this._overlayPending[index] = null
+        if (!this.shouldUseFrontendOverlay(card)) {
           this.clearDetectFrame(index)
           return
         }
@@ -659,42 +756,60 @@ export default {
           this.applyDetectFrame(index, pendingFrame)
         }
       }, delayMs)
-      this.updateStreamCard(index, { detectFrameRenderTimer: timer })
     },
     scheduleDetectFrameClear(index) {
-      const card = this.streamCards[index]
-      if (!card) {
-        return
+      if (this._overlayClearTimer[index]) {
+        clearTimeout(this._overlayClearTimer[index])
       }
-      if (card.detectFrameClearTimer) {
-        clearTimeout(card.detectFrameClearTimer)
-      }
-      const timer = setTimeout(() => {
+      this._overlayClearTimer[index] = setTimeout(() => {
+        this._overlayClearTimer[index] = null
         this.clearDetectFrame(index)
       }, 1500)
-      this.updateStreamCard(index, { detectFrameClearTimer: timer })
     },
     clearDetectFrame(index, redraw = true) {
-      const card = this.streamCards[index]
-      if (!card) {
-        this.clearOverlayCanvas(index)
-        return
+      if (this._overlayDelayTimer[index]) {
+        clearTimeout(this._overlayDelayTimer[index])
+        this._overlayDelayTimer[index] = null
       }
-      if (card.detectFrameRenderTimer) {
-        clearTimeout(card.detectFrameRenderTimer)
+      if (this._overlayClearTimer[index]) {
+        clearTimeout(this._overlayClearTimer[index])
+        this._overlayClearTimer[index] = null
       }
-      if (card.detectFrameClearTimer) {
-        clearTimeout(card.detectFrameClearTimer)
-      }
-      this.updateStreamCard(index, {
-        detectFrame: null,
-        pendingDetectFrame: null,
-        detectFrameClearTimer: null,
-        detectFrameRenderTimer: null
-      })
+      this._overlayPending[index] = null
+      this._overlayFrames[index] = null
       if (redraw) {
         this.clearOverlayCanvas(index)
       }
+    },
+    clearAllOverlayState() {
+      if (this._overlayRaf) {
+        cancelAnimationFrame(this._overlayRaf)
+        this._overlayRaf = 0
+      }
+      Object.keys(this._overlayDelayTimer || {}).forEach(key => {
+        clearTimeout(this._overlayDelayTimer[key])
+      })
+      Object.keys(this._overlayClearTimer || {}).forEach(key => {
+        clearTimeout(this._overlayClearTimer[key])
+      })
+      this._overlayFrames = Object.create(null)
+      this._overlayPending = Object.create(null)
+      this._overlayClearTimer = Object.create(null)
+      this._overlayDelayTimer = Object.create(null)
+      this._overlayDirty = Object.create(null)
+    },
+    queueOverlayDraw(index) {
+      this._overlayDirty[index] = true
+      if (this._overlayRaf) {
+        return
+      }
+      this._overlayRaf = requestAnimationFrame(() => {
+        this._overlayRaf = 0
+        Object.keys(this._overlayDirty).forEach(key => {
+          this.drawDetectOverlayForCard(Number(key))
+        })
+        this._overlayDirty = Object.create(null)
+      })
     },
     getVideoElement(index) {
       const video = this.$refs[`liveVideo${index}`]
@@ -753,10 +868,11 @@ export default {
         return
       }
       ctx.clearRect(0, 0, canvas.width, canvas.height)
-      if (!this.shouldUseFrontendOverlay(card) || !card || !card.detectFrame) {
+      const detectFrame = this._overlayFrames[index]
+      if (!this.shouldUseFrontendOverlay(card) || !detectFrame) {
         return
       }
-      this.drawDetectOverlay(ctx, videoElement, canvas, card.detectFrame)
+      this.drawDetectOverlay(ctx, videoElement, canvas, detectFrame)
     },
     drawDetectOverlay(ctx, videoElement, canvas, detectFrame) {
       if (!ctx || !canvas || !detectFrame) {
