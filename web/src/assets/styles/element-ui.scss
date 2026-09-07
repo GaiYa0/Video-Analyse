@@ -176,7 +176,7 @@
 .el-table th,
 .el-table tr,
 .el-table td {
-  background-color: transparent !important;
+  background-color: var(--sva-surface) !important;
   color: var(--sva-text);
   border-color: var(--sva-border);
 }
@@ -188,6 +188,34 @@
 
 .el-table--enable-row-hover .el-table__body tr:hover > td {
   background-color: var(--sva-surface-2) !important;
+}
+
+.el-table__fixed-right {
+  background-color: var(--sva-surface);
+  z-index: 4;
+  box-shadow: -4px 0 8px rgba(0, 0, 0, 0.35);
+}
+
+.el-table__fixed-right-patch {
+  background-color: var(--sva-surface-2);
+  z-index: 4;
+}
+
+.el-table__fixed-right .el-table__fixed-header-wrapper th {
+  background-color: var(--sva-surface-2) !important;
+}
+
+.el-table__fixed-right .el-table__fixed-body-wrapper td {
+  background-color: var(--sva-surface) !important;
+}
+
+.el-table__fixed-right .el-table__body tr:hover > td {
+  background-color: var(--sva-surface-2) !important;
+}
+
+.el-table .operation-column .cell {
+  white-space: nowrap;
+  overflow: hidden;
 }
 
 .el-table::before,

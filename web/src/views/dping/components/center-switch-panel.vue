@@ -882,17 +882,17 @@ export default {
   min-width: 62px;
   height: 30px;
   border-radius: 8px;
-  border: 1px solid rgba(133, 173, 223, 0.42);
-  color: rgba(221, 234, 255, 0.82);
+  border: 1px solid var(--sva-border);
+  color: var(--sva-text-muted);
   font-size: 13px;
   font-weight: 600;
-  background: linear-gradient(180deg, rgba(21, 50, 86, 0.92) 0%, rgba(13, 32, 57, 0.88) 100%);
+  background: var(--sva-surface);
 }
 
 .layout-switch-button.active {
-  color: #ecf7ff;
-  border-color: rgba(141, 200, 255, 0.86);
-  background: linear-gradient(180deg, rgba(61, 117, 187, 0.98) 0%, rgba(38, 87, 149, 0.96) 100%);
+  color: var(--sva-text);
+  border-color: var(--sva-accent);
+  background: var(--sva-surface-2);
 }
 
 .tab-body {
@@ -915,13 +915,12 @@ export default {
 
 .stream-card {
   position: relative;
-  border: 1px solid rgba(112, 188, 245, 0.34);
-  background: linear-gradient(180deg, rgba(7, 33, 74, 0.86) 0%, rgba(3, 21, 50, 0.92) 100%);
+  border: 1px solid var(--sva-border);
+  background: var(--sva-surface);
   border-radius: 10px;
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 10px 20px rgba(5, 20, 45, 0.3);
 }
 
 .stream-header {
@@ -930,8 +929,8 @@ export default {
   align-items: center;
   justify-content: space-between;
   padding: 0 10px;
-  border-bottom: 1px solid rgba(132, 196, 248, 0.2);
-  background: linear-gradient(90deg, rgba(13, 58, 122, 0.76) 0%, rgba(13, 50, 102, 0.42) 100%);
+  border-bottom: 1px solid var(--sva-border);
+  background: var(--sva-surface-2);
 }
 
 .stream-header-main {
@@ -942,7 +941,7 @@ export default {
 }
 
 .stream-name {
-  color: #f3fbff;
+  color: var(--sva-text);
   font-size: 13px;
   font-weight: 600;
   letter-spacing: 0.4px;
@@ -959,9 +958,9 @@ export default {
   height: 18px;
   padding: 0 6px;
   border-radius: 999px;
-  border: 1px solid rgba(145, 202, 255, 0.32);
-  background: rgba(9, 28, 54, 0.72);
-  color: rgba(218, 236, 255, 0.82);
+  border: 1px solid var(--sva-border);
+  background: var(--sva-bg);
+  color: var(--sva-text-muted);
   font-size: 11px;
   line-height: 18px;
 }
@@ -1051,18 +1050,18 @@ export default {
   z-index: 3;
   height: 24px;
   padding: 0 8px;
-  border: 1px solid rgba(186, 225, 255, 0.48);
+  border: 1px solid var(--sva-border);
   border-radius: 6px;
-  background: rgba(5, 24, 51, 0.72);
-  color: #e8f5ff;
+  background: var(--sva-surface);
+  color: var(--sva-text);
   font-size: 12px;
   line-height: 22px;
   cursor: pointer;
 }
 
 .single-fullscreen-btn:hover {
-  border-color: rgba(186, 225, 255, 0.78);
-  background: rgba(14, 57, 110, 0.78);
+  border-color: var(--sva-accent);
+  background: var(--sva-surface-2);
 }
 
 .stream-overlay {
@@ -1071,12 +1070,11 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #d1ebff;
+  color: var(--sva-text-muted);
   font-size: 14px;
   font-weight: 600;
   letter-spacing: 1px;
-  background: linear-gradient(180deg, rgba(2, 22, 50, 0.76) 0%, rgba(3, 19, 41, 0.85) 100%);
-  text-shadow: 0 1px 4px rgba(0, 9, 22, 0.7);
+  background: var(--sva-bg);
 }
 
 .card-failed {
