@@ -96,8 +96,8 @@
 
     <el-table v-loading="loading" :data="deviceList" @selection-change="handleSelectionChange">
       <el-table-column type="selection" width="50" align="center" />
-      <el-table-column label="设备编码" prop="ape_id" align="center" :show-overflow-tooltip="true" />
-      <el-table-column label="设备名称" prop="name" align="center" :show-overflow-tooltip="true" />
+      <el-table-column label="设备编码" prop="ape_id" align="center" :show-overflow-tooltip="true" min-width="140" />
+      <el-table-column label="设备名称" prop="name" align="center" :show-overflow-tooltip="true" min-width="120" />
       <el-table-column label="接入类型" prop="device_type" align="center" width="130">
         <template slot-scope="scope">
           <el-tag size="mini" :type="isGb28181(scope.row) ? 'warning' : 'info'">
@@ -113,18 +113,18 @@
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="视频流地址" prop="direct_source_url" align="center" :show-overflow-tooltip="true" />
-      <el-table-column label="IP地址" prop="ip_addr" align="center" />
-      <el-table-column label="端口" prop="port" align="center" />
-      <el-table-column label="组织编码" prop="org_index" align="center" :show-overflow-tooltip="true" />
-      <el-table-column label="组织名称" prop="org_name" align="center" :show-overflow-tooltip="true" />
-      <el-table-column label="位置" prop="place" align="center" :show-overflow-tooltip="true" />
-      <el-table-column label="在线状态" prop="is_online" align="center">
+      <el-table-column label="视频流地址" prop="direct_source_url" align="center" :show-overflow-tooltip="true" min-width="240" />
+      <el-table-column label="IP地址" prop="ip_addr" align="center" min-width="120" />
+      <el-table-column label="端口" prop="port" align="center" width="80" />
+      <el-table-column label="组织编码" prop="org_index" align="center" :show-overflow-tooltip="true" min-width="120" />
+      <el-table-column label="组织名称" prop="org_name" align="center" :show-overflow-tooltip="true" min-width="120" />
+      <el-table-column label="位置" prop="place" align="center" :show-overflow-tooltip="true" min-width="100" />
+      <el-table-column label="在线状态" prop="is_online" align="center" width="90">
         <template slot-scope="scope">
           <span>{{ renderOnline(scope.row.is_online) }}</span>
         </template>
       </el-table-column>
-      <el-table-column label="操作" align="center" fixed="right" class-name="small-padding fixed-width operation-column" width="410">
+      <el-table-column label="操作" align="center" fixed="right" class-name="small-padding fixed-width operation-column" width="560">
         <template slot-scope="scope">
           <el-button
             size="mini"
@@ -729,6 +729,7 @@ export default {
 <style scoped>
 ::v-deep .operation-column .cell {
   white-space: nowrap;
+  overflow: hidden;
 }
 
 ::v-deep .operation-column .el-button + .el-button {
