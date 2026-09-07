@@ -151,7 +151,7 @@ export default {
   justify-content: center;
   align-items: center;
   height: 100%;
-  background: var(--sva-bg);
+  background: var(--sva-wash), var(--sva-bg);
 }
 .title {
   margin: 0 auto 32px;
@@ -163,12 +163,15 @@ export default {
 
 .register-form {
   width: 400px;
-  padding: 32px 8px 8px;
+  padding: 36px 32px 24px;
+  background: var(--sva-surface);
+  border: 1px solid var(--sva-border);
+  border-radius: var(--sva-radius);
   ::v-deep .el-input {
     height: 40px;
     .el-input__inner {
       height: 40px;
-      background: var(--sva-surface);
+      background: var(--sva-surface-2);
       border-color: var(--sva-border);
       color: var(--sva-text);
     }

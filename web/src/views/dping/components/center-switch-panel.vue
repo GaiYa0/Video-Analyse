@@ -1007,7 +1007,7 @@ export default {
 .stream-body {
   position: relative;
   flex: 1;
-  background: #000;
+  background: var(--sva-well);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1023,7 +1023,7 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #000;
+  background: var(--sva-well);
 }
 
 .stream-video {
@@ -1032,7 +1032,7 @@ export default {
   object-fit: contain !important;
   object-position: center center;
   display: block;
-  background: #000;
+  background: var(--sva-well);
 }
 
 .stream-overlay-canvas {

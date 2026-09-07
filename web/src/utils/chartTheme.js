@@ -1,6 +1,6 @@
 /** Glance 深色图表主题。数值写死，避免 canvas 读不到 CSS 变量。 */
-export const SVA_CHART_TEXT = '#e6edf3'
-export const SVA_CHART_MUTED = '#8b949e'
+export const SVA_CHART_TEXT = '#e8eef4'
+export const SVA_CHART_MUTED = '#8b98a8'
 export const SVA_CHART_BORDER = 'rgba(158, 197, 212, 0.10)'
 export const SVA_CHART_SPLIT = 'rgba(158, 197, 212, 0.14)'
 export const SVA_CHART_LIGHT = '#9ec5d4'
@@ -15,14 +15,14 @@ export const SVA_CHART_BAR_RADIUS = [0, 4, 4, 0]
 export const SVA_CHART_BAR_RADIUS_VERTICAL = [4, 4, 0, 0]
 
 export const svaTooltip = {
-  backgroundColor: '#161b22',
+  backgroundColor: '#1e2633',
   borderColor: SVA_CHART_BORDER,
   textStyle: { color: SVA_CHART_TEXT }
 }
 
 export function svaCountTooltip(extra) {
   return Object.assign({
-    backgroundColor: '#161b22',
+    backgroundColor: '#1e2633',
     borderColor: SVA_CHART_BORDER,
     textStyle: { color: SVA_CHART_TEXT },
     valueFormatter: function (value) {

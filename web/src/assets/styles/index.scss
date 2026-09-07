@@ -6,14 +6,16 @@
 @import './btn.scss';
 
 :root {
-  --sva-bg: #0e1116;
-  --sva-surface: #161b22;
-  --sva-surface-2: #1c2128;
-  --sva-border: rgba(255, 255, 255, 0.08);
-  --sva-text: #e6edf3;
-  --sva-text-muted: #8b949e;
-  --sva-accent: #6b9bb8;
-  --sva-radius: 8px;
+  --sva-bg: #{$sva-bg};
+  --sva-surface: #{$sva-surface};
+  --sva-surface-2: #{$sva-surface-2};
+  --sva-well: #{$sva-well};
+  --sva-border: #{$sva-border};
+  --sva-text: #{$sva-text};
+  --sva-text-muted: #{$sva-text-muted};
+  --sva-accent: #{$sva-accent};
+  --sva-radius: #{$sva-radius};
+  --sva-wash: #{$sva-wash};
   --sva-ui-scale: 1;
   --ti-base-color: var(--sva-accent);
   --ti-base-bg: var(--sva-surface);

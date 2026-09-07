@@ -8,28 +8,30 @@ $tiffany: #4AB7BD;
 $yellow:#FEC171;
 $panGreen: #30B08F;
 
-// 克制深色监控台
-$sva-bg: #0e1116;
-$sva-surface: #161b22;
-$sva-surface-2: #1c2128;
-$sva-border: rgba(255, 255, 255, 0.08);
-$sva-text: #e6edf3;
-$sva-text-muted: #8b949e;
+// 蓝灰墨黑监控台（单源，:root 从这里绑）
+$sva-bg: #141820;
+$sva-surface: #1e2633;
+$sva-surface-2: #283140;
+$sva-well: #0b0d10;
+$sva-border: rgba(158, 197, 212, 0.12);
+$sva-text: #e8eef4;
+$sva-text-muted: #8b98a8;
 $sva-accent: #6b9bb8;
 $sva-radius: 8px;
+$sva-wash: radial-gradient(1200px 560px at 50% -8%, rgba(107, 155, 184, 0.10), transparent 55%);
 
-// 默认菜单主题风格（与大屏同一套石墨）
-$base-menu-color:#8b949e;
-$base-menu-color-active:#e6edf3;
-$base-menu-background:#161b22;
-$base-logo-title-color: #e6edf3;
+// 侧栏与画布/卡片同一套，避免菜单还是旧石墨
+$base-menu-color: $sva-text-muted;
+$base-menu-color-active: $sva-text;
+$base-menu-background: $sva-surface;
+$base-logo-title-color: $sva-text;
 
 $base-menu-light-color:rgba(0,0,0,.70);
 $base-menu-light-background:#ffffff;
 $base-logo-light-title-color: #001529;
 
-$base-sub-menu-background:#0e1116;
-$base-sub-menu-hover:#1c2128;
+$base-sub-menu-background: $sva-bg;
+$base-sub-menu-hover: $sva-surface-2;
 
 $base-sidebar-width: 200px;
 

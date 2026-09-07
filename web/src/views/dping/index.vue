@@ -243,7 +243,7 @@ export default {
   width: 100vw;
   height: 100vh;
   overflow: hidden;
-  background: var(--sva-bg);
+  background: var(--sva-wash), var(--sva-bg);
 }
 
 .contents {

@@ -168,7 +168,7 @@ export function applyContainStyle(videoElement) {
   }
   videoElement.style.objectFit = 'contain'
   videoElement.style.objectPosition = 'center center'
-  videoElement.style.backgroundColor = '#000'
+  videoElement.style.backgroundColor = '#0b0d10'
   videoElement.style.width = 'auto'
   videoElement.style.height = 'auto'
   videoElement.style.maxWidth = '100%'

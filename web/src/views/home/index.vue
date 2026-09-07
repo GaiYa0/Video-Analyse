@@ -176,6 +176,7 @@ export default {
     padding: 20px;
     color: var(--sva-text);
     background: var(--sva-surface);
+    border: 1px solid var(--sva-border);
     border-radius: 10px;
     box-shadow: none;
   }

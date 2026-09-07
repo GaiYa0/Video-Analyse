@@ -233,7 +233,7 @@ export default {
 .screen-box {
   overflow: hidden;
   background-size: 100% 100%;
-  background: #000;
+  background: var(--sva-well);
   width: 100vw;
   height: 100vh;
 }
