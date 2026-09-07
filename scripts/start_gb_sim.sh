@@ -9,6 +9,7 @@ set -euo pipefail
 export PATH=/usr/bin:/bin:/usr/local/bin
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 SIM_PY="$SCRIPT_DIR/gb28181_sim.py"
 sed -i 's/\r$//' "$SIM_PY" 2>/dev/null || true
 
@@ -16,7 +17,16 @@ LAN_IP="${LAN_IP:-$(hostname -I | awk '{print $1}')}"
 DEVICE_ID="${DEVICE_ID:-34020000001320000001}"
 CHANNEL_ID="${CHANNEL_ID:-$DEVICE_ID}"
 WVP="${WVP_BASE:-http://127.0.0.1:18080}"
-VIDEO="${VIDEO:-/opt/easySVA-lib/opencv/doc/js_tutorials/js_assets/cup.mp4}"
+# 默认睡岗片 docs/fixtures/monisleep.mp4（gitignore，需本机放置）；覆盖：VIDEO=/path/to.mp4
+# 未放置时回退系统 cup，避免裸 pull 后 start 直接失败
+if [[ -z "${VIDEO:-}" ]]; then
+  if [[ -f "$REPO_ROOT/docs/fixtures/monisleep.mp4" ]]; then
+    VIDEO="$REPO_ROOT/docs/fixtures/monisleep.mp4"
+  else
+    VIDEO="/opt/easySVA-lib/opencv/doc/js_tutorials/js_assets/cup.mp4"
+    echo "WARN: 未找到 monisleep.mp4，回退 cup.mp4（睡岗演示请放入 docs/fixtures/monisleep.mp4）"
+  fi
+fi
 SECRET=$(grep -E '^secret=' /opt/SVA/mediaServer/config.ini | head -1 | cut -d= -f2- | tr -d '\r\n ')
 
 command -v ffmpeg >/dev/null || { echo "需要 ffmpeg"; exit 1; }
