@@ -17,6 +17,7 @@ export function canPlayHttpFlv(url) {
 }
 
 const LIVE_FLV_CONFIG = {
+  enableWorker: true,
   enableStashBuffer: false,
   stashInitialSize: 128,
   autoCleanupSourceBuffer: true
@@ -137,6 +138,29 @@ export function playHttpFlv(videoElement, url) {
   const player = createLiveFlvPlayer(url)
   attachFlvPlayer(player, videoElement)
   return player
+}
+
+export function pauseFlvPlayer(player, videoElement) {
+  if (player && typeof player.pause === 'function') {
+    try {
+      player.pause()
+    } catch (e) {
+      // pause 失败时仍停 video，留住最后一帧
+    }
+  }
+  if (videoElement) {
+    videoElement.pause()
+  }
+}
+
+export function resumeFlvPlayer(player, videoElement) {
+  if (player && typeof player.play === 'function') {
+    const ret = player.play()
+    if (ret && typeof ret.catch === 'function') {
+      ret.catch(() => {})
+    }
+  }
+  safePlay(videoElement)
 }
 
 export function destroyFlvPlayer(player) {
