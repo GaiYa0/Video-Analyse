@@ -63,6 +63,14 @@ YOLO 要出「人」的框，画面里需要能看清人体；纯色条或空办
 
 工位摄像头请从 ZLM 的 RTMP 再录，不要和第二路 ffmpeg 抢同一只 dshow 设备。成品例如 `docs/fixtures/desk-sleep.mp4`，**不要 git add**（根目录已忽略 `docs/fixtures/*.mp4`）。
 
+## 国标睡岗演示片（同学 A）
+
+`scripts/start_gb_sim.sh` / `start_demo.ps1 -WithGbSim` 优先使用本目录 **`monisleep.mp4`**（本地放置，勿提交）。没有该文件时脚本回退系统 cup。覆盖片源：
+
+```bash
+VIDEO=/path/to/other.mp4 bash scripts/start_gb_sim.sh
+```
+
 ## 本机模型（不要提交）
 
 `Analyzer-lib/models/yolo11n.onnx`、`yolo26s.onnx` 拷到虚拟机 `/opt/SVA/models/`。不要 `git add Analyzer-lib`。
