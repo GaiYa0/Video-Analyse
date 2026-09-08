@@ -29,7 +29,7 @@ bash scripts/probe_analyzer_pull.sh --live camgbf0b09a04 --rtp 34020000001320000
 
 ## 本机 WSL24 记录
 
-本机 **没有** WVP / 国标模拟器，不能当验收环境。国标 YOLO 出框须在 A 演示机对 `demo-ipc` 点一遍。睡岗双源实测表见 [algorithm-sleep.md](../algorithm-sleep.md) §7。
+本机 **没有** WVP / 国标模拟器，不能当验收环境。国标 YOLO / 睡岗以 A 演示机为准；**2026-09-08 已与 A 联调通过**。睡岗双源实测表见 [algorithm-sleep.md](../algorithm-sleep.md) §7。
 
 **2026-09-05**
 
@@ -47,11 +47,11 @@ RESULT live  cam918429: NO_MEDIA_OR_TIMEOUT   （未推 webcam，预期）
 RESULT rtp   34020000001320000001_34020000001320000001: NO_MEDIA_OR_TIMEOUT   （无 WVP，预期）
 ```
 
-演示机记录（A 的 Ubuntu 22.04，rtp `OPEN` 之后填）：
+演示机记录（A 的 Ubuntu 22.04）：
 
 | 日期 | streamUrl | 目标类 | 出框/告警 | 直连 YOLO 回归 |
 | --- | --- | --- | --- | --- |
-| | `rtsp://127.0.0.1:9994/rtp/34020000001320000001_34020000001320000001` | person 或 cup | 待补 | 待补 |
+| 2026-09-08 | `rtsp://127.0.0.1:9994/rtp/34020000001320000001_34020000001320000001` | person | 过（出框；同日睡岗亦过，见 algorithm-sleep.md §7） | 过 |
 
 ## 不要做的
 

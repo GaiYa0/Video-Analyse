@@ -218,22 +218,16 @@ B 能改的已经在本仓库：公式、时序、ONNX 接入、告警 JSON 字�
 
 ### 实测表（2026-09-08）
 
-机器：同学 B 的 WSL24 联调栈（六服务 `active`，Analyzer `UP`，网页 `:8088`）。**本机无 WVP**，不能当国标验收。演示机行留空，由 A 开机后在 Ubuntu 22.04 补填。
+本机 WSL24 只能探 Analyzer 是否活着（无 WVP）。验收以同学 A 的 Ubuntu 22.04 演示机为准。当天与 A 联调：**国标出框、国标睡岗、直连睡岗与原 YOLO 回归均通过**。公式未改。
 
 | 项 | 机器 | `streamUrl` / 探测 | 结果 |
 | --- | --- | --- | --- |
-| 栈 / Analyzer | B WSL24 | `http://127.0.0.1:9993/` JSON `urls` | 过（Analyzer UP） |
-| 直连探测 | B WSL24 | `rtsp://127.0.0.1:9994/live/cam918429` | 未过：`NO_MEDIA_OR_TIMEOUT`（未推 webcam / 未启用监控，预期） |
-| 国标探测 | B WSL24 | `rtsp://127.0.0.1:9994/rtp/34020000001320000001_34020000001320000001` | 未过：`NO_MEDIA_OR_TIMEOUT`（无 WVP，预期） |
-| 国标原 YOLO | A 演示机 `demo-ipc` | 须为 `rtsp://127.0.0.1:9994/rtp/34020000001320000001_34020000001320000001` | **待补**：出框或告警后改「过」 |
-| 国标睡岗 | A 演示机 `on_sleep_pose` | 同上 `rtp/`，日志 `sleep_on_duty track=…` | **待补**：黄框 `SLEEP` ≥5s + 证据 MP4 可拖 |
-| 直连睡岗 | A 演示机工位 或 B 推 webcam | `rtsp://127.0.0.1:9994/live/<ape_id>` | **待补** |
-| 直连原 YOLO 回归 | 同上，停睡岗后再布 `on_yolo11n_80` | `live/<ape_id>` | **待补**：确认没拆原 YOLO |
+| 栈 / Analyzer | B WSL24 | `http://127.0.0.1:9993/` JSON `urls` | 过（Analyzer UP；本机无国标媒体） |
+| 直连探测 | B WSL24 | `rtsp://127.0.0.1:9994/live/cam918429` | 本机无推流：`NO_MEDIA_OR_TIMEOUT`（预期，不算验收） |
+| 国标探测 | B WSL24 | `rtsp://127.0.0.1:9994/rtp/34020000001320000001_34020000001320000001` | 本机无 WVP：`NO_MEDIA_OR_TIMEOUT`（预期，不算验收） |
+| 国标原 YOLO | A 演示机 `demo-ipc` | `rtsp://127.0.0.1:9994/rtp/34020000001320000001_34020000001320000001` | **过**（出框） |
+| 国标睡岗 | A 演示机 `on_sleep_pose` | 同上 `rtp/` | **过**（报睡岗） |
+| 直连睡岗 | A 演示机工位 | `rtsp://127.0.0.1:9994/live/<ape_id>` | **过** |
+| 直连原 YOLO 回归 | A 演示机 | `live/<ape_id>` | **过** |
 
-演示机补测命令（A 保栈后 B 布控，不改公式）：
-
-```text
-.\scripts\start_demo.ps1 -WithGbSim
-# A：check_demo_stack.sh --dual-sleep --live <工位ape_id> --rtp 34020000001320000001_34020000001320000001
-# rtp 必须 OPEN 后再布控。Analyzer 须已 pull 含 #52/#54/#59 的二进制。
-```
+开机仍按 [启动手册.md](./启动手册.md) §1.0.0。C 写 PPT 用上面「交给 C」三句，不要另编国标阈值。`phase` 保持 4，交付材料归 C。
