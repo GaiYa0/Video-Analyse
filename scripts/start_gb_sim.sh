@@ -224,9 +224,15 @@ if [[ -n "${BT:-}" ]]; then
   echo
 fi
 
+# 旧行可能仍是 ws://:8080；业务页 flv.js 经 Windows 转发升不了 WebSocket。一律改 HTTP-FLV。
+mysql -h127.0.0.1 -P3307 -uroot -peasySVA.EZ easySVA -e "
+UPDATE h_device SET play_url = REPLACE(play_url, 'ws://', 'http://') WHERE play_url LIKE 'ws://%';
+UPDATE h_screen_wall_stream SET play_url = REPLACE(play_url, 'ws://', 'http://') WHERE play_url LIKE 'ws://%';
+" 2>/dev/null || true
+
 echo
-echo "预览: http://127.0.0.1:9992/rtp/${STREAM}.live.flv"
-echo "      ws://127.0.0.1:9992/rtp/${STREAM}.live.flv"
-echo "WVP:  http://127.0.0.1:18080/   admin / SvaDemo@2026"
-echo "业务: http://localhost:8080/   → 同步国标设备"
+echo "业务预览: http://127.0.0.1:8080/rtp/${STREAM}.live.flv"
+echo "VLC/ZLM:  http://127.0.0.1:9992/rtp/${STREAM}.live.flv"
+echo "WVP:      http://127.0.0.1:18080/   admin / SvaDemo@2026"
+echo "业务:     http://localhost:8080/   → 设备管理 demo-ipc → 预览视频"
 echo "模拟器需保持运行（pid $(cat /opt/SVA/wvp/gb28181_sim.pid)）；下班用 stop_all.sh"

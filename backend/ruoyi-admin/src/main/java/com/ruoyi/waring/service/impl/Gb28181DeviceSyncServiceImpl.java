@@ -607,8 +607,9 @@ public class Gb28181DeviceSyncServiceImpl implements IGb28181DeviceSyncService {
         if (StringUtils.isBlank(host)) {
             host = "127.0.0.1";
         }
-        // 浏览器走 Nginx :8080，不要直连 ZLM 9992（Clash / 局域网都过不去）
-        return "ws://" + host.trim() + ":8080/" + RTP_APP + "/" + streamId + ".live.flv";
+        // 浏览器走 Nginx :8080 HTTP-FLV。不要用 ws://：Windows 8080→80 转发经常升不了 WebSocket，
+        // 业务页 flv.js 会一直转圈。不要直连 ZLM 9992（Clash / 局域网都过不去）。
+        return "http://" + host.trim() + ":8080/" + RTP_APP + "/" + streamId + ".live.flv";
     }
 
     private ZlmServer resolveEnabledZlmServer() {
