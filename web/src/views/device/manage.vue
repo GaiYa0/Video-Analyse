@@ -42,6 +42,11 @@
           <el-option v-for="item in deviceTypeOptions" :key="item.value" :label="item.label" :value="item.value" />
         </el-select>
       </el-form-item>
+      <el-form-item label="设备状态" prop="is_online">
+        <el-select v-model="queryParams.is_online" placeholder="设备状态" clearable style="width: 160px">
+          <el-option v-for="op in onlineOptions" :key="op.value" :label="op.label" :value="op.value" />
+        </el-select>
+      </el-form-item>
       <el-form-item>
         <el-button type="primary" icon="el-icon-search" size="mini" @click="handleQuery">搜索</el-button>
         <el-button icon="el-icon-refresh" size="mini" @click="resetQuery">重置</el-button>
@@ -96,35 +101,35 @@
 
     <el-table v-loading="loading" :data="deviceList" @selection-change="handleSelectionChange">
       <el-table-column type="selection" width="50" align="center" />
-      <el-table-column label="设备编码" prop="ape_id" align="center" :show-overflow-tooltip="true" min-width="140" />
-      <el-table-column label="设备名称" prop="name" align="center" :show-overflow-tooltip="true" min-width="120" />
-      <el-table-column label="接入类型" prop="device_type" align="center" width="130">
+      <el-table-column label="设备编码" prop="ape_id" align="center" :show-overflow-tooltip="true" width="120" />
+      <el-table-column label="设备名称" prop="name" align="center" :show-overflow-tooltip="true" width="110" />
+      <el-table-column label="接入类型" prop="device_type" align="center" width="110">
         <template slot-scope="scope">
           <el-tag size="mini" :type="isGb28181(scope.row) ? 'warning' : 'info'">
             {{ formatDeviceType(scope.row.device_type) }}
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="国标设备ID" prop="gb_device_id" align="center" :show-overflow-tooltip="true" width="140" />
-      <el-table-column label="拉流方式" prop="stream_source_type" align="center" width="90">
+      <el-table-column label="国标设备ID" prop="gb_device_id" align="center" :show-overflow-tooltip="true" width="150" />
+      <el-table-column label="拉流方式" prop="stream_source_type" align="center" width="80">
         <template slot-scope="scope">
           <el-tag size="mini" :type="scope.row.stream_source_type === 'PLATFORM' ? 'success' : 'info'">
             {{ formatSourceType(scope.row.stream_source_type) }}
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="视频流地址" prop="direct_source_url" align="center" :show-overflow-tooltip="true" min-width="240" />
-      <el-table-column label="IP地址" prop="ip_addr" align="center" min-width="120" />
+      <el-table-column label="视频流地址" prop="direct_source_url" align="center" :show-overflow-tooltip="true" min-width="160" />
+      <el-table-column label="IP地址" prop="ip_addr" align="center" width="110" />
       <el-table-column label="端口" prop="port" align="center" width="80" />
-      <el-table-column label="组织编码" prop="org_index" align="center" :show-overflow-tooltip="true" min-width="120" />
-      <el-table-column label="组织名称" prop="org_name" align="center" :show-overflow-tooltip="true" min-width="120" />
-      <el-table-column label="位置" prop="place" align="center" :show-overflow-tooltip="true" min-width="100" />
-      <el-table-column label="在线状态" prop="is_online" align="center" width="90">
+      <el-table-column label="组织编码" prop="org_index" align="center" :show-overflow-tooltip="true" width="100" />
+      <el-table-column label="组织名称" prop="org_name" align="center" :show-overflow-tooltip="true" width="100" />
+      <el-table-column label="位置" prop="place" align="center" :show-overflow-tooltip="true" width="100" />
+      <el-table-column label="在线状态" prop="is_online" align="center" width="80">
         <template slot-scope="scope">
           <span>{{ renderOnline(scope.row.is_online) }}</span>
         </template>
       </el-table-column>
-      <el-table-column label="操作" align="center" fixed="right" class-name="small-padding fixed-width operation-column" width="560">
+      <el-table-column label="操作" align="center" fixed="right" class-name="operation-column" width="432">
         <template slot-scope="scope">
           <el-button
             size="mini"
@@ -388,7 +393,8 @@ export default {
         ape_id: undefined,
         name: undefined,
         org_index: undefined,
-        device_type: undefined
+        device_type: undefined,
+        is_online: undefined
       },
       form: {},
       rules: {
@@ -401,11 +407,30 @@ export default {
       }
     }
   },
+  watch: {
+    '$route.query.isOnline'(val) {
+      const next = (val === undefined || val === null || val === '') ? undefined : String(val)
+      if (this.queryParams.is_online === next) {
+        return
+      }
+      this.queryParams.is_online = next
+      this.queryParams.pageNum = 1
+      this.getList()
+    }
+  },
   created() {
+    this.applyOnlineQuery()
     this.getDeptTree()
     this.getList()
   },
   methods: {
+    applyOnlineQuery() {
+      const isOnline = this.$route.query.isOnline
+      if (isOnline === undefined || isOnline === null || isOnline === '') {
+        return
+      }
+      this.queryParams.is_online = String(isOnline)
+    },
     getDeptTree() {
       deptTreeSelect().then((response) => {
         this.deptOptions = response.data || []
@@ -584,6 +609,7 @@ export default {
       this.selectedQueryOrgIndex = undefined
       this.queryParams.org_index = undefined
       this.queryParams.device_type = undefined
+      this.queryParams.is_online = undefined
       this.handleQuery()
     },
     async handleSyncGb() {
@@ -727,16 +753,27 @@ export default {
 </script>
 
 <style scoped>
-::v-deep .operation-column .cell {
+::v-deep th.operation-column .cell,
+::v-deep td.operation-column .cell {
+  padding-left: 6px !important;
+  padding-right: 6px !important;
+}
+
+::v-deep td.operation-column .cell {
   white-space: nowrap;
-  overflow: hidden;
+  overflow: visible;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
 ::v-deep .operation-column .el-button + .el-button {
   margin-left: 6px;
 }
 
-::v-deep .operation-column .el-button--text {
-  padding: 4px 2px;
+::v-deep .operation-column .el-button--mini {
+  width: auto !important;
+  padding: 4px 2px !important;
+  flex-shrink: 0;
 }
 </style>

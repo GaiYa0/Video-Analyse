@@ -251,7 +251,13 @@ export default {
   width: 100vw;
   height: 100vh;
   overflow: hidden;
-  background: var(--sva-bg);
+  background: #0e1116;
+}
+
+.scale-contain ::v-deep .screen-wrapper,
+.scale-contain .bg,
+.scale-contain .host-body {
+  background: #0e1116;
 }
 
 .contents {

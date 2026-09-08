@@ -1,17 +1,17 @@
 <template>
   <div class="user_Overview">
-    <div @click="toPage('/device/device')" class="user-title">
+    <div @click="toPage('/device/manage')" class="user-title">
 <!--      <div class="user_Overview_nums allnum ">-->
 <!--        <dv-digital-flop :config="config" style="width:100%; height:100%;" />-->
 <!--      </div>-->
       <BarChart id="firstBar" ref="firstBar" :option="firstOption"></BarChart>
     </div>
 
-    <div @click="toPage('/device/device', { isOnline: 1 })" class="user-title">
+    <div @click="toPage('/device/manage', { isOnline: 1 })" class="user-title">
       <BarChart id="secondBar" ref="secondBar" :option="secondOption"></BarChart>
     </div>
 
-    <div @click="toPage('/device/device', { isOnline: 2 })" class="user-title">
+    <div @click="toPage('/device/manage', { isOnline: 2 })" class="user-title">
       <BarChart id="thirdBar" ref="thirdBar" :option="thirdOption"></BarChart>
     </div>
 

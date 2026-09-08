@@ -23,12 +23,45 @@ const LIVE_FLV_CONFIG = {
   autoCleanupSourceBuffer: true
 }
 
+const BROWSER_FLV_PATH = /\/(live|rtp)\//i
+
+export function rewriteFlvUrlForBrowser(url) {
+  if (!url || typeof url !== 'string') {
+    return url
+  }
+  if (typeof window === 'undefined' || !window.location || !window.location.host) {
+    return url
+  }
+  if (!BROWSER_FLV_PATH.test(url)) {
+    return url
+  }
+
+  try {
+    const parsed = new URL(url, window.location.origin)
+    if (!['http:', 'https:', 'ws:', 'wss:'].includes(parsed.protocol)) {
+      return url
+    }
+    if (!BROWSER_FLV_PATH.test(parsed.pathname)) {
+      return url
+    }
+
+    const pageHttps = window.location.protocol === 'https:'
+    const isWs = parsed.protocol === 'ws:' || parsed.protocol === 'wss:'
+    parsed.protocol = isWs ? (pageHttps ? 'wss:' : 'ws:') : (pageHttps ? 'https:' : 'http:')
+    parsed.host = window.location.host
+    return parsed.toString()
+  } catch (e) {
+    return url
+  }
+}
+
 export function createLiveFlvPlayer(url, extraConfig) {
   // flv.js: 第一参是 MediaDataSource，第二参才是 Config。
   // 以前把 enableStashBuffer 塞进第一参，直播缓冲策略从未生效。
+  const playUrl = rewriteFlvUrlForBrowser(url)
   return flvjs.createPlayer({
     type: 'flv',
-    url,
+    url: playUrl,
     isLive: true
   }, Object.assign({}, LIVE_FLV_CONFIG, extraConfig || {}))
 }
