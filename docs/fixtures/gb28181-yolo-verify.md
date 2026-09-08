@@ -27,9 +27,11 @@ bash scripts/probe_analyzer_pull.sh --live camgbf0b09a04 --rtp 34020000001320000
 | ZLM 与网页有画，Analyzer `pull stream connect error` 或 URL 仍是 `live/` | B（下发 URL / FFmpeg 错误串） |
 | 已连上但无框 | 先看区域、目标类、算法代号；不要和睡岗混查 |
 
-## 本机 WSL24 记录（2026-09-05）
+## 本机 WSL24 记录
 
-本机 **没有** WVP / 国标模拟器，不能当验收环境。当天已拉起六服务后跑探测：
+本机 **没有** WVP / 国标模拟器，不能当验收环境。国标 YOLO / 睡岗以 A 演示机为准；**2026-09-08 已与 A 联调通过**。睡岗双源实测表见 [algorithm-sleep.md](../algorithm-sleep.md) §7。
+
+**2026-09-05**
 
 ```text
 RESULT analyzer: UP
@@ -37,7 +39,19 @@ RESULT live  cam918429: NO_MEDIA_OR_TIMEOUT   （未启用监控、未推 webcam
 RESULT rtp   3402…0001: NO_MEDIA_OR_TIMEOUT   （无 WVP，预期）
 ```
 
-国标 YOLO 出框仍须在 A 演示机对 `demo-ipc` 点一遍。本机只保证 Analyzer 进程活着、脚本能区分 live / rtp。
+**2026-09-08**（六服务 `active` 后再跑 `scripts/probe_analyzer_pull.sh --live cam918429 --rtp 34020000001320000001_34020000001320000001`）
+
+```text
+RESULT analyzer: UP
+RESULT live  cam918429: NO_MEDIA_OR_TIMEOUT   （未推 webcam，预期）
+RESULT rtp   34020000001320000001_34020000001320000001: NO_MEDIA_OR_TIMEOUT   （无 WVP，预期）
+```
+
+演示机记录（A 的 Ubuntu 22.04）：
+
+| 日期 | streamUrl | 目标类 | 出框/告警 | 直连 YOLO 回归 |
+| --- | --- | --- | --- | --- |
+| 2026-09-08 | `rtsp://127.0.0.1:9994/rtp/34020000001320000001_34020000001320000001` | person | 过（出框；同日睡岗亦过，见 algorithm-sleep.md §7） | 过 |
 
 ## 不要做的
 
