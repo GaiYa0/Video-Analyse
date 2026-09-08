@@ -76,8 +76,20 @@ if n:
     print("redis sdpIp 已纠正 %d 台（跳过 127.0.0.1）" % n)
 PY
 
-pkill -f 'wvp-pro-' || true
+pkill -f 'wvp-pro-' 2>/dev/null || true
 sleep 1
+# 确保旧进程释放 SIP/HTTP，避免「端口被占用」假启动
+for i in $(seq 1 15); do
+  left=$(pgrep -f 'wvp-pro-' || true)
+  if [[ -z "$left" ]] && ! ss -tulnp 2>/dev/null | grep -qE ':5060|:18080'; then
+    break
+  fi
+  pkill -9 -f 'wvp-pro-' 2>/dev/null || true
+  sleep 1
+done
+if pgrep -f 'wvp-pro-' >/dev/null 2>&1 || ss -tulnp 2>/dev/null | grep -qE ':5060|:18080'; then
+  echo "WARN: 旧 WVP/5060/18080 可能仍占用，继续尝试启动"
+fi
 cd /opt/SVA/wvp
 nohup java -jar "$JAR" \
   --spring.profiles.active=easysva \
@@ -86,80 +98,152 @@ nohup java -jar "$JAR" \
 echo $! > /opt/SVA/wvp/wvp.pid
 echo "WVP pid=$(cat /opt/SVA/wvp/wvp.pid)"
 
-# ZLM hook → WVP
+WVP_READY=0
+for i in $(seq 1 40); do
+  if ss -tlnp 2>/dev/null | grep -q ':18080'; then
+    WVP_READY=1
+    echo "WVP HTTP :18080 OK；SIP 见下行"
+    ss -tulnp 2>/dev/null | grep -E '5060|18080' || true
+    break
+  fi
+  sleep 2
+done
+if [[ "$WVP_READY" -ne 1 ]]; then
+  tail -50 /opt/SVA/wvp/wvp.log
+  exit 1
+fi
+
+# ZLM hook → WVP（国标点播必需）；不要挂 on_publish/on_play
+# 原因：WVP 启动时 setZLMConfig 会把 on_publish/on_play 写回 ZLM（要求 pushKey），
+# 导致 live/* RTMP（工位/test1/摄像头）401。必须等 WVP 就绪后再清空并校验。
+# 国标 rtp 点播只依赖 on_stream_not_found 等，不依赖 on_publish。
 INI=/opt/SVA/mediaServer/config.ini
 if [[ -f "$INI" ]]; then
   [[ -f "$INI.bak.pre-wvp" ]] || cp "$INI" "$INI.bak.pre-wvp"
+  # 给 WVP 首次 setZLMConfig 一点时间，再覆盖
+  sleep 3
   python3 - <<'PY'
 from pathlib import Path
 from urllib.parse import urlencode
 from urllib.request import urlopen
+import json, time
 
 p = Path("/opt/SVA/mediaServer/config.ini")
-lines = p.read_text(encoding="utf-8", errors="ignore").splitlines()
-out=[]
-section=None
-hooks={
-  "enable":"enable=1",
-  "timeoutsec":"timeoutSec=30",
-  "on_server_started":"on_server_started=http://127.0.0.1:18080/index/hook/on_server_started",
-  "on_stream_changed":"on_stream_changed=http://127.0.0.1:18080/index/hook/on_stream_changed",
-  "on_stream_none_reader":"on_stream_none_reader=http://127.0.0.1:18080/index/hook/on_stream_none_reader",
-  "on_stream_not_found":"on_stream_not_found=http://127.0.0.1:18080/index/hook/on_stream_not_found",
-  "on_play":"on_play=http://127.0.0.1:18080/index/hook/on_play",
-  "on_publish":"on_publish=http://127.0.0.1:18080/index/hook/on_publish",
+HOOK_WVP = {
+    "on_server_started": "http://127.0.0.1:18080/index/hook/on_server_started",
+    "on_stream_changed": "http://127.0.0.1:18080/index/hook/on_stream_changed",
+    "on_stream_none_reader": "http://127.0.0.1:18080/index/hook/on_stream_none_reader",
+    "on_stream_not_found": "http://127.0.0.1:18080/index/hook/on_stream_not_found",
 }
-general={
-  "maxstreamwaitms":"maxStreamWaitMS=25000",
-  "streamnonereaderdelayms":"streamNoneReaderDelayMS=60000",
-}
-secret=""
-for line in lines:
-    s=line.strip()
-    if s.startswith("[") and s.endswith("]"):
-        section=s.lower()
+CLEAR_KEYS = ("on_publish", "on_play")
+
+def rewrite_ini():
+    lines = p.read_text(encoding="utf-8", errors="ignore").splitlines()
+    out = []
+    section = None
+    secret = ""
+    hooks = {
+        "enable": "enable=1",
+        "timeoutsec": "timeoutSec=30",
+        "on_server_started": "on_server_started=" + HOOK_WVP["on_server_started"],
+        "on_stream_changed": "on_stream_changed=" + HOOK_WVP["on_stream_changed"],
+        "on_stream_none_reader": "on_stream_none_reader=" + HOOK_WVP["on_stream_none_reader"],
+        "on_stream_not_found": "on_stream_not_found=" + HOOK_WVP["on_stream_not_found"],
+        "on_play": "on_play=",
+        "on_publish": "on_publish=",
+    }
+    general = {
+        "maxstreamwaitms": "maxStreamWaitMS=25000",
+        "streamnonereaderdelayms": "streamNoneReaderDelayMS=60000",
+    }
+    seen_hook = set()
+    for line in lines:
+        s = line.strip()
+        if s.startswith("[") and s.endswith("]"):
+            section = s.lower()
+            out.append(line)
+            continue
+        if "=" in s:
+            key = s.split("=", 1)[0].strip().lower()
+            if section == "[hook]" and key in hooks:
+                out.append(hooks[key])
+                seen_hook.add(key)
+                continue
+            if section == "[general]" and key in general:
+                out.append(general[key])
+                continue
+            if section == "[api]" and key == "secret":
+                secret = s.split("=", 1)[1].strip()
         out.append(line)
-        continue
-    if "=" in s:
-        key=s.split("=",1)[0].strip().lower()
-        if section=="[hook]" and key in hooks:
-            out.append(hooks[key]); continue
-        if section=="[general]" and key in general:
-            out.append(general[key]); continue
-        if section=="[api]" and key=="secret":
-            secret=s.split("=",1)[1].strip()
-    out.append(line)
-p.write_text("\n".join(out)+"\n", encoding="utf-8")
-print("ZLM hook -> WVP :18080, maxStreamWaitMS=25000, streamNoneReaderDelayMS=60000")
-if secret:
-    qs=urlencode({
+    missing = [hooks[k] for k in CLEAR_KEYS if k not in seen_hook]
+    if missing and any(x.strip().lower() == "[hook]" for x in out):
+        rebuilt, injected = [], False
+        for line in out:
+            rebuilt.append(line)
+            if (not injected) and line.strip().lower() == "[hook]":
+                rebuilt.extend(missing)
+                injected = True
+        out = rebuilt
+    p.write_text("\n".join(out) + "\n", encoding="utf-8")
+    return secret
+
+def set_and_check(secret):
+    qs = urlencode({
         "secret": secret,
         "hook.enable": "1",
         "hook.timeoutSec": "30",
-        "hook.on_stream_not_found": "http://127.0.0.1:18080/index/hook/on_stream_not_found",
-        "hook.on_play": "http://127.0.0.1:18080/index/hook/on_play",
-        "hook.on_publish": "http://127.0.0.1:18080/index/hook/on_publish",
-        "hook.on_stream_changed": "http://127.0.0.1:18080/index/hook/on_stream_changed",
-        "hook.on_stream_none_reader": "http://127.0.0.1:18080/index/hook/on_stream_none_reader",
+        "hook.on_stream_not_found": HOOK_WVP["on_stream_not_found"],
+        "hook.on_stream_changed": HOOK_WVP["on_stream_changed"],
+        "hook.on_stream_none_reader": HOOK_WVP["on_stream_none_reader"],
+        "hook.on_server_started": HOOK_WVP["on_server_started"],
+        # 空串热更新：清掉 WVP setZLMConfig 写回的鉴权 hook
+        "hook.on_play": "",
+        "hook.on_publish": "",
         "general.maxStreamWaitMS": "25000",
         "general.streamNoneReaderDelayMS": "60000",
     })
-    try:
-        with urlopen("http://127.0.0.1:9992/index/api/setServerConfig?"+qs, timeout=5) as r:
-            print("setServerConfig", r.read()[:200].decode("utf-8","replace"))
-    except Exception as e:
-        print("setServerConfig skip:", e)
+    with urlopen("http://127.0.0.1:9992/index/api/setServerConfig?" + qs, timeout=5) as r:
+        print("setServerConfig", r.read()[:200].decode("utf-8", "replace"))
+    with urlopen(
+        "http://127.0.0.1:9992/index/api/getServerConfig?secret=" + secret, timeout=5
+    ) as r:
+        data = (json.loads(r.read().decode("utf-8", "replace")).get("data") or [{}])[0]
+    pub = str(data.get("hook.on_publish") or data.get("hook.on_publish".lower()) or "")
+    play = str(data.get("hook.on_play") or "")
+    # ZLM 返回键名可能带 hook. 前缀或不带
+    for k, v in data.items():
+        lk = str(k).lower().replace(".", "_")
+        if lk.endswith("on_publish") or lk == "hook_on_publish":
+            pub = str(v or "")
+        if lk.endswith("on_play") or lk == "hook_on_play":
+            play = str(v or "")
+    ok = (not pub.strip()) and (not play.strip())
+    print("verify on_publish=%r on_play=%r -> %s" % (pub, play, "OK" if ok else "NEED_RETRY"))
+    return ok
+
+secret = rewrite_ini()
+if not secret:
+    print("WARN: 未读到 ZLM secret，跳过 hook 热更新")
+else:
+    ok = False
+    for attempt in range(1, 6):
+        secret = rewrite_ini() or secret
+        try:
+            ok = set_and_check(secret)
+        except Exception as e:
+            print("setServerConfig attempt %d skip: %s" % (attempt, e))
+            ok = False
+        if ok:
+            break
+        # WVP 可能稍后再次 setZLMConfig，稍等再清
+        time.sleep(2)
+    if ok:
+        print("ZLM hook -> WVP :18080 (not_found/none_reader/changed); on_publish/on_play CLEARED")
+        print("maxStreamWaitMS=25000, streamNoneReaderDelayMS=60000")
+    else:
+        print("ERROR: 无法清空 ZLM on_publish/on_play（WVP 可能仍在写回），live RTMP 可能 401")
+        raise SystemExit(2)
 PY
 fi
 
-for i in $(seq 1 40); do
-  if ss -tlnp 2>/dev/null | grep -q ':18080'; then
-    echo "WVP HTTP :18080 OK；SIP 见下行"
-    ss -tulnp 2>/dev/null | grep -E '5060|18080' || true
-    echo "管理页 http://127.0.0.1:18080/  账号 admin / SvaDemo@2026"
-    exit 0
-  fi
-  sleep 2
-done
-tail -50 /opt/SVA/wvp/wvp.log
-exit 1
+echo "管理页 http://127.0.0.1:18080/  账号 admin / SvaDemo@2026"
