@@ -245,6 +245,7 @@ algo/sleep-pose/  睡岗 Python 原型（与 C++ 公式对齐）
 | [当前阶段.md](./当前阶段.md) | `phase` 与已关账事实 | C 关账 |
 | [使用手册.md](./使用手册.md) | **给评委 / 新用户**：网页怎么用、两个亮点怎么看懂、常见现象 | C |
 | [答辩PPT大纲.md](./答辩PPT大纲.md) / [答辩PPT生成稿.md](./答辩PPT生成稿.md) | 答辩结构、逐页正文与讲稿、Q&A、现场急救（可直接喂 AI 生成 PPT） | C 合稿，A/B 供片段 |
+| [slides/index.html](./slides/index.html) | 成品 HTML 答辩幻灯片（18 页，P1→P4，浏览器直接打开，←/→ 翻页；讲稿在每页 `<!-- 备注 -->` 里） | C |
 | [architecture.md](./architecture.md) | 总图、表、告警 JSON、走通步骤、上游仓库 | C |
 | [启动手册.md](./启动手册.md) | 演示机开机 / 关栈 / 自检 / 网页地址 | A |
 | [国标功能使用说明书.md](./国标功能使用说明书.md) | WVP×ZLM 原理、demo-ipc、怎么看画面、真机接入、故障 | A |

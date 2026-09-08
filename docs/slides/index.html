@@ -1,0 +1,2172 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>睡岗检测与 GB28181 国标接入 · easySVA 二次开发答辩</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!-- Broadside fonts: Barlow (the workhorse grotesque), IBM Plex Mono (chrome),
+         Noto Sans SC (CJK fallback for all roles) -->
+    <link
+      href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;700;800;900&family=IBM+Plex+Mono:wght@300;400;500&family=Noto+Sans+SC:wght@400;500;700;900&display=swap"
+      rel="stylesheet"
+    />
+
+    <style>
+      /* ╔══════════════════════════════════════════════════════════════════════╗
+   ║  ZONE A · TOKENS                                                     ║
+   ║                                                                      ║
+   ║  This is the ONLY block you replace to change the visual style.      ║
+   ║  Every color, font, and size in this file reads from these vars.     ║
+   ║  Never write raw hex values, font names, or px sizes outside here.   ║
+   ╚══════════════════════════════════════════════════════════════════════╝ */
+      :root {
+        /* ── Palette ──────────────────────────────────────────────────────── */
+        --c-bg: #111111; /* near-black — the default slide background  */
+        --c-bg-alt: #1a1a18; /* secondary surface on dark slides            */
+
+        /* Broadside has NO light slides. These vars are overridden to dark
+           so any accidental .light class still renders dark. */
+        --c-bg-light: #111111;
+        --c-bg-light-alt: #1a1a18;
+
+        /* The signature: orange is not an accent here — it is the ENVIRONMENT.
+           Cover and chapter slides use this as their full background fill. */
+        --c-bg-orange: #e85d26;
+
+        --c-fg: #f0ece5; /* primary text on dark slides                 */
+        --c-fg-2: #888880; /* secondary / muted text on dark              */
+        --c-fg-3: #505048; /* tertiary / hint text on dark                */
+
+        /* Text colours for orange slides — ink on fire */
+        --c-fg-light: #111111; /* primary text on orange                */
+        --c-fg-light-2: #2a1810; /* muted text on orange                  */
+        --c-fg-light-3: rgba(
+          17,
+          17,
+          17,
+          0.55
+        ); /* hint text on orange               */
+
+        --c-accent: #e85d26; /* orange = accent everywhere on dark slides   */
+        --c-border: #282826; /* divider lines on dark slides                */
+        --c-border-light: #282826; /* same dark border even on "light" (overridden)*/
+
+        /* ── Typography ──────────────────────────────────────────────────── */
+        /* Barlow: the defining typeface. Condensed grotesque. Always heavy.
+           Used at max weight — 900 for display, 800 for h1, 700 for h2.
+           Noto Sans SC provides full CJK coverage at matching weights. */
+        --f-display: "Barlow", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+        --f-heading: "Barlow", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+        --f-body: "Barlow", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+        /* Mono: IBM Plex Mono for chrome labels, metadata, slide numbers */
+        --f-mono: "IBM Plex Mono", monospace;
+
+        /* ── Type Scale ───────────────────────────────────────────────────── */
+        /* Broadside's defining trait: TYPE IS MASSIVE. Display is 249.6px —
+           on a 1440px screen that is ~187px. Words become graphic elements. */
+        --sz-display: 249.6px; /* the whole point — nearly abstract at full size */
+        --sz-h1: 144px; /* chapter title — still enormous                */
+        --sz-h2: 86.4px; /* slide headline                                */
+        --sz-h3: 53.76px; /* sub-headline                                  */
+        --sz-lead: 30.72px; /* lead paragraph                                */
+        --sz-body: 23.04px; /* body text                                     */
+        --sz-caption: 17.28px; /* captions, footnotes                           */
+        --sz-label: 13.82px; /* chrome labels, slide numbers, metadata        */
+
+        /* ── Spacing ─────────────────────────────────────────────────────── */
+        --pad-x: 105.6px; /* tighter than skeleton — type fills the space  */
+        --pad-y: 59.4px;
+        --gap-lg: 37.8px;
+        --gap-md: 21.6px;
+        --gap-sm: 10.8px;
+
+        /* ── Motion ──────────────────────────────────────────────────────── */
+        --ease-slide: cubic-bezier(0.77, 0, 0.175, 1);
+        --dur-slide: 0.8s;
+        --ease-enter: cubic-bezier(0.16, 1, 0.3, 1);
+        --dur-enter: 0.5s;
+      }
+
+      /* ╔══════════════════════════════════════════════════════════════════════╗
+   ║  ZONE B · ENGINE — DO NOT MODIFY                                     ║
+   ║                                                                      ║
+   ║  Layout engine, transitions, animation system, navigation.           ║
+   ║  Touching this breaks the mechanics.                                 ║
+   ╚══════════════════════════════════════════════════════════════════════╝ */
+
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      html,
+      body {
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: var(--c-bg);
+        -webkit-font-smoothing: antialiased;
+      }
+
+      /* Deck container — all slides sit side by side */
+      #deck {
+        display: flex;
+        height: 1080px;
+        /* Width = N * 1920px, set dynamically by JS */
+        transition: transform var(--dur-slide) var(--ease-slide);
+        will-change: transform;
+      }
+
+      /* Slide base — each slide is one full viewport */
+      .slide {
+        flex: 0 0 1920px;
+        width: 1920px;
+        height: 1080px;
+        position: relative;
+        padding: var(--pad-y) var(--pad-x);
+        display: grid;
+        grid-template-rows: auto 1fr auto;
+        overflow: hidden;
+      }
+      /* Prevent grid children from overflowing */
+      .slide-body {
+        min-height: 0;
+      }
+
+      /* Slide themes */
+      .slide.dark {
+        background: var(--c-bg);
+        color: var(--c-fg);
+      }
+      /* Broadside: .light is overridden to dark — there are no cream/white slides */
+      .slide.light {
+        background: var(--c-bg-light);
+        color: var(--c-fg);
+      }
+      /* The orange theme — the signature Broadside treatment */
+      .slide.orange {
+        background: var(--c-bg-orange);
+        color: var(--c-fg-light);
+      }
+
+      /* ── Animation system ──────────────────────────────────────────────── */
+      /* All data-anim elements start invisible.
+   They animate when their parent slide receives .is-active.
+   JS resets animations before adding .is-active so re-visiting a slide re-plays them. */
+
+      [data-anim] {
+        opacity: 0;
+      }
+
+      .slide.is-active [data-anim] {
+        animation-duration: var(--dur-enter);
+        animation-timing-function: var(--ease-enter);
+        animation-fill-mode: forwards;
+      }
+      .slide.is-active [data-anim="fade-up"] {
+        animation-name: kFadeUp;
+      }
+      .slide.is-active [data-anim="fade-in"] {
+        animation-name: kFadeIn;
+      }
+      .slide.is-active [data-anim="reveal-right"] {
+        animation-name: kRevealRight;
+      }
+      .slide.is-active [data-anim="reveal-left"] {
+        animation-name: kRevealLeft;
+      }
+      .slide.is-active [data-anim="scale-in"] {
+        animation-name: kScaleIn;
+      }
+
+      /* Stagger delays — add data-delay="N" to offset each element */
+      [data-delay="0"] {
+        animation-delay: 0s;
+      }
+      [data-delay="1"] {
+        animation-delay: 0.08s;
+      }
+      [data-delay="2"] {
+        animation-delay: 0.18s;
+      }
+      [data-delay="3"] {
+        animation-delay: 0.3s;
+      }
+      [data-delay="4"] {
+        animation-delay: 0.44s;
+      }
+      [data-delay="5"] {
+        animation-delay: 0.6s;
+      }
+      [data-delay="6"] {
+        animation-delay: 0.78s;
+      }
+
+      @keyframes kFadeUp {
+        from {
+          opacity: 0;
+          transform: translateY(28px);
+        }
+        to {
+          opacity: 1;
+          transform: none;
+        }
+      }
+      @keyframes kFadeIn {
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
+      }
+      @keyframes kRevealRight {
+        from {
+          clip-path: inset(0 100% 0 0);
+          opacity: 1;
+        }
+        to {
+          clip-path: inset(0 0% 0 0);
+          opacity: 1;
+        }
+      }
+      @keyframes kRevealLeft {
+        from {
+          clip-path: inset(0 0 0 100%);
+          opacity: 1;
+        }
+        to {
+          clip-path: inset(0 0 0 0%);
+          opacity: 1;
+        }
+      }
+      @keyframes kScaleIn {
+        from {
+          opacity: 0;
+          transform: scale(0.94);
+        }
+        to {
+          opacity: 1;
+          transform: none;
+        }
+      }
+
+      /* ── Navigation ───────────────────────────────────────────────────── */
+      #nav-dots {
+        position: fixed;
+        bottom: 24px;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        gap: 7px;
+        z-index: 100;
+      }
+      .nav-dot {
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+        border: none;
+        background: rgba(255, 255, 255, 0.22);
+        cursor: pointer;
+        transition:
+          background 0.3s,
+          transform 0.3s;
+        padding: 0;
+      }
+      .nav-dot.is-active {
+        background: rgba(255, 255, 255, 0.8);
+        transform: scale(1.4);
+      }
+
+      #slide-counter {
+        position: fixed;
+        bottom: 20px;
+        right: 28px;
+        font-family: var(--f-mono);
+        font-size: 10px;
+        letter-spacing: 0.12em;
+        color: rgba(255, 255, 255, 0.25);
+        z-index: 100;
+        user-select: none;
+      }
+
+      /* ╔══════════════════════════════════════════════════════════════════════╗
+   ║  ZONE C · TYPOGRAPHY                                                 ║
+   ║                                                                      ║
+   ║  Use only these classes for text. Never set font-family, font-size,  ║
+   ║  or color inline. Exception: overriding size via                     ║
+   ║  style="--sz-h2: 48px" is OK — it stays within the token system.   ║
+   ╚══════════════════════════════════════════════════════════════════════╝ */
+
+      /* Base typographic classes — all font families read from tokens */
+      .display {
+        font-family: var(--f-display);
+        font-size: var(--sz-display);
+        /* Broadside: maximum weight. Lowercase is the aesthetic — NOT uppercase. */
+        font-weight: 900;
+        line-height: 0.88;
+        letter-spacing: -0.04em;
+      }
+      .h1 {
+        font-family: var(--f-heading);
+        font-size: var(--sz-h1);
+        font-weight: 800;
+        line-height: 0.9;
+        letter-spacing: -0.03em;
+      }
+      .h2 {
+        font-family: var(--f-heading);
+        font-size: var(--sz-h2);
+        font-weight: 700;
+        line-height: 1.1;
+        letter-spacing: -0.02em;
+      }
+      .h3 {
+        font-family: var(--f-heading);
+        font-size: var(--sz-h3);
+        font-weight: 600;
+        line-height: 1.2;
+      }
+      .lead {
+        font-family: var(--f-body);
+        font-size: var(--sz-lead);
+        font-weight: 400;
+        line-height: 1.5;
+      }
+      .body {
+        font-family: var(--f-body);
+        font-size: var(--sz-body);
+        font-weight: 400;
+        line-height: 1.6;
+      }
+      .caption {
+        font-family: var(--f-body);
+        font-size: var(--sz-caption);
+        font-weight: 400;
+        line-height: 1.5;
+      }
+      .label {
+        font-family: var(--f-mono);
+        font-size: var(--sz-label);
+        font-weight: 500;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+      }
+
+      /* Contextual color helpers — reads from active slide theme */
+      .dark .muted {
+        color: var(--c-fg-2);
+      }
+      .light .muted {
+        color: var(--c-fg-2);
+      } /* light = dark in Broadside */
+      /* On orange slides: muted text is dark ink at reduced opacity */
+      .orange .muted {
+        color: var(--c-fg-light-2);
+      }
+
+      /* The orange accent colour — used for emphasis on dark slides */
+      .accent {
+        color: var(--c-accent);
+      }
+
+      /* ── Orange slide text overrides ────────────────────────────────────── */
+      /* On orange slides, display/heading text is near-black (ink on fire).
+         This is the protest-poster aesthetic: dark ink on vivid ground. */
+      .orange .display,
+      .orange .h1,
+      .orange .h2,
+      .orange .h3 {
+        color: #111111;
+      }
+      .orange .lead,
+      .orange .body {
+        color: rgba(17, 17, 17, 0.75);
+      }
+      .orange .label {
+        color: rgba(17, 17, 17, 0.55);
+      }
+      /* On orange, .accent still means "the contrast pop" — use sparingly */
+      .orange .accent {
+        color: #111111;
+      }
+
+      /* ╔══════════════════════════════════════════════════════════════════════╗
+   ║  ZONE D · CHROME                                                     ║
+   ║                                                                      ║
+   ║  Header + footer present on slides that show them.                   ║
+   ║  Cover, chapter, quote, and end slides suppress both.                ║
+   ╚══════════════════════════════════════════════════════════════════════╝ */
+
+      .slide-chrome,
+      .slide-foot {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .slide-chrome {
+        padding-bottom: var(--gap-sm);
+        border-bottom: 1px solid var(--c-border);
+        margin-bottom: var(--gap-md);
+      }
+      .slide-foot {
+        padding-top: var(--gap-sm);
+        border-top: 1px solid var(--c-border);
+        margin-top: var(--gap-md);
+      }
+
+      /* On orange slides, chrome borders use dark ink at low opacity */
+      .orange .slide-chrome,
+      .orange .slide-foot {
+        border-color: rgba(17, 17, 17, 0.2);
+      }
+
+      /* Slides that suppress chrome/foot entirely */
+      .slide--cover .slide-chrome,
+      .slide--cover .slide-foot,
+      .slide--chapter .slide-chrome,
+      .slide--chapter .slide-foot,
+      .slide--quote .slide-chrome,
+      .slide--quote .slide-foot,
+      .slide--end .slide-chrome,
+      .slide--end .slide-foot {
+        display: none;
+      }
+
+      /* ╔══════════════════════════════════════════════════════════════════════╗
+   ║  ZONE E · LAYOUT PATTERNS                                            ║
+   ║                                                                      ║
+   ║  9 slide types. Use the class names below — do not invent new ones.  ║
+   ║  Broadside note: .slide--cover and .slide--chapter use .orange       ║
+   ║  (not .dark or .light). Dark slides use .dark.                       ║
+   ╚══════════════════════════════════════════════════════════════════════╝ */
+
+      /* ── 1. COVER ─────────────────────────────────────────────────────── */
+      /* Title slide. Always orange in Broadside. The broadside-num sits
+         top-left like a catalogue number. Title fills most of the slide. */
+      .slide--cover {
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-end;
+      }
+      .cover-body {
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        justify-content: flex-end;
+        gap: var(--gap-md);
+      }
+      .cover-meta {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        margin-top: var(--gap-lg);
+        padding-top: var(--gap-sm);
+        border-top: 1px solid rgba(17, 17, 17, 0.2);
+      }
+
+      /* ── 2. CHAPTER ───────────────────────────────────────────────────── */
+      /* Section divider. Always orange in Broadside.
+         Big weight-900 title, no chrome, maximum negative space. */
+      .slide--chapter {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 0;
+      }
+      .chapter-num {
+        font-family: var(--f-mono);
+        font-size: var(--sz-label);
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+        /* On orange: dark ink; on dark: orange accent */
+        color: rgba(17, 17, 17, 0.55);
+        margin-bottom: var(--gap-md);
+      }
+      /* On dark chapter slides the number gets orange accent */
+      .dark .chapter-num {
+        color: var(--c-accent);
+      }
+      .chapter-rule {
+        width: 36px;
+        height: 2px;
+        background: #111111; /* dark rule on orange */
+        margin-bottom: var(--gap-md);
+      }
+      .dark .chapter-rule {
+        background: var(--c-accent);
+      }
+
+      /* ── 3. STATEMENT ─────────────────────────────────────────────────── */
+      /* Single bold claim. No image. The dark counterpart to the orange covers.
+         4-8 words max. Let the type breathe. */
+      .slide--statement .statement-body {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: var(--gap-md);
+      }
+
+      /* ── 4. SPLIT ─────────────────────────────────────────────────────── */
+      /* Left: text content. Right: image. Dark background.
+         Orange kicker/rule above the headline. */
+      .slide--split .slide-body {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: calc(var(--pad-x) * 0.7);
+        align-items: center;
+      }
+      .split-text {
+        display: flex;
+        flex-direction: column;
+        gap: var(--gap-md);
+      }
+      .split-image {
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start;
+        gap: var(--gap-sm);
+      }
+      /* Always explicit height in vh to prevent overflow on different screens */
+      .split-image img {
+        width: 100%;
+        height: 594px;
+        object-fit: cover;
+        display: block;
+      }
+      /* Placeholder shown when no real image is wired up. Same footprint
+         as a real <img> so the surrounding layout stays unchanged. */
+      .img-placeholder {
+        width: 100%;
+        height: 594px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px dashed var(--c-border);
+        font-family: var(--font-mono, "IBM Plex Mono", monospace);
+        font-size: 0.85rem;
+        font-weight: 500;
+        color: var(--c-fg-2, var(--c-fg));
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      /* ── 5. STATS ─────────────────────────────────────────────────────── */
+      /* 3 or 4 large data cards. Add .cols-4 to .stats-grid for 4 columns. */
+      .slide--stats .slide-body {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: var(--gap-lg);
+      }
+      .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 0;
+      }
+      .stats-grid.cols-4 {
+        grid-template-columns: repeat(4, 1fr);
+      }
+      .stat-card {
+        display: flex;
+        flex-direction: column;
+        gap: var(--gap-sm);
+        padding: var(--gap-md) var(--gap-md) var(--gap-md) 0;
+        border-top: 1px solid var(--c-border);
+      }
+      /* The big number — orange on dark slides */
+      .stat-value {
+        font-family: var(--f-display);
+        font-size: 105.6px;
+        font-weight: 900;
+        line-height: 1;
+        color: var(--c-accent);
+        letter-spacing: -0.04em;
+      }
+      .stat-label {
+        font-family: var(--f-body);
+        font-size: var(--sz-body);
+        line-height: 1.5;
+      }
+      .stat-note {
+        font-family: var(--f-mono);
+        font-size: var(--sz-caption);
+        letter-spacing: 0.05em;
+        color: var(--c-fg-3);
+      }
+
+      /* ── 6. QUOTE ─────────────────────────────────────────────────────── */
+      /* Full-slide pull quote. Dark background. Orange opening mark. */
+      .slide--quote {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        padding: calc(var(--pad-y) * 1.2) calc(var(--pad-x) * 1.1);
+      }
+      .quote-mark {
+        font-family: var(--f-display);
+        font-size: 192px;
+        line-height: 0.6;
+        color: var(--c-accent);
+        margin-bottom: var(--gap-md);
+        font-weight: 900;
+      }
+      .quote-text {
+        font-family: var(--f-display);
+        font-size: 72.96px;
+        font-weight: 700;
+        line-height: 1.15;
+        letter-spacing: -0.02em;
+        max-width: 78%;
+        margin-bottom: var(--gap-lg);
+      }
+      .quote-attr {
+        display: flex;
+        flex-direction: column;
+        gap: 4.32px;
+      }
+
+      /* ── 7. LIST ──────────────────────────────────────────────────────── */
+      /* Headline left, bullets right. Max 3 bullets in Broadside — this style
+         prizes density of impact over density of information. */
+      .slide--list .slide-body {
+        display: grid;
+        grid-template-columns: 2fr 3fr;
+        gap: calc(var(--pad-x) * 0.8);
+        align-items: center;
+      }
+      .list-head {
+        display: flex;
+        flex-direction: column;
+        gap: var(--gap-md);
+        padding-top: var(--gap-sm);
+      }
+      .bullet-list {
+        list-style: none;
+        display: flex;
+        flex-direction: column;
+        gap: var(--gap-md);
+      }
+      .bullet-list li {
+        display: grid;
+        grid-template-columns: 1.2em 1fr;
+        gap: 0.5em;
+        font-family: var(--f-body);
+        font-size: var(--sz-lead);
+        font-weight: 500;
+        line-height: 1.4;
+      }
+      /* Orange dash marker */
+      .bullet-list li::before {
+        content: "/";
+        color: var(--c-accent);
+        font-family: var(--f-mono);
+        font-weight: 700;
+      }
+      .dark .bullet-list li {
+        color: var(--c-fg);
+      }
+      .light .bullet-list li {
+        color: var(--c-fg);
+      }
+
+      /* ── 8. COMPARE ───────────────────────────────────────────────────── */
+      /* Side-by-side before/after or A vs B. Orange "after" label. */
+      .slide--compare .slide-body {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        height: 100%;
+      }
+      .compare-panel {
+        display: flex;
+        flex-direction: column;
+        gap: var(--gap-md);
+        padding: var(--gap-md) 0;
+      }
+      .compare-panel.left {
+        padding-right: calc(var(--pad-x) * 0.55);
+        border-right: 1px solid var(--c-border);
+      }
+      .compare-panel.right {
+        padding-left: calc(var(--pad-x) * 0.55);
+      }
+      .compare-label {
+        font-family: var(--f-mono);
+        font-size: var(--sz-label);
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        padding-bottom: var(--gap-sm);
+        border-bottom: 1px solid var(--c-border);
+        color: var(--c-fg-2);
+      }
+      /* The "after" panel uses orange — the payoff */
+      .compare-label.after {
+        color: var(--c-accent);
+        border-color: var(--c-accent);
+      }
+
+      /* ── 9. END ───────────────────────────────────────────────────────── */
+      /* Closing slide. Dark background. Massive closing headline. No chrome. */
+      .slide--end {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: var(--gap-md);
+      }
+
+      /* ╔══════════════════════════════════════════════════════════════════════╗
+   ║  ZONE F · COMPONENTS                                                 ║
+   ║                                                                      ║
+   ║  Reusable pieces used across multiple layouts.                       ║
+   ╚══════════════════════════════════════════════════════════════════════╝ */
+
+      /* Accent rule — orange on dark, dark-ink on orange */
+      .rule {
+        width: 36px;
+        height: 2px;
+        background: var(--c-accent);
+      }
+      .orange .rule {
+        background: #111111;
+      }
+      .rule.full {
+        width: 100%;
+        background: var(--c-border);
+      }
+      .orange .rule.full {
+        background: rgba(17, 17, 17, 0.2);
+      }
+
+      /* Eyebrow / kicker label — orange on dark, dark-ink on orange */
+      .kicker {
+        font-family: var(--f-mono);
+        font-size: var(--sz-label);
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--c-accent);
+      }
+      .orange .kicker {
+        color: rgba(17, 17, 17, 0.55);
+      }
+
+      /* Bordered tag */
+      .tag {
+        display: inline-block;
+        font-family: var(--f-mono);
+        font-size: var(--sz-label);
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--c-accent);
+        border: 1px solid var(--c-accent);
+        padding: 0.3em 0.8em;
+        line-height: 1;
+      }
+      .orange .tag {
+        color: #111111;
+        border-color: rgba(17, 17, 17, 0.4);
+      }
+
+      /* Image caption */
+      .img-caption {
+        font-family: var(--f-mono);
+        font-size: var(--sz-caption);
+        letter-spacing: 0.04em;
+        opacity: 0.5;
+        margin-top: 8.64px;
+      }
+
+      /* ── Broadside-specific: slide number ─────────────────────────────── */
+      /* The large catalogue number in the top-left corner of orange slides.
+         Inspired by SPACE10 deck: "01" in small mono, top-left, low opacity. */
+      .broadside-num {
+        font-family: var(--f-mono);
+        font-size: 21.12px;
+        font-weight: 500;
+        letter-spacing: 0.1em;
+        color: rgba(17, 17, 17, 0.45); /* dark ink on orange */
+      }
+      /* On dark slides the number uses muted fg */
+      .dark .broadside-num {
+        color: var(--c-fg-3);
+      }
+
+      /* Corner label utility — used for section labels at slide edges */
+      .corner-label {
+        font-family: var(--f-mono);
+        font-size: var(--sz-label);
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: rgba(17, 17, 17, 0.4);
+      }
+      .dark .corner-label {
+        color: var(--c-fg-3);
+      }
+
+      /* Orange slide cover: a thin top strip showing the slide number + section name */
+      .broadside-top-chrome {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: auto;
+        padding-bottom: 0;
+      }
+
+      /* ── FADELIST (SPACE10 Before/During/After) ────────────────────────── */
+      .slide--fadelist {
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+      }
+      .fadelist-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+      }
+      .fadelist-items {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 0;
+        line-height: 0.92;
+      }
+      .fadelist-item {
+        font-family: var(--f-display);
+        font-size: 144px;
+        font-weight: 900;
+        letter-spacing: -0.03em;
+        color: #111111;
+        line-height: 1;
+      }
+      .fadelist-item:nth-child(2) {
+        opacity: 0.5;
+      }
+      .fadelist-item:nth-child(3) {
+        opacity: 0.22;
+      }
+      .fadelist-title {
+        font-family: var(--f-display);
+        font-size: 201.6px;
+        font-weight: 900;
+        line-height: 0.9;
+        letter-spacing: -0.04em;
+        color: #111111;
+        align-self: flex-end;
+      }
+
+      /* Stats on orange: dark ink instead of cream */
+      .orange .stat-value {
+        color: #111111;
+      }
+      .orange .stat-label {
+        color: rgba(17, 17, 17, 0.65);
+      }
+      .orange .stat-note {
+        color: rgba(17, 17, 17, 0.4);
+      }
+      .orange .stat-card {
+        border-top-color: rgba(17, 17, 17, 0.22);
+      }
+
+      /* Compare: right panel gets orange fill */
+      .compare-panel.panel-orange {
+        padding-left: calc(var(--pad-x) * 0.55);
+        background: var(--c-accent);
+      }
+      .compare-panel.panel-orange .compare-label {
+        color: rgba(17, 17, 17, 0.55);
+        border-color: rgba(17, 17, 17, 0.22);
+      }
+      .compare-panel.panel-orange .h3 {
+        color: #111111;
+      }
+      .compare-panel.panel-orange .lead {
+        color: rgba(17, 17, 17, 0.7);
+      }
+      .compare-panel.panel-orange .bullet-list li {
+        color: #111111;
+      }
+      .compare-panel.panel-orange .bullet-list li::before {
+        color: rgba(17, 17, 17, 0.45);
+      }
+
+      /* ── CHART ─────────────────────────────────────────────────────────── */
+      .slide--chart .slide-body {
+        display: flex;
+        flex-direction: column;
+        gap: var(--gap-md);
+        min-height: 0;
+      }
+      .chart-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        flex-shrink: 0;
+      }
+      .chart-wrapper {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-end;
+        min-height: 0;
+      }
+      .bar-track {
+        height: 324px;
+        display: flex;
+        align-items: flex-end;
+        gap: 76.8px;
+        border-left: 1px solid var(--c-border);
+        padding-left: 9.6px;
+      }
+      .orange .bar-track {
+        border-color: rgba(17, 17, 17, 0.2);
+      }
+      .bar-col {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        justify-content: flex-end;
+        gap: 10.8px;
+        height: 100%;
+      }
+      .bar-fill {
+        width: 100%;
+        background: var(--c-fg-3);
+        transition: height 0.6s var(--ease-enter);
+      }
+      .bar-fill.accent {
+        background: var(--c-accent);
+      }
+      .orange .bar-fill {
+        background: rgba(17, 17, 17, 0.22);
+      }
+      .orange .bar-fill.accent {
+        background: #111111;
+      }
+      .bar-x-label {
+        font-family: var(--f-mono);
+        font-size: var(--sz-caption);
+        letter-spacing: 0.1em;
+        color: var(--c-fg-3);
+        white-space: nowrap;
+        text-transform: uppercase;
+      }
+      .orange .bar-x-label {
+        color: rgba(17, 17, 17, 0.45);
+      }
+      .bar-val {
+        font-family: var(--f-body);
+        font-size: var(--sz-body);
+        font-weight: 700;
+        color: var(--c-fg-2);
+      }
+      .bar-val.hi {
+        color: var(--c-accent);
+      }
+      .orange .bar-val {
+        color: rgba(17, 17, 17, 0.55);
+      }
+      .orange .bar-val.hi {
+        color: #111111;
+      }
+      .chart-baseline {
+        height: 1px;
+        background: var(--c-border);
+        flex-shrink: 0;
+        margin-top: 1px;
+      }
+      .orange .chart-baseline {
+        background: rgba(17, 17, 17, 0.2);
+      }
+      .chart-source {
+        flex-shrink: 0;
+        font-family: var(--f-mono);
+        font-size: var(--sz-caption);
+        color: var(--c-fg-3);
+        letter-spacing: 0.06em;
+        margin-top: var(--gap-sm);
+      }
+      .orange .chart-source {
+        color: rgba(17, 17, 17, 0.4);
+      }
+
+      /* ── DIAGRAM ────────────────────────────────────────────────────────── */
+      .slide--diagram .slide-body {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: var(--gap-lg);
+        min-height: 0;
+      }
+      .flow {
+        display: flex;
+        align-items: stretch;
+        gap: 0;
+      }
+      .flow-step {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: var(--gap-sm);
+        padding-right: calc(var(--pad-x) * 0.35);
+      }
+      .flow-num {
+        font-family: var(--f-display);
+        font-size: 96px;
+        font-weight: 900;
+        line-height: 1;
+        color: var(--c-accent);
+        letter-spacing: -0.03em;
+      }
+      .orange .flow-num {
+        color: rgba(17, 17, 17, 0.2);
+      }
+      .flow-title {
+        font-family: var(--f-heading);
+        font-size: var(--sz-h3);
+        font-weight: 700;
+        line-height: 1.15;
+        color: var(--c-fg);
+      }
+      .orange .flow-title {
+        color: #111111;
+      }
+      .flow-desc {
+        font-family: var(--f-body);
+        font-size: var(--sz-body);
+        color: var(--c-fg-2);
+        line-height: 1.6;
+        font-weight: 400;
+      }
+      .orange .flow-desc {
+        color: rgba(17, 17, 17, 0.6);
+      }
+      .flow-arrow {
+        display: flex;
+        align-items: flex-start;
+        padding-top: 1.2em;
+        padding-right: calc(var(--pad-x) * 0.35);
+        font-size: 42.24px;
+        color: var(--c-accent);
+        font-weight: 300;
+        flex-shrink: 0;
+      }
+      .orange .flow-arrow {
+        color: rgba(17, 17, 17, 0.3);
+      }
+      /* ── PIE / DONUT CHART ──────────────────────────────────────────────── */
+      .slide--pie .slide-body {
+        display: flex;
+        flex-direction: column;
+        gap: var(--gap-md);
+        min-height: 0;
+      }
+      .pie-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: calc(var(--pad-x) * 0.7);
+        align-items: center;
+        flex: 1;
+        min-height: 0;
+      }
+      .pie-donut {
+        width: min(537.6px, 475.2px);
+        height: min(537.6px, 475.2px);
+        border-radius: 50%;
+        position: relative;
+        flex-shrink: 0;
+        justify-self: center;
+      }
+      .pie-donut::after {
+        content: "";
+        position: absolute;
+        inset: 20%;
+        border-radius: 50%;
+        background: var(--c-bg);
+      }
+      .orange .pie-donut::after {
+        background: var(--c-bg-orange);
+      }
+      .pie-legend {
+        display: flex;
+        flex-direction: column;
+        gap: var(--gap-md);
+      }
+      .pie-item {
+        display: grid;
+        grid-template-columns: 0.8em 1fr auto;
+        gap: 1em;
+        align-items: center;
+      }
+      .pie-swatch {
+        width: 0.8em;
+        height: 0.8em;
+        border-radius: 2px;
+        flex-shrink: 0;
+      }
+      .pie-item-label {
+        font-family: var(--f-body);
+        font-size: var(--sz-lead);
+        font-weight: 700;
+        line-height: 1.4;
+      }
+      .pie-item-val {
+        font-family: var(--f-mono);
+        font-size: var(--sz-body);
+        font-weight: 500;
+        letter-spacing: 0.06em;
+        color: var(--c-accent);
+      }
+      .orange .pie-item-val {
+        color: #111;
+      }
+      .pie-total {
+        margin-top: var(--gap-sm);
+        padding-top: var(--gap-sm);
+        border-top: 1px solid var(--c-border);
+        font-family: var(--f-mono);
+        font-size: var(--sz-label);
+        letter-spacing: 0.1em;
+        color: var(--c-fg-3);
+      }
+
+      /* ── PYRAMID ─────────────────────────────────────────────────────────── */
+      .slide--pyramid .slide-body {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: var(--gap-md);
+        min-height: 0;
+      }
+      .pyramid {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+        align-items: center;
+      }
+      .pyr-level {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 16.2px 48px;
+        border-left: 4px solid var(--c-accent);
+        transition: width 0.3s;
+      }
+      .orange .pyr-level {
+        border-left-color: rgba(17, 17, 17, 0.4);
+      }
+      .pyr-level:nth-child(1) {
+        background: color-mix(in srgb, var(--c-accent) 75%, var(--c-bg));
+        width: 36%;
+      }
+      .pyr-level:nth-child(2) {
+        background: color-mix(in srgb, var(--c-accent) 50%, var(--c-bg));
+        width: 52%;
+      }
+      .pyr-level:nth-child(3) {
+        background: color-mix(in srgb, var(--c-accent) 28%, var(--c-bg));
+        width: 68%;
+      }
+      .pyr-level:nth-child(4) {
+        background: color-mix(in srgb, var(--c-accent) 14%, var(--c-bg));
+        width: 84%;
+      }
+      .pyr-level:nth-child(5) {
+        background: color-mix(in srgb, var(--c-accent) 6%, var(--c-bg));
+        width: 100%;
+      }
+      .pyr-name {
+        font-family: var(--f-heading);
+        font-size: var(--sz-h3);
+        font-weight: 900;
+        line-height: 1.1;
+        text-transform: lowercase;
+      }
+      .pyr-desc {
+        font-family: var(--f-body);
+        font-size: var(--sz-body);
+        color: var(--c-fg-2);
+        text-align: right;
+        max-width: 55%;
+        line-height: 1.4;
+        font-weight: 400;
+      }
+
+      /* ── VERTICAL TIMELINE ───────────────────────────────────────────────── */
+      .slide--vtimeline {
+        grid-template-rows: auto auto 1fr auto;
+      }
+      .vt-hl {
+        font-family: var(--f-heading);
+        font-size: var(--sz-h2);
+        font-weight: 900;
+        text-transform: lowercase;
+        letter-spacing: -0.03em;
+        padding-bottom: var(--gap-md);
+        border-bottom: 1px solid var(--c-border);
+      }
+      .vtimeline {
+        display: grid;
+        grid-template-columns: 8em 2px 1fr;
+        gap: 0;
+        min-height: 0;
+        padding-top: var(--gap-md);
+      }
+      .vt-date {
+        font-family: var(--f-mono);
+        font-size: var(--sz-caption);
+        letter-spacing: 0.1em;
+        color: var(--c-fg-3);
+        text-align: right;
+        padding: 0 28.8px 37.8px 0;
+        line-height: 1.4;
+      }
+      .vt-spine {
+        background: var(--c-border);
+        position: relative;
+      }
+      .vt-spine::before {
+        content: "";
+        position: absolute;
+        top: 0.2em;
+        left: -5px;
+        width: 10px;
+        height: 10px;
+        background: var(--c-accent);
+      }
+      .vt-content {
+        padding: 0 0 37.8px 28.8px;
+      }
+      .vt-title {
+        font-family: var(--f-heading);
+        font-size: var(--sz-h3);
+        font-weight: 900;
+        margin-bottom: 6.48px;
+        line-height: 1.1;
+        text-transform: lowercase;
+      }
+      .vt-body {
+        font-family: var(--f-body);
+        font-size: var(--sz-body);
+        color: var(--c-fg-2);
+        line-height: 1.65;
+        font-weight: 400;
+      }
+
+      /* ── CYCLE PROCESS ───────────────────────────────────────────────────── */
+      .slide--cycle .slide-body {
+        display: flex;
+        flex-direction: column;
+        gap: var(--gap-md);
+        min-height: 0;
+      }
+      .cycle-grid {
+        display: grid;
+        grid-template-columns: 1fr 3em 1fr;
+        grid-template-rows: 1fr 3em 1fr;
+        gap: var(--gap-sm);
+        flex: 1;
+        min-height: 0;
+        align-items: center;
+      }
+      .cycle-step {
+        display: flex;
+        flex-direction: column;
+        gap: var(--gap-sm);
+        padding: var(--gap-md);
+        border-top: 3px solid var(--c-accent);
+      }
+      .cycle-num {
+        font-family: var(--f-display);
+        font-size: 76.8px;
+        font-weight: 900;
+        color: var(--c-accent);
+        line-height: 1;
+        letter-spacing: -0.03em;
+        text-transform: lowercase;
+      }
+      .cycle-title {
+        font-family: var(--f-heading);
+        font-size: var(--sz-h3);
+        font-weight: 900;
+        line-height: 1.1;
+        text-transform: lowercase;
+      }
+      .cycle-desc {
+        font-family: var(--f-body);
+        font-size: var(--sz-body);
+        color: var(--c-fg-2);
+        line-height: 1.6;
+        font-weight: 400;
+      }
+      .cycle-arrow {
+        color: var(--c-fg-3);
+        font-size: 42.24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+    
+      /* ╔══════════════════════════════════════════════════════════════════════╗
+   ║  ZONE G · DECK-SPECIFIC (fixed 16:9 stage + architecture + pose svg)  ║
+   ╚══════════════════════════════════════════════════════════════════════╝ */
+      #stage {
+        position: fixed;
+        left: 50%;
+        top: 50%;
+        width: 1920px;
+        height: 1080px;
+        transform-origin: 50% 50%;
+        overflow: hidden;
+        background: var(--c-bg);
+      }
+      .bullet-list li b { font-weight: 700; }
+      .dark .bullet-list li b { color: var(--c-fg); }
+      .dark .panel-orange .bullet-list li b, .orange .bullet-list li b { color: #111; }
+      .compare-panel { justify-content: center; }
+      /* CJK deck: never lowercase acronyms (IPC / WVP / ZLM / SIP) */
+      .vt-hl, .vt-title, .pyr-name, .cycle-title, .cycle-num { text-transform: none; }
+      .vt-title { font-size: 38px; font-weight: 800; }
+      .vt-body { font-size: 21px; }
+      .vt-date { font-size: 18px; color: var(--c-fg-2); }
+      .vt-content { padding-bottom: 30px; }
+      .vt-date { padding-bottom: 30px; }
+      .flow-desc b, .vt-title b, .vt-body b, .arch-desc b { color: var(--c-fg); font-weight: 600; }
+      .flow-step { padding-right: 24px; }
+      .flow-arrow { padding-right: 24px; }
+
+      /* Architecture map (slide 06) */
+      .arch {
+        display: grid;
+        grid-template-columns: 1.05fr 0.42fr 1.2fr 0.45fr 1.25fr;
+        grid-template-rows: 1fr 1fr 1fr;
+        gap: 14px 0;
+        flex: 1;
+        min-height: 0;
+      }
+      .arch-box {
+        border: 1px solid var(--c-border);
+        background: var(--c-bg-alt);
+        padding: 18px 22px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 8px;
+        min-height: 0;
+      }
+      .arch-box.hot { border-color: var(--c-accent); }
+      .arch-box.gb { border-style: dashed; }
+      .arch-box .tag { align-self: flex-start; }
+      .arch-title {
+        font-family: var(--f-heading);
+        font-size: 30px;
+        font-weight: 800;
+        line-height: 1.1;
+        letter-spacing: -0.01em;
+      }
+      .arch-desc {
+        font-family: var(--f-body);
+        font-size: 18px;
+        line-height: 1.45;
+        color: var(--c-fg-2);
+      }
+      .arch-arrow {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        color: var(--c-accent);
+        font-size: 40px;
+        font-weight: 300;
+        text-align: center;
+      }
+      .arch-arrow .label {
+        font-size: 12px;
+        color: var(--c-fg-2);
+        text-transform: none;
+        letter-spacing: 0.04em;
+        line-height: 1.5;
+      }
+      .arch-stack {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        min-height: 0;
+      }
+      .arch-stack .arch-box { flex: 1; padding: 12px 22px; gap: 4px; }
+      .arch-stack .arch-title { font-size: 26px; }
+      .arch-stack .arch-desc { font-size: 16px; }
+
+      /* Pose geometry illustration (slide 10) */
+      svg.pose {
+        width: 100%;
+        height: 594px;
+        background: var(--c-bg-alt);
+        border: 1px solid var(--c-border);
+        display: block;
+      }
+      .pose-torso, .pose-shoulder, .pose-neck { stroke: var(--c-fg); stroke-width: 7; stroke-linecap: round; }
+      .pose-neck { stroke: var(--c-accent); }
+      .pose-head { fill: none; stroke: var(--c-fg); stroke-width: 7; }
+      .pose-head.hot { stroke: var(--c-accent); fill: rgba(232, 93, 38, 0.18); }
+      .pose-pt { fill: var(--c-accent); }
+      .pose-pt.dim { fill: var(--c-fg-3); }
+      .pose-desk { fill: var(--c-fg-3); }
+      .pose-dim { stroke: var(--c-fg-2); stroke-width: 2; stroke-dasharray: 6 6; }
+      .pose-arc { fill: none; stroke: var(--c-accent); stroke-width: 3; stroke-dasharray: 8 6; }
+      .pose-label { font-family: var(--f-heading); font-size: 30px; font-weight: 800; fill: var(--c-fg); text-anchor: middle; }
+      .pose-label.hot { fill: var(--c-accent); }
+      .pose-sub { font-family: var(--f-body); font-size: 18px; fill: var(--c-fg-2); text-anchor: middle; }
+      .pose-tag { font-family: var(--f-mono); font-size: 20px; fill: var(--c-fg-2); }
+      .pose-tag.hot { fill: var(--c-accent); font-weight: 700; }
+      .pose-title { font-family: var(--f-heading); font-size: 28px; font-weight: 700; fill: var(--c-fg); text-anchor: middle; }
+    </style>
+  </head>
+
+  <body>
+    <div id="stage">
+    <div id="deck">
+<!-- ═══ 01 · 封面 ═══
+备注：老师好。我们组的题目是在开源视频安全生产分析系统 easySVA 上做二次开发，重点两件事：睡岗检测算法，以及 GB28181 国标摄像头接入。
+我先讲整体和 P1，B 讲 P2 睡岗算法，A 讲 P3 国标和现场演示。 -->
+<section class="slide slide--cover orange">
+  <div class="broadside-top-chrome">
+    <span class="broadside-num" data-anim="fade-in" data-delay="0">01</span>
+    <span class="corner-label" data-anim="fade-in" data-delay="0">easySVA 二次开发 · 课程答辩</span>
+  </div>
+  <div class="cover-body">
+    <h1 class="display" data-anim="fade-up" data-delay="1" style="max-width: 95%; line-height: 1.02">睡岗检测<br />与国标接入</h1>
+    <p class="lead" data-anim="fade-up" data-delay="2" style="opacity: 0.75; max-width: 70%">
+      AI 视频安全生产分析系统 · 基于开源 easySVA 的二次开发<br />
+      P1 原系统跑通 → P2 睡岗检测 → P3 GB28181 国标接入 → P4 双源联调<br />
+      张柏烁（演示机 · 流媒体 · 国标）　邹子轶（睡岗算法 · 分析器）　吴佳锴（前后端 · 仓库 · 文档）
+    </p>
+  </div>
+  <div class="cover-meta" data-anim="fade-in" data-delay="3">
+    <span class="broadside-num">张柏烁 · 邹子轶 · 吴佳锴</span>
+    <span class="broadside-num">github.com/GaiYa0/Video-Analyse · 2026</span>
+  </div>
+</section>
+
+<!-- ═══ 02 · 路线图 ═══
+备注：这一页既是目录也是路线图。课程给了四个验收点，我们按时间顺序讲：P1 先把原系统跑通做基线，P2 加睡岗算法，P3 接国标设备，P4 两类源和两类算法交叉联调。全程只有一条推理链路。 -->
+<section class="slide slide--diagram dark">
+  <header class="slide-chrome">
+    <span class="label muted">路线图 · 也是今天的目录</span>
+    <span class="label muted">02</span>
+  </header>
+  <div class="slide-body">
+    <h2 class="h2" data-anim="fade-up" data-delay="0">四个验收点，<span class="accent">一条推理链路</span></h2>
+    <div class="flow" data-anim="fade-up" data-delay="1">
+      <div class="flow-step">
+        <div class="flow-num">P1</div>
+        <div class="flow-title">原系统跑通</div>
+        <div class="flow-desc">09-01 · 直连摄像头 → ZLM → 网页预览 → YOLO 布控 → 告警截图。作为基线。</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <div class="flow-num">P2</div>
+        <div class="flow-title">睡岗检测</div>
+        <div class="flow-desc">09-02 · YOLO-Pose 俯仰角 + 多帧时序，新算法插进原 Analyzer。</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <div class="flow-num">P3</div>
+        <div class="flow-title">国标接入</div>
+        <div class="flow-desc">09-07 · WVP 管信令、ZLM 管媒体，国标通道进同一张设备表。</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <div class="flow-num">P4</div>
+        <div class="flow-title">双源 × 双算法</div>
+        <div class="flow-desc">09-08 · 直连 / 国标 × YOLO / 睡岗，四条路径全部通过。</div>
+      </div>
+    </div>
+    <p class="lead muted" data-anim="fade-up" data-delay="2" style="max-width: 80%">
+      不重写、不拆原系统：新算法和新设备源都<span class="accent">插进原有链路</span>，检测与告警的后半段一次都没改。
+    </p>
+  </div>
+  <footer class="slide-foot">
+    <span class="label muted">easySVA 二次开发 · 睡岗检测与国标接入</span>
+    <span class="label muted">张柏烁 · 邹子轶 · 吴佳锴</span>
+  </footer>
+</section>
+
+<!-- ═══ 03 · 起点：五层架构 ═══
+备注：课件规定了五层结构。我们守住一条原则：一层都不拆，只在两端做增量——设备层多一种国标源，分析器层多一种睡岗算法。 -->
+<section class="slide slide--diagram dark">
+  <header class="slide-chrome">
+    <span class="label muted">起点 · 课件规定的五层架构</span>
+    <span class="label muted">03</span>
+  </header>
+  <div class="slide-body">
+    <h2 class="h2" data-anim="fade-up" data-delay="0">五层架构，我们<span class="accent">一层没拆</span></h2>
+    <div class="flow" data-anim="fade-up" data-delay="1">
+      <div class="flow-step">
+        <div class="flow-num">01</div>
+        <div class="flow-title">监控设备</div>
+        <div class="flow-desc">直连 RTSP / RTMP 摄像头<br /><span class="accent">＋ 国标 GB28181 IPC</span></div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <div class="flow-num">02</div>
+        <div class="flow-title">流媒体</div>
+        <div class="flow-desc">ZLMediaKit 收流、转 FLV / RTSP</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <div class="flow-num">03</div>
+        <div class="flow-title">C++ 分析器</div>
+        <div class="flow-desc">拉流、YOLO 推理、上报告警<br /><span class="accent">＋ 睡岗检测算法</span></div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <div class="flow-num">04</div>
+        <div class="flow-title">后端</div>
+        <div class="flow-desc">Spring Boot :9114 · 设备、布控、告警入库</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <div class="flow-num">05</div>
+        <div class="flow-title">前端</div>
+        <div class="flow-desc">Vue 大屏 + 后台 · Nginx :8080</div>
+      </div>
+    </div>
+    <p class="lead muted" data-anim="fade-up" data-delay="2" style="max-width: 80%">
+      场景：值班室、控制室、工位要「有人在岗、没在睡觉」。课程要求在原系统上加<span class="accent">睡岗检测</span>，并让<span class="accent">国标摄像头</span>接进来。
+    </p>
+  </div>
+  <footer class="slide-foot">
+    <span class="label muted">easySVA 二次开发 · 睡岗检测与国标接入</span>
+    <span class="label muted">张柏烁 · 邹子轶 · 吴佳锴</span>
+  </footer>
+</section>
+
+<!-- ═══ 04 · P1 章节 ═══
+备注：P1 的目标很朴素：把原来的四个仓在演示机全部跑通，作为后面所有工作的基线。 -->
+<section class="slide slide--chapter orange">
+  <div class="broadside-num" data-anim="fade-in" data-delay="0" style="margin-bottom: var(--gap-lg)">P1 / 2026-09-01 / 验收点 1</div>
+  <h2 class="h1" data-anim="fade-up" data-delay="1">先把原系统跑通</h2>
+  <p class="lead" data-anim="fade-up" data-delay="2" style="max-width: 60%; margin-top: var(--gap-md); opacity: 0.75">
+    直连摄像头 → ZLMediaKit → 网页预览 → YOLO 布控 → 告警截图。<br />这条路通了，后面两件事才有地方「插」。
+  </p>
+</section>
+
+<!-- ═══ 05 · P1 · 四个仓 ═══
+备注：上游 easySVA 在 Gitee 上是四个仓库，我们合成一个 GitHub monorepo 统一管理。验收点 1 在演示机把原路径全部跑通。 -->
+<section class="slide slide--split dark">
+  <header class="slide-chrome">
+    <span class="label muted">P1 · 起点</span>
+    <span class="label muted">05</span>
+  </header>
+  <div class="slide-body">
+    <div class="split-text">
+      <p class="kicker" data-anim="fade-in" data-delay="0">原系统长什么样</p>
+      <div class="rule" data-anim="reveal-right" data-delay="1" style="margin: 1.5vh 0"></div>
+      <h2 class="h2" data-anim="fade-up" data-delay="2">四个上游仓，<br />合成一个 GitHub 仓库</h2>
+      <ul class="bullet-list" data-anim="fade-up" data-delay="3" style="--sz-lead: 1.3vw">
+        <li><span><b>backend/</b>　Spring Boot :9114 —— 设备、布控、告警入库</span></li>
+        <li><span><b>web/</b>　Vue 2 + Element UI —— 大屏、设备、布控、告警页</span></li>
+        <li><span><b>server/</b>　C++ Analyzer + ONNX Runtime —— 拉流、推理、上报</span></li>
+        <li><span><b>mediaServer/</b>　ZLMediaKit —— 收流、转 FLV / RTSP</span></li>
+      </ul>
+    </div>
+    <div class="split-image" data-anim="reveal-right" data-delay="2">
+      <img src="img/p1-初步搭建.png" alt="P1 原系统在演示机跑通" style="object-fit: contain; background: var(--c-bg-alt)" />
+      <p class="img-caption">P1 · 原系统在演示机跑通 · 2026-09-01</p>
+    </div>
+  </div>
+  <footer class="slide-foot">
+    <span class="label muted">easySVA 二次开发 · 睡岗检测与国标接入</span>
+    <span class="label muted">张柏烁 · 邹子轶 · 吴佳锴</span>
+  </footer>
+</section>
+
+<!-- ═══ 06 · 总架构 ═══
+备注：这是全片最重要的一张图。上排是直连，下排是国标。国标多了 WVP 做信令，但媒体仍然进同一个 ZLM；从 ZLM 往右，前端、分析器、后端对两类源的处理完全一致。 -->
+<section class="slide slide--diagram dark">
+  <header class="slide-chrome">
+    <span class="label muted">总架构 · P1 → P3 叠加后的最终形态</span>
+    <span class="label muted">06</span>
+  </header>
+  <div class="slide-body" style="gap: var(--gap-md)">
+    <h2 class="h2" data-anim="fade-up" data-delay="0">两类设备源，<span class="accent">一条链路</span></h2>
+    <div class="arch" data-anim="fade-up" data-delay="1">
+      <!-- col 1 · 设备源 -->
+      <div class="arch-box" style="grid-area: 1 / 1"><span class="tag">直连</span><div class="arch-title">RTSP / RTMP 摄像头</div><div class="arch-desc">后端 addStreamProxy 拉，或摄像头直接推 RTMP</div></div>
+      <div class="arch-box" style="grid-area: 2 / 1 / 4 / 2"><span class="tag">国标</span><div class="arch-title">GB28181 IPC / 模拟器</div><div class="arch-desc">先向 WVP 注册（在线）<br />被点播后才推 PS over RTP（有画面）</div></div>
+      <!-- col 2 · 箭头 -->
+      <div class="arch-arrow" style="grid-area: 1 / 2"><span>→</span><span class="label">推流 / 拉流代理</span></div>
+      <div class="arch-arrow" style="grid-area: 2 / 2"><span>↗</span><span class="label">PS / RTP 媒体</span></div>
+      <div class="arch-arrow" style="grid-area: 3 / 2"><span>→</span><span class="label">SIP :5060 信令</span></div>
+      <!-- col 3 · 媒体 / 信令 -->
+      <div class="arch-box hot" style="grid-area: 1 / 3 / 3 / 4"><span class="tag">媒体 · 两类源共用</span><div class="arch-title">ZLMediaKit</div><div class="arch-desc">收流、转 WS-FLV / RTSP · 端口 9992 / 9994 / 9995<br />直连流名 <b>live/&lt;ape_id&gt;</b><br />国标流名 <b>rtp/&lt;设备_通道&gt;</b></div></div>
+      <div class="arch-box gb" style="grid-area: 3 / 3"><span class="tag">信令 · 仅国标</span><div class="arch-title">WVP-GB28181-pro</div><div class="arch-desc">REGISTER / 保活 / 目录 / INVITE；指挥 ZLM 开 RTP 收流口 ↑ · 不碰像素</div></div>
+      <!-- col 4 · 箭头 -->
+      <div class="arch-arrow" style="grid-area: 1 / 4 / 3 / 5"><span>→</span><span class="label">WS-FLV 预览<br />RTSP 拉流</span></div>
+      <div class="arch-arrow" style="grid-area: 3 / 4"><span>→</span><span class="label">同步设备目录</span></div>
+      <!-- col 5 · 业务，对两类源完全相同 -->
+      <div class="arch-stack" style="grid-area: 1 / 5 / 4 / 6">
+        <div class="arch-box"><span class="tag">业务 · 不分源</span><div class="arch-title">Vue 大屏 / 后台</div><div class="arch-desc">Nginx :8080 反代，浏览器不直连 ZLM，局域网可看</div></div>
+        <div class="arch-box hot"><span class="tag">业务 · 不分源</span><div class="arch-title">Analyzer C++</div><div class="arch-desc">原 YOLO ＋ <b>睡岗检测</b>；拉 live/ 或 rtp/ 完全同一套</div></div>
+        <div class="arch-box"><span class="tag">业务 · 不分源</span><div class="arch-title">backend :9114</div><div class="arch-desc">设备、布控、告警入库 · MariaDB :3307 · Redis</div></div>
+      </div>
+    </div>
+    <p class="body muted" data-anim="fade-in" data-delay="2">上排直连、下排国标。进了 ZLM 之后，往右的一切完全相同 —— 这就是<span class="accent">「只换输入」</span>。</p>
+  </div>
+  <footer class="slide-foot">
+    <span class="label muted">easySVA 二次开发 · 睡岗检测与国标接入</span>
+    <span class="label muted">张柏烁 · 邹子轶 · 吴佳锴</span>
+  </footer>
+</section>
+
+<!-- ═══ 07 · 两条取流路径 ═══
+备注：把上一页的结论落到具体地址上：检测模型不换、告警入口不换，换的只是 Analyzer 打开的这个 URL——从 live/ 变成 rtp/。另外要分清「在线」和「有画面」：在线看 SIP 是否注册，有画面看是否点播出流，两者不是一回事。 -->
+<section class="slide slide--compare dark">
+  <header class="slide-chrome">
+    <span class="label muted">两条取流路径 · 模型不换，只换 URL</span>
+    <span class="label muted">07</span>
+  </header>
+  <div class="slide-body">
+    <div class="compare-panel left">
+      <div class="compare-label" data-anim="fade-in" data-delay="0">直连 RTSP / RTMP（P1 原路径）</div>
+      <h3 class="h3" data-anim="fade-up" data-delay="1">ZLM 流名 <span class="accent">live/&lt;ape_id&gt;</span></h3>
+      <p class="lead muted" data-anim="fade-up" data-delay="2">检测模型、布控规则、告警入口——全部不变。</p>
+      <ul class="bullet-list" data-anim="fade-up" data-delay="3" style="--sz-lead: 1.25vw">
+        <li><span>进 ZLM：后端 addStreamProxy，或摄像头推 RTMP</span></li>
+        <li><span>网页预览：Nginx <b>/live/…live.flv</b></span></li>
+        <li><span>Analyzer 拉流：<b>rtsp://127.0.0.1:9994/live/&lt;ape_id&gt;</b></span></li>
+      </ul>
+    </div>
+    <div class="compare-panel panel-orange">
+      <div class="compare-label after" data-anim="fade-in" data-delay="0">国标 GB28181（P3 新路径）</div>
+      <h3 class="h3" data-anim="fade-up" data-delay="1" style="color: #111">ZLM 流名 rtp/&lt;设备_通道&gt;</h3>
+      <p class="lead" data-anim="fade-up" data-delay="2" style="color: rgba(17, 17, 17, 0.7)">变的只有这一个地址。「在线」看注册，「有画面」看点播，两者不是一回事。</p>
+      <ul class="bullet-list" data-anim="fade-up" data-delay="3" style="--sz-lead: 1.25vw">
+        <li><span>进 ZLM：SIP 点播（INVITE）后设备推 PS / RTP</span></li>
+        <li><span>网页预览：Nginx <b>/rtp/…live.flv</b></span></li>
+        <li><span>Analyzer 拉流：<b>rtsp://127.0.0.1:9994/rtp/&lt;设备_通道&gt;</b></span></li>
+      </ul>
+    </div>
+  </div>
+  <footer class="slide-foot">
+    <span class="label muted">easySVA 二次开发 · 睡岗检测与国标接入</span>
+    <span class="label muted">张柏烁 · 邹子轶 · 吴佳锴</span>
+  </footer>
+</section>
+
+<!-- ═══ 08 · P2 章节 ═══
+备注（B 接讲）：P2 是睡岗检测。先把边界说清楚：我们要的是姿态意义上的睡岗，不是「不动就算睡」。 -->
+<section class="slide slide--chapter orange">
+  <div class="broadside-num" data-anim="fade-in" data-delay="0" style="margin-bottom: var(--gap-lg)">P2 / 2026-09-02 / 验收点 2</div>
+  <h2 class="h1" data-anim="fade-up" data-delay="1">睡岗检测</h2>
+  <p class="lead" data-anim="fade-up" data-delay="2" style="max-width: 60%; margin-top: var(--gap-md); opacity: 0.75">
+    趴桌、长时间低头要报；低头看键盘、看手机不能报。<br />算法代号 <b>on_sleep_pose</b>，插进原 Analyzer，原 YOLO 一行不改。
+  </p>
+</section>
+
+<!-- ═══ 09 · 睡岗 · 要报 / 不报 ═══
+备注：左边是正常工作里会低头的情况，都不能报；右边才是睡岗。原系统里有个叫 sleep 的启发式，只看框宽高比和速度，是「不动就算睡」，不是本课要求的睡岗。 -->
+<section class="slide slide--compare dark">
+  <header class="slide-chrome">
+    <span class="label muted">P2 · 先定义清楚：什么算睡岗</span>
+    <span class="label muted">09</span>
+  </header>
+  <div class="slide-body">
+    <div class="compare-panel left">
+      <div class="compare-label" data-anim="fade-in" data-delay="0">不报 · 正常工作</div>
+      <h3 class="h3" data-anim="fade-up" data-delay="1">短暂低头、头在动、<br />正脸看屏幕</h3>
+      <p class="lead muted" data-anim="fade-up" data-delay="2">原系统的 <b>sleep</b> 只看「框不动」，会把这些全报出来——它不是姿态意义上的睡岗。</p>
+      <ul class="bullet-list" data-anim="fade-up" data-delay="3" style="--sz-lead: 1.25vw">
+        <li><span>低头看键盘、翻资料，几秒又抬头</span></li>
+        <li><span>看手机、写字，头一直在动</span></li>
+        <li><span>人走开、被遮挡、背景路人</span></li>
+      </ul>
+    </div>
+    <div class="compare-panel panel-orange">
+      <div class="compare-label after" data-anim="fade-in" data-delay="0">要报 · 睡岗</div>
+      <h3 class="h3" data-anim="fade-up" data-delay="1" style="color: #111">趴桌、长时间低头不动</h3>
+      <p class="lead" data-anim="fade-up" data-delay="2" style="color: rgba(17, 17, 17, 0.7)">我们判的是<b>姿态 + 时间</b>，两个都满足才报。正拍、侧拍都要能用。</p>
+      <ul class="bullet-list" data-anim="fade-up" data-delay="3" style="--sz-lead: 1.25vw">
+        <li><span>头部俯仰角持续 ≥ 32°</span></li>
+        <li><span>连续 5 秒以上（页面默认 2.5 s，分析器兜底 5 s）</span></li>
+        <li><span>头基本不动，低头时间占比 ≥ 80%</span></li>
+      </ul>
+    </div>
+  </div>
+  <footer class="slide-foot">
+    <span class="label muted">easySVA 二次开发 · 睡岗检测与国标接入</span>
+    <span class="label muted">张柏烁 · 邹子轶 · 吴佳锴</span>
+  </footer>
+</section>
+
+<!-- ═══ 10 · 睡岗 · 怎么算低头 ═══
+备注：模型是 YOLO11n-Pose，17 个关键点。沿中线低头时向量方向几乎不变，不能用夹角，所以我们用「头相对颈的抬升 ÷ 尺子」。尺子取躯干长和肩宽的较大者，肩宽被透视压扁时误差不会放大，正拍侧拍共用一套。 -->
+<section class="slide slide--split dark">
+  <header class="slide-chrome">
+    <span class="label muted">P2 · 怎么算「低头多少度」</span>
+    <span class="label muted">10</span>
+  </header>
+  <div class="slide-body">
+    <div class="split-text">
+      <p class="kicker" data-anim="fade-in" data-delay="0">姿态几何 · YOLO11n-Pose · 17 关键点</p>
+      <div class="rule" data-anim="reveal-right" data-delay="1" style="margin: 1.5vh 0"></div>
+      <h2 class="h2" data-anim="fade-up" data-delay="2">三个点，一把尺子，<br />一个角</h2>
+      <ul class="bullet-list" data-anim="fade-up" data-delay="3" style="--sz-lead: 1.3vw">
+        <li><span><b>三个点</b>：头点（鼻 / 眼 / 耳中点）、颈点（双肩中点）、躯干方向（髋 → 肩）</span></li>
+        <li><span><b>尺子</b> = max(0.42 × 躯干长, 0.5 × 肩宽)，正拍、侧拍共用</span></li>
+        <li><span><b>俯仰角</b> = 头相对颈的抬升 ÷ 尺子 → 坐直 ≈ 0°，头落到颈点 ≈ 90°</span></li>
+        <li><span><b>直立门控</b>：正脸且头在颈上方 → 角度封顶 18°，「看屏幕」永远不报</span></li>
+      </ul>
+    </div>
+    <div class="split-image" data-anim="reveal-right" data-delay="2">
+      <svg class="pose" viewBox="0 0 900 594" xmlns="http://www.w3.org/2000/svg">
+        <!-- 坐直 -->
+        <g class="pose-fig">
+          <line x1="190" y1="420" x2="190" y2="250" class="pose-torso" />
+          <line x1="130" y1="250" x2="250" y2="250" class="pose-shoulder" />
+          <line x1="190" y1="250" x2="190" y2="160" class="pose-neck" />
+          <circle cx="190" cy="140" r="30" class="pose-head" />
+          <circle cx="190" cy="250" r="8" class="pose-pt" />
+          <circle cx="190" cy="420" r="8" class="pose-pt dim" />
+          <rect x="60" y="420" width="260" height="10" class="pose-desk" />
+          <text x="190" y="500" class="pose-label">坐直 ≈ 0°</text>
+          <text x="190" y="536" class="pose-sub">头在颈上方 → 抬升 ≈ 1 尺</text>
+          <text x="212" y="205" class="pose-tag">h</text>
+          <line x1="205" y1="160" x2="205" y2="250" class="pose-dim" />
+        </g>
+        <!-- 趴桌 -->
+        <g class="pose-fig">
+          <line x1="600" y1="420" x2="640" y2="270" class="pose-torso" />
+          <line x1="580" y1="270" x2="700" y2="270" class="pose-shoulder" />
+          <line x1="640" y1="270" x2="720" y2="290" class="pose-neck" />
+          <circle cx="745" cy="300" r="30" class="pose-head hot" />
+          <circle cx="640" cy="270" r="8" class="pose-pt" />
+          <circle cx="600" cy="420" r="8" class="pose-pt dim" />
+          <rect x="520" y="420" width="260" height="10" class="pose-desk" />
+          <path d="M 640 190 A 80 80 0 0 1 720 270" class="pose-arc" />
+          <text x="705" y="215" class="pose-tag hot">≥ 32°</text>
+          <text x="650" y="500" class="pose-label hot">趴桌 ≈ 90°</text>
+          <text x="650" y="536" class="pose-sub">头落到颈点附近 → 抬升 ≈ 0</text>
+        </g>
+        <text x="450" y="60" class="pose-title">俯仰角 = (1 − 抬升 h ÷ 尺子) × 90°</text>
+        <text x="450" y="92" class="pose-sub">尺子 = max(0.42 × 躯干长, 0.5 × 肩宽) · 角度限 0–135°</text>
+      </svg>
+      <p class="img-caption">● 头点 · ○ 颈点 · 躯干方向 髋→肩 · 无髋时用肩线转 90°</p>
+    </div>
+  </div>
+  <footer class="slide-foot">
+    <span class="label muted">easySVA 二次开发 · 睡岗检测与国标接入</span>
+    <span class="label muted">张柏烁 · 邹子轶 · 吴佳锴</span>
+  </footer>
+</section>
+
+<!-- ═══ 11 · 睡岗 · 5 秒 + 五道门 ═══
+备注：进入 32°、恢复 22° 的滞回避免抖动；5 秒只是必要条件，还要五道证据门全过才报。这样把点头、看手机、走开都挡在外面。告警走原入口，只叠加字段，后端不新建表，前端加徽章和字段展示。 -->
+<section class="slide slide--split dark">
+  <header class="slide-chrome">
+    <span class="label muted">P2 · 多帧时序与防误报</span>
+    <span class="label muted">11</span>
+  </header>
+  <div class="slide-body">
+    <div class="split-text">
+      <p class="kicker" data-anim="fade-in" data-delay="0">5 秒 + 五道证据门</p>
+      <div class="rule" data-anim="reveal-right" data-delay="1" style="margin: 1.5vh 0"></div>
+      <h2 class="h2" data-anim="fade-up" data-delay="2">低头 5 秒<br />只是必要条件</h2>
+      <p class="lead muted" data-anim="fade-up" data-delay="3">低头 ≥ 32° 进入、抬头 &lt; 22° 恢复（滞回防抖）；计时够 5 秒后，还要下面几道门全过才报。</p>
+      <ul class="bullet-list" data-anim="fade-up" data-delay="4" style="--sz-lead: 1.25vw">
+        <li><span>低头占空比 ≥ 80% —— 挡住打字、翻资料的反复出入</span></li>
+        <li><span>峰值到过 45°、头点位移 ≤ 0.45 尺 —— 挡住看手机、写字</span></li>
+        <li><span>有效帧 ≥ 3、丢帧 ≤ 35% —— 挡住遮挡、走开、低帧率凑时长</span></li>
+        <li><span>告警走原入口，叠加 <b>alarmType = SLEEP_ON_DUTY</b>、时长、俯仰角</span></li>
+      </ul>
+    </div>
+    <div class="split-image" data-anim="reveal-right" data-delay="2">
+      <img src="img/p2-睡岗检测告警详情.png" alt="睡岗告警详情" style="object-fit: contain; background: var(--c-bg-alt)" />
+      <p class="img-caption">P2 · 告警详情：「睡岗」徽章 · 持续时长 · 俯仰角 · 证据视频</p>
+    </div>
+  </div>
+  <footer class="slide-foot">
+    <span class="label muted">easySVA 二次开发 · 睡岗检测与国标接入</span>
+    <span class="label muted">张柏烁 · 邹子轶 · 吴佳锴</span>
+  </footer>
+</section>
+
+<!-- ═══ 12 · P3 章节 ═══
+备注（A 接讲）：P3 是国标接入。目标是国标摄像头注册进平台之后，和直连设备用同一张表、同一条检测与告警链路。 -->
+<section class="slide slide--chapter orange">
+  <div class="broadside-num" data-anim="fade-in" data-delay="0" style="margin-bottom: var(--gap-lg)">P3 / 2026-09-07 / 验收点 3</div>
+  <h2 class="h1" data-anim="fade-up" data-delay="1">GB28181 国标接入</h2>
+  <p class="lead" data-anim="fade-up" data-delay="2" style="max-width: 60%; margin-top: var(--gap-md); opacity: 0.75">
+    国标摄像头（或模拟器）注册进平台，<br />与直连设备同一张设备表、同一条检测与告警链路。
+  </p>
+</section>
+
+<!-- ═══ 13 · 国标 · 信令与媒体分开 ═══
+备注：演示机的 ZLM 没有内置 SIP 服务端，只能收 RTP、转封装。所以我们外挂开源 WVP 负责信令，ZLM 继续管媒体。业务只对接「已经注册成功的通道」，不自己实现国标信令栈，改动最小、边界最清楚。 -->
+<section class="slide slide--diagram dark">
+  <header class="slide-chrome">
+    <span class="label muted">P3 · 为什么拆成 WVP + ZLM</span>
+    <span class="label muted">13</span>
+  </header>
+  <div class="slide-body">
+    <h2 class="h2" data-anim="fade-up" data-delay="0">信令交给 WVP，<span class="accent">媒体留给 ZLM</span></h2>
+    <div class="flow" data-anim="fade-up" data-delay="1">
+      <div class="flow-step">
+        <div class="flow-num">01</div>
+        <div class="flow-title">国标 IPC</div>
+        <div class="flow-desc">REGISTER / 保活 / 目录应答；被 INVITE 点播后推 <b>PS over RTP</b>。</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <div class="flow-num">02</div>
+        <div class="flow-title">WVP · 信令</div>
+        <div class="flow-desc">:5060 / :18080 · SIP 注册、点播；指挥 ZLM 开 RTP 收流口。<span class="accent">不管像素、不做 YOLO。</span></div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <div class="flow-num">03</div>
+        <div class="flow-title">ZLM · 媒体</div>
+        <div class="flow-desc">收 PS/RTP → FLV / RTSP；国标 <b>app=rtp</b> 与直连 <b>app=live</b> 分开。<span class="accent">不管 SIP。</span></div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <div class="flow-num">04</div>
+        <div class="flow-title">easySVA 业务</div>
+        <div class="flow-desc">只同步<b>已注册</b>通道进设备表；预览、布控、告警照旧。<span class="accent">不自己实现国标信令。</span></div>
+      </div>
+    </div>
+    <p class="lead muted" data-anim="fade-up" data-delay="2" style="max-width: 85%">
+      演示机的 ZLM <b>没有内置 SIP 服务端</b>，只能收 RTP、转封装 —— 拆开后每个组件只做一件事，业务改动最小。
+    </p>
+  </div>
+  <footer class="slide-foot">
+    <span class="label muted">easySVA 二次开发 · 睡岗检测与国标接入</span>
+    <span class="label muted">张柏烁 · 邹子轶 · 吴佳锴</span>
+  </footer>
+</section>
+
+<!-- ═══ 14 · 国标 · 从注册到出画 ═══
+备注：注册只说明在线；画面要靠点播。我们把点播做成后台自动触发：预览或布控请求 rtp/… 时 ZLM 没流，会通过 hook 让 WVP 发 INVITE，几秒内出画，预览和布控都不会卡死。Analyzer 拉流超时 25 秒就是留给点播的窗口。 -->
+<section class="slide slide--vtimeline dark">
+  <header class="slide-chrome">
+    <span class="label muted">P3 · 端到端闭环</span>
+    <span class="label muted">14</span>
+  </header>
+  <div class="vt-hl" data-anim="fade-up" data-delay="0">在线 ≠ 有画面：从注册到出画<span class="accent">五步</span></div>
+  <div class="vtimeline" data-anim="fade-up" data-delay="1">
+    <div class="vt-date">① 注册</div>
+    <div class="vt-spine"></div>
+    <div class="vt-content">
+      <div class="vt-title">IPC → WVP：REGISTER（Digest）/ 保活 / Catalog</div>
+      <div class="vt-body">此时设备列表显示「在线」—— 但还没有任何画面。</div>
+    </div>
+    <div class="vt-date">② 同步</div>
+    <div class="vt-spine"></div>
+    <div class="vt-content">
+      <div class="vt-title">后端「同步国标设备」读 WVP 已注册通道</div>
+      <div class="vt-body">写设备表 device_type = gb28181、play_url = /rtp/…；先探活 ZLM，过滤脏数据。</div>
+    </div>
+    <div class="vt-date">③ 点播</div>
+    <div class="vt-spine"></div>
+    <div class="vt-content">
+      <div class="vt-title">预览 / 布控请求 rtp/… → ZLM 无流 → WVP 发 INVITE</div>
+      <div class="vt-body">hook on_stream_not_found 后台自动触发，不堵页面；Analyzer 拉流超时 25 s 就是留给点播的窗口。</div>
+    </div>
+    <div class="vt-date">④ 出画</div>
+    <div class="vt-spine"></div>
+    <div class="vt-content">
+      <div class="vt-title">IPC 推 PS/RTP 进 ZLM → 网页 WS-FLV、Analyzer RTSP 同时可用</div>
+      <div class="vt-body">无人观看约 60 s 自动关流，再看即重新点播。</div>
+    </div>
+    <div class="vt-date">⑤ 离线</div>
+    <div class="vt-spine"></div>
+    <div class="vt-content">
+      <div class="vt-title">REGISTER Expires = 0 → 再同步 → is_online = 0</div>
+      <div class="vt-body">在线状态跟随 SIP 注册生命周期，不靠脚本假写。</div>
+    </div>
+  </div>
+  <footer class="slide-foot">
+    <span class="label muted">easySVA 二次开发 · 睡岗检测与国标接入</span>
+    <span class="label muted">张柏烁 · 邹子轶 · 吴佳锴</span>
+  </footer>
+</section>
+
+<!-- ═══ 15 · 国标 · 无真机怎么验收 ═══
+备注：本组没有真国标摄像头，所以自研了协议模拟器。它走的是真 SIP 信令、真 PS/RTP 媒体格式，平台侧看到的与真机完全一样，验收的是平台接入闭环；真机只是换一端设备。已知模拟器长推约每 60 秒闪断几秒，前端 watchdog 自愈，真机无此现象。 -->
+<section class="slide slide--split dark">
+  <header class="slide-chrome">
+    <span class="label muted">P3 · 没有真机怎么验收</span>
+    <span class="label muted">15</span>
+  </header>
+  <div class="slide-body">
+    <div class="split-text">
+      <p class="kicker" data-anim="fade-in" data-delay="0">自研国标协议模拟器 gb28181_sim.py</p>
+      <div class="rule" data-anim="reveal-right" data-delay="1" style="margin: 1.5vh 0"></div>
+      <h2 class="h2" data-anim="fade-up" data-delay="2" style="font-size: 74px">走真协议、真媒体，<br />平台看到的和真机一样</h2>
+      <ul class="bullet-list" data-anim="fade-up" data-delay="3" style="--sz-lead: 1.3vw">
+        <li><span><b>真 SIP</b>：REGISTER（Digest）/ 保活 / 目录应答 / 应答 INVITE</span></li>
+        <li><span><b>真媒体</b>：ffmpeg 生成 MPEG-2 PS over RTP，画面是工位视频</span></li>
+        <li><span><b>平台侧</b>：WVP 在线 → 同步出 demo-ipc → 预览有画 → Analyzer 拉 rtp/…</span></li>
+        <li><span><b>接真机</b>只需在摄像机填：平台 ID、域、密码、服务器 = 演示机 IP:5060</span></li>
+      </ul>
+    </div>
+    <div class="split-image" data-anim="reveal-right" data-delay="2">
+      <img src="img/p3-国标同步预览视频.png" alt="国标通道预览出画" style="object-fit: contain; background: var(--c-bg-alt)" />
+      <p class="img-caption">P3 · 国标通道 demo-ipc 同步进设备表并预览出画（经 Nginx /rtp/）</p>
+    </div>
+  </div>
+  <footer class="slide-foot">
+    <span class="label muted">easySVA 二次开发 · 睡岗检测与国标接入</span>
+    <span class="label muted">张柏烁 · 邹子轶 · 吴佳锴</span>
+  </footer>
+</section>
+
+<!-- ═══ 16 · P4 · 双源 × 双算法 ═══
+备注：P4 把前面三步合起来验：两类设备源乘两类算法，四条路径 9 月 8 日全部通过。开机自检脚本 check_demo_stack.sh --dual-sleep 会自动探测双源。 -->
+<section class="slide slide--stats orange">
+  <header class="slide-chrome">
+    <span class="broadside-num">P4 / 2026-09-08 / 验收点 4</span>
+    <span class="corner-label">双源 × 双算法联调</span>
+  </header>
+  <div class="slide-body">
+    <h2 class="h2" data-anim="fade-up" data-delay="0" style="color: #111">两类源 × 两类算法 = 四条路径，全部通过</h2>
+    <div class="stats-grid cols-4" data-anim="fade-up" data-delay="1">
+      <div class="stat-card">
+        <div class="stat-value" data-anim="scale-in" data-delay="1" style="font-size: 64px">直连 × YOLO</div>
+        <div class="stat-label body"><b>通过</b> · 进区 / 数量阈值告警照常</div>
+        <div class="stat-note">Analyzer 拉 live/… · P1 基线回归</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" data-anim="scale-in" data-delay="2" style="font-size: 64px">直连 × 睡岗</div>
+        <div class="stat-label body"><b>通过</b> · 真人趴桌 → BOW → SLEEP 弹告警</div>
+        <div class="stat-note">Analyzer 拉 live/… · P2 主路径</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" data-anim="scale-in" data-delay="3" style="font-size: 64px">国标 × YOLO</div>
+        <div class="stat-label body"><b>通过</b> · 国标源同样出框、告警</div>
+        <div class="stat-note">Analyzer 拉 rtp/… · P3 主路径</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" data-anim="scale-in" data-delay="4" style="font-size: 64px">国标 × 睡岗</div>
+        <div class="stat-label body"><b>通过</b> · 两项增量叠在一起也成立</div>
+        <div class="stat-note">Analyzer 拉 rtp/… · P4 新增</div>
+      </div>
+    </div>
+    <p class="lead" data-anim="fade-up" data-delay="3" style="color: rgba(17, 17, 17, 0.7); max-width: 85%">
+      演示机一键起栈 <b style="font-family: var(--f-mono); font-size: 0.85em">start_demo.ps1 -WithGbSim</b>，开机自检 <b style="font-family: var(--f-mono); font-size: 0.85em">check_demo_stack.sh &#8209;&#8209;dual-sleep</b> 自动探测两类源；2026-09-08 四个验收点全部关账。
+    </p>
+  </div>
+  <footer class="slide-foot">
+    <span class="broadside-num" style="opacity: 0.5">easySVA 二次开发 · 睡岗检测与国标接入</span>
+    <span class="broadside-num" style="opacity: 0.5">张柏烁 · 邹子轶 · 吴佳锴</span>
+  </footer>
+</section>
+
+<!-- ═══ 17 · 坑 · 成果 · 展望 ═══
+备注：坑大多出在「信令以为通了、媒体其实没通」和「本机通了、别人黑屏」，每个坑都写进了手册。三个人三台不同的机器，靠 phase 门禁和 PR 规范避免互相踩；代码只以 GitHub 为准。 -->
+<section class="slide slide--compare dark">
+  <header class="slide-chrome">
+    <span class="label muted">踩过的坑 · 成果 · 下一步</span>
+    <span class="label muted">17</span>
+  </header>
+  <div class="slide-body">
+    <div class="compare-panel left">
+      <div class="compare-label" data-anim="fade-in" data-delay="0">踩过的坑</div>
+      <h3 class="h3" data-anim="fade-up" data-delay="1">问题大多出在<br />「以为通了」</h3>
+      <ul class="bullet-list" data-anim="fade-up" data-delay="2" style="--sz-lead: 1.2vw">
+        <li><span><b>假在线</b>：列表在线、点播黑屏 → 同步只收真正注册的通道</span></li>
+        <li><span><b>在线 ≠ 有画</b>：预览转圈 → 后台自动点播，超时留 25 s</span></li>
+        <li><span><b>预览冻帧</b>：SIP 解析 + 播放器缓冲 + RTP 时间戳 + WSL 时钟，四层逐层修</span></li>
+        <li><span><b>局域网黑屏</b>：play_url 是 127.0.0.1 → 预览统一走 Nginx /rtp/</span></li>
+        <li><span><b>睡岗误报</b>：只看角度和时长 → 帧质量门 + 五道证据门</span></li>
+      </ul>
+    </div>
+    <div class="compare-panel panel-orange">
+      <div class="compare-label after" data-anim="fade-in" data-delay="0">成果与下一步</div>
+      <h3 class="h3" data-anim="fade-up" data-delay="1" style="color: #111">四个验收点全部关账</h3>
+      <p class="lead" data-anim="fade-up" data-delay="2" style="color: rgba(17, 17, 17, 0.7)">交付：可运行演示机、GitHub 仓库、评委使用手册、启动手册、国标说明书、算法说明。</p>
+      <ul class="bullet-list" data-anim="fade-up" data-delay="3" style="--sz-lead: 1.2vw">
+        <li><span><b>协作</b>：三人三台机；phase 门禁 + PR 规范，各写各的路径不互相踩</span></li>
+        <li><span><b>不足</b>：无真国标 IPC，以模拟器主路径验收；俯仰角是 2D 近似</span></li>
+        <li><span><b>下一步</b>：接真机；多人 / 多工位并行；告警 AI 复核</span></li>
+      </ul>
+    </div>
+  </div>
+  <footer class="slide-foot">
+    <span class="label muted">easySVA 二次开发 · 睡岗检测与国标接入</span>
+    <span class="label muted">张柏烁 · 邹子轶 · 吴佳锴</span>
+  </footer>
+</section>
+
+<!-- ═══ 18 · 结束 ═══
+备注：四个验收点都已关账。感谢老师，下面现场演示。演示前 15 分钟由 A 跑 start_demo.ps1 -WithGbSim 并自检。 -->
+<section class="slide slide--end orange">
+  <div class="broadside-top-chrome">
+    <span class="broadside-num" data-anim="fade-in" data-delay="0">18</span>
+    <span class="corner-label" data-anim="fade-in" data-delay="0">谢谢 · 现场演示</span>
+  </div>
+  <h1 class="display" data-anim="fade-up" data-delay="1" style="color: #111; max-width: 90%; line-height: 1.02; letter-spacing: -0.04em; margin-bottom: 24px">谢谢<br />下面现场演示</h1>
+  <div style="display: flex; flex-direction: column; gap: var(--gap-sm)" data-anim="fade-up" data-delay="2">
+    <p class="lead" style="color: rgba(17, 17, 17, 0.7); max-width: 75%">
+      大屏 → 设备管理（直连行 + 国标 demo-ipc 行）→ 同步国标设备 / 预览 → 布控「睡岗检测」→ 真人趴桌告警 → 报警详情播放证据
+    </p>
+  </div>
+  <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: auto; padding-top: var(--gap-sm); border-top: 1px solid rgba(17, 17, 17, 0.15)">
+    <span class="broadside-num" style="opacity: 0.5">github.com/GaiYa0/Video-Analyse · docs/使用手册.md</span>
+    <span class="broadside-num" style="opacity: 0.5">张柏烁 · 邹子轶 · 吴佳锴 · 2026</span>
+  </div>
+</section>
+</div>
+    <!-- /#deck -->
+    </div>
+    <!-- /#stage -->
+
+    <nav id="nav-dots" aria-label="Slide navigation"></nav>
+    <div id="slide-counter"></div>
+
+    <script>
+      (function () {
+        const deck = document.getElementById("deck");
+        const dotsNav = document.getElementById("nav-dots");
+        const counter = document.getElementById("slide-counter");
+        const slides = Array.from(deck.querySelectorAll(".slide"));
+        const total = slides.length;
+        let current = 0;
+        let isAnimating = false;
+
+        // Size the deck to fit all slides side by side
+        deck.style.width = total * 1920 + "px";
+
+        // Build navigation dots dynamically from slide count
+        slides.forEach(function (_, i) {
+          const dot = document.createElement("button");
+          dot.className = "nav-dot";
+          dot.setAttribute("aria-label", "Slide " + (i + 1));
+          dot.addEventListener("click", function () {
+            goTo(i);
+          });
+          dotsNav.appendChild(dot);
+        });
+
+        function pad(n) {
+          return String(n).padStart(2, "0");
+        }
+
+        function goTo(index) {
+          if (isAnimating) return;
+          if (index < 0 || index >= total) return;
+          if (
+            index === current &&
+            slides[current].classList.contains("is-active")
+          )
+            return;
+
+          isAnimating = true;
+          slides[current].classList.remove("is-active");
+
+          current = index;
+          const slide = slides[current];
+
+          // Reset animations so re-visiting a slide re-plays them
+          slide.querySelectorAll("[data-anim]").forEach(function (el) {
+            el.style.animation = "none";
+            void el.offsetHeight; // force reflow to clear animation state
+            el.style.animation = "";
+          });
+
+          slide.classList.add("is-active");
+          deck.style.transform = "translateX(" + -current * 1920 + "px)";
+
+          // Update dots
+          dotsNav.querySelectorAll(".nav-dot").forEach(function (d, i) {
+            d.classList.toggle("is-active", i === current);
+          });
+
+          // Update counter
+          counter.textContent = pad(current + 1) + " / " + pad(total);
+
+          setTimeout(function () {
+            isAnimating = false;
+          }, 900);
+        }
+
+        // Keyboard navigation — arrows, space, Home/End
+        document.addEventListener("keydown", function (e) {
+          if (
+            e.key === "ArrowRight" ||
+            e.key === " " ||
+            e.key === "ArrowDown"
+          ) {
+            e.preventDefault();
+            goTo(current + 1);
+          }
+          if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+            e.preventDefault();
+            goTo(current - 1);
+          }
+          if (e.key === "Home") goTo(0);
+          if (e.key === "End") goTo(total - 1);
+        });
+
+        // Touch swipe — 40px threshold
+        var touchStartX = 0;
+        document.addEventListener(
+          "touchstart",
+          function (e) {
+            touchStartX = e.touches[0].clientX;
+          },
+          { passive: true },
+        );
+        document.addEventListener(
+          "touchend",
+          function (e) {
+            var dx = e.changedTouches[0].clientX - touchStartX;
+            if (Math.abs(dx) > 40) goTo(current + (dx < 0 ? 1 : -1));
+          },
+          { passive: true },
+        );
+
+        // Mouse wheel — 1000ms lock prevents double-firing
+        var wheelLocked = false;
+        document.addEventListener(
+          "wheel",
+          function (e) {
+            if (wheelLocked) return;
+            var primary =
+              Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+            goTo(current + (primary > 0 ? 1 : -1));
+            wheelLocked = true;
+            setTimeout(function () {
+              wheelLocked = false;
+            }, 1000);
+          },
+          { passive: true },
+        );
+
+        // Kick off on slide 1
+        goTo(0);
+      })();
+    </script>
+
+    <script>
+      // Fixed 16:9 stage: 1920x1080 canvas scaled to fit the viewport, never reflowed.
+      (function () {
+        var stage = document.getElementById("stage");
+        function fit() {
+          var s = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+          stage.style.transform = "translate(-50%, -50%) scale(" + s + ")";
+        }
+        window.addEventListener("resize", fit);
+        fit();
+      })();
+    </script>
+  </body>
+</html>
