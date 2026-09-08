@@ -92,11 +92,16 @@ fi
 
 echo "=== [5/7] Start media server and analyzer ==="
 if ! pgrep -f 'MediaServer' >/dev/null; then
-  cd /opt/SVA/mediaServer && ./MediaServer -d
+  # 本机 MediaServer -d 不会立刻脱离前台，必须后台 + 重定向，否则卡死 start_demo
+  cd /opt/SVA/mediaServer && nohup ./MediaServer -d >/tmp/MediaServer.boot.log 2>&1 &
+  sleep 1
 else
   echo "MediaServer: already running"
 fi
 sleep 2
+if ! ss -tlnp 2>/dev/null | grep -q ':9992'; then
+  echo "WARN: ZLM :9992 尚未监听，见 /tmp/MediaServer.boot.log"
+fi
 if ! pgrep -f 'Analyzer -f' >/dev/null; then
   cd /opt/SVA/server
   : > log.out
