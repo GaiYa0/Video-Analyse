@@ -58,6 +58,8 @@ public class HDeviceServiceImpl implements HDeviceService {
     private static final String MONITOR_STATUS_ERROR = "ERROR";
     private static final long DEFAULT_SERVER_ID = 1L;
     private static final String DEFAULT_ZLM_APP = "live";
+    private static final int BROWSER_HTTP_FLV_PORT = 8080;
+    private static final Pattern ZLM_DIRECT_HTTP_PORT = Pattern.compile("(?i):(9992)/((?:live|rtp)/)");
 
     @Autowired
     HDeviceMapper hDeviceMapper;
@@ -353,11 +355,11 @@ public class HDeviceServiceImpl implements HDeviceService {
         Map<String, Object> result = new HashMap<>();
         result.put("apeId", apeId);
         result.put("stream", stream);
-        result.put("playUrl", "ws://" + zlmServer.getHost() + ":" + zlmServer.getMedia_http_port() + "/" + zlmApp + "/" + stream + ".live.flv");
+        result.put("playUrl", buildNginxHttpFlvUrl(zlmServer, zlmApp, stream));
         result.put("zlmProxyKey", StringUtils.isBlank(zlmProxyKey) ? null : zlmProxyKey);
         result.put("addProxySuccess", addProxySuccess);
         result.put("addProxyAlreadyExists", addProxyAlreadyExists);
-        result.put("protocol", "ws-flv");
+        result.put("protocol", "http-flv");
         return result;
     }
 
@@ -615,14 +617,32 @@ public class HDeviceServiceImpl implements HDeviceService {
             throw new ServiceException("设备不存在: " + apeId);
         }
 
-        String previewAddProxyUrl = buildDirectAddProxyUrl(device);
         String previewPlayUrl = device.getPlay_url();
-        if (StringUtils.isBlank(previewPlayUrl)) {
+        if (isDirectDevice(device)) {
+            try {
+                Map<String, Object> directLiveInfo = getDirectLiveUrl(apeId);
+                Object playUrlObj = directLiveInfo.get("playUrl");
+                if (playUrlObj != null && StringUtils.isNotBlank(String.valueOf(playUrlObj))) {
+                    previewPlayUrl = String.valueOf(playUrlObj);
+                    hDeviceMapper.updatePlayUrlByApeId(apeId, previewPlayUrl);
+                }
+                Object zlmProxyKeyObj = directLiveInfo.get("zlmProxyKey");
+                if (zlmProxyKeyObj != null && StringUtils.isNotBlank(String.valueOf(zlmProxyKeyObj))) {
+                    hDeviceMapper.updateZlmProxyKeyByApeId(apeId, String.valueOf(zlmProxyKeyObj));
+                }
+            } catch (Exception e) {
+                log.warn("预览拉起直连代理失败, apeId={}, err={}", apeId, e.getMessage());
+                if (StringUtils.isBlank(previewPlayUrl)) {
+                    previewPlayUrl = buildDirectPlayUrl(device);
+                }
+            }
+        } else if (StringUtils.isBlank(previewPlayUrl)) {
             previewPlayUrl = buildDirectPlayUrl(device);
         }
         if (StringUtils.isBlank(previewPlayUrl)) {
             previewPlayUrl = device.getDirect_source_url();
         }
+        previewPlayUrl = toBrowserHttpFlv(previewPlayUrl);
 
         Map<String, Object> result = new HashMap<>();
         result.put("apeId", device.getApe_id());
@@ -735,7 +755,27 @@ public class HDeviceServiceImpl implements HDeviceService {
 
         String zlmApp = StringUtils.isBlank(zlmServer.getApp()) ? DEFAULT_ZLM_APP : zlmServer.getApp().trim();
         String stream = sanitizeStreamName(device.getApe_id());
-        return "ws://" + zlmServer.getHost() + ":" + zlmServer.getMedia_http_port() + "/" + zlmApp + "/" + stream + ".live.flv";
+        return buildNginxHttpFlvUrl(zlmServer, zlmApp, stream);
+    }
+
+    private String buildNginxHttpFlvUrl(ZlmServer zlmServer, String app, String stream) {
+        String host = (zlmServer == null || StringUtils.isBlank(zlmServer.getHost()))
+            ? "127.0.0.1" : zlmServer.getHost().trim();
+        String zlmApp = StringUtils.isBlank(app) ? DEFAULT_ZLM_APP : app.trim();
+        return "http://" + host + ":" + BROWSER_HTTP_FLV_PORT + "/" + zlmApp + "/" + stream + ".live.flv";
+    }
+
+    private String toBrowserHttpFlv(String playUrl) {
+        if (StringUtils.isBlank(playUrl)) {
+            return playUrl;
+        }
+        String url = playUrl.trim();
+        if (url.regionMatches(true, 0, "ws://", 0, 5)) {
+            url = "http://" + url.substring(5);
+        } else if (url.regionMatches(true, 0, "wss://", 0, 6)) {
+            url = "https://" + url.substring(6);
+        }
+        return ZLM_DIRECT_HTTP_PORT.matcher(url).replaceFirst(":8080/$2");
     }
 
     private ZlmServer resolveEnabledZlmServer(HDevice device) {

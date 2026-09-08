@@ -17,10 +17,13 @@ export function canPlayHttpFlv(url) {
 }
 
 const LIVE_FLV_CONFIG = {
-  enableWorker: true,
+  // webpack 生产包里 webworkify 经常建出空 worker，直播会一直转圈。
+  // 单路预览走主线程解复用即可。
+  enableWorker: false,
   enableStashBuffer: false,
   stashInitialSize: 128,
-  autoCleanupSourceBuffer: true
+  autoCleanupSourceBuffer: true,
+  lazyLoad: false
 }
 
 const BROWSER_FLV_PATH = /\/(live|rtp)\//i
@@ -46,8 +49,10 @@ export function rewriteFlvUrlForBrowser(url) {
     }
 
     const pageHttps = window.location.protocol === 'https:'
-    const isWs = parsed.protocol === 'ws:' || parsed.protocol === 'wss:'
-    parsed.protocol = isWs ? (pageHttps ? 'wss:' : 'ws:') : (pageHttps ? 'https:' : 'http:')
+    // 业务页经 Nginx 看 HTTP-FLV。不要保留 ws://：
+    // 1) Windows 8080→80 经常升不了 WebSocket，flv.js 会转圈停在 0:00
+    // 2) localhost 与 127.0.0.1 不同源，旧地址直连会被 CORS 拦住
+    parsed.protocol = pageHttps ? 'https:' : 'http:'
     parsed.host = window.location.host
     return parsed.toString()
   } catch (e) {
@@ -62,7 +67,11 @@ export function createLiveFlvPlayer(url, extraConfig) {
   return flvjs.createPlayer({
     type: 'flv',
     url: playUrl,
-    isLive: true
+    isLive: true,
+    // 国标模拟器和水杯测试流都是 -an。metadata 若仍标有音频，
+    // flv.js 会一直等音频包，画面停在转圈 0:00。
+    hasAudio: false,
+    hasVideo: true
   }, Object.assign({}, LIVE_FLV_CONFIG, extraConfig || {}))
 }
 

@@ -104,8 +104,8 @@
     />
 
     <player
-      v-show="viewProof"
-      :viewProof="viewProof"
+      v-if="viewProof"
+      :viewProof="true"
       :rtspUrl="rtspUrl"
       title="实时监控预览"
       @closeProof="viewProof = false"
