@@ -77,4 +77,4 @@ VIDEO=/path/to/other.mp4 bash scripts/start_gb_sim.sh
 
 ## 验收点 3：国标原 YOLO
 
-步骤、责任切分与本机 WSL24 探测记录见 [gb28181-yolo-verify.md](./gb28181-yolo-verify.md)。睡岗走国标源另开 PR，不要和本文混。
+步骤、责任切分与本机 WSL24 探测记录见 [gb28181-yolo-verify.md](./gb28181-yolo-verify.md)。国标 / 直连睡岗实测见 [algorithm-sleep.md](../algorithm-sleep.md) §7，不要改开机脚本。

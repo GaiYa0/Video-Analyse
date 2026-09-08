@@ -195,4 +195,45 @@ B 能改的已经在本仓库：公式、时序、ONNX 接入、告警 JSON 字�
 | 同学 A | 演示机 pull、拷 `yolo11n-pose.onnx`、插 `on_sleep_pose`、`-DSVA_ONNXRUNTIME_GPU=OFF` 编过并评论 |
 | 同学 C | 告警页如需展示俯仰角再扩字段；phase 升 3 等 P2 演示过了再改 |
 
-启发式「睡觉」不要当睡岗。国标不要塞进这个 PR。
+启发式「睡觉」不要当睡岗。P2 清单已关账。验收点 4 的双源实测见 §7。
+
+---
+
+## 7. 验收点 4：国标与直连同一套阈值（实测）
+
+国标**不改** §2–4 的 32° / 5 秒 / 占空比。只换 Analyzer 打开的 URL。backend `DeploymentAnalyzerClient.buildStreamUrl`：`device_type=gb28181` 时 `resolveGbRtpPull` 得到 `rtp/<设备_通道>`，否则 `live/<ape_id>`。发给 Analyzer 的是：
+
+| 源 | `streamUrl` |
+| --- | --- |
+| 直连 RTSP / 工位摄像头 | `rtsp://{zlm}:9994/live/<ape_id>` |
+| 国标 demo-ipc | `rtsp://{zlm}:9994/rtp/34020000001320000001_34020000001320000001` |
+
+开机与保栈仍按 [启动手册.md](./启动手册.md) §1.0.0（A 的 `start_demo.ps1 -WithGbSim` + `--dual-sleep`）。原 YOLO 步骤见 [fixtures/gb28181-yolo-verify.md](./fixtures/gb28181-yolo-verify.md)。不要选启发式「睡觉」。录像引擎用算法服务器。
+
+### 交给 C 进 PPT
+
+1. 睡岗判定：俯仰角 ≥ **32°**（无髋 38°），连续 **5 秒**，再加占空比 / 峰值 45° / 头点静止；正脸看镜头封顶 18° 不报。  
+2. 国标与直连公式相同，只换 `live/` → `rtp/<设备_通道>`。  
+3. 反例仍按 P2：打字、看手机、看镜头、空座位、背景人不应报。
+
+### 实测表（2026-09-08）
+
+机器：同学 B 的 WSL24 联调栈（六服务 `active`，Analyzer `UP`，网页 `:8088`）。**本机无 WVP**，不能当国标验收。演示机行留空，由 A 开机后在 Ubuntu 22.04 补填。
+
+| 项 | 机器 | `streamUrl` / 探测 | 结果 |
+| --- | --- | --- | --- |
+| 栈 / Analyzer | B WSL24 | `http://127.0.0.1:9993/` JSON `urls` | 过（Analyzer UP） |
+| 直连探测 | B WSL24 | `rtsp://127.0.0.1:9994/live/cam918429` | 未过：`NO_MEDIA_OR_TIMEOUT`（未推 webcam / 未启用监控，预期） |
+| 国标探测 | B WSL24 | `rtsp://127.0.0.1:9994/rtp/34020000001320000001_34020000001320000001` | 未过：`NO_MEDIA_OR_TIMEOUT`（无 WVP，预期） |
+| 国标原 YOLO | A 演示机 `demo-ipc` | 须为 `rtsp://127.0.0.1:9994/rtp/34020000001320000001_34020000001320000001` | **待补**：出框或告警后改「过」 |
+| 国标睡岗 | A 演示机 `on_sleep_pose` | 同上 `rtp/`，日志 `sleep_on_duty track=…` | **待补**：黄框 `SLEEP` ≥5s + 证据 MP4 可拖 |
+| 直连睡岗 | A 演示机工位 或 B 推 webcam | `rtsp://127.0.0.1:9994/live/<ape_id>` | **待补** |
+| 直连原 YOLO 回归 | 同上，停睡岗后再布 `on_yolo11n_80` | `live/<ape_id>` | **待补**：确认没拆原 YOLO |
+
+演示机补测命令（A 保栈后 B 布控，不改公式）：
+
+```text
+.\scripts\start_demo.ps1 -WithGbSim
+# A：check_demo_stack.sh --dual-sleep --live <工位ape_id> --rtp 34020000001320000001_34020000001320000001
+# rtp 必须 OPEN 后再布控。Analyzer 须已 pull 含 #52/#54/#59 的二进制。
+```
