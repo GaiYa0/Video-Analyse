@@ -20,10 +20,13 @@
 
 | 文档 | 说明 |
 | --- | --- |
+| [docs/使用手册.md](docs/使用手册.md) | **给评委 / 新用户**：网页怎么用、睡岗与国标怎么看懂 |
+| [docs/CLAUDE.md](docs/CLAUDE.md) | 项目速览与文档地图（给协作 AI / 新成员） |
 | [docs/当前阶段.md](docs/当前阶段.md) | 当前 `phase` 与阶段禁令（AI 以这份为准） |
 | [docs/启动手册.md](docs/启动手册.md) | **同学 A**：一键/分项启动、网页地址、国标模拟器；**B/C 看 §1.1** |
-| [docs/国标功能使用说明书.md](docs/国标功能使用说明书.md) | 国标预览 / 布控 / 模拟器 / 真机 / 故障（phase 3） |
-| [docs/architecture.md](docs/architecture.md) | 架构总图 + 直连流媒体实测（C 合稿，A 并入） |
+| [docs/国标功能使用说明书.md](docs/国标功能使用说明书.md) | 国标原理 / 怎么看画面 / 模拟器 / 真机 / 故障 |
+| [docs/architecture.md](docs/architecture.md) | 架构总图 + 直连流媒体实测 + 上游仓库（C 合稿，A 并入） |
+| [docs/答辩PPT大纲.md](docs/答辩PPT大纲.md) / [生成稿](docs/答辩PPT生成稿.md) | 答辩 PPT 结构与逐页讲稿 |
 | [docs/分工.md](docs/分工.md) | 三人分工总览 |
 | [docs/PR规范.md](docs/PR规范.md) | 分支、commit、PR 要求 |
 | [docs/deploy-notes.md](docs/deploy-notes.md) | 演示机部署细节与排障 |
@@ -38,7 +41,7 @@ docs/           分工、架构、角色手册、验收截图
 scripts/        一键启动、局域网、告警视频补救脚本
 ```
 
-上游见 [docs/UPSTREAM.md](docs/UPSTREAM.md)。验收与编译在同学 A 的 **WSL2 Ubuntu 22.04 x86_64**，不要在 Apple 芯片 Mac 上执行官方 `install_source.sh`。阶段规划只看 [docs/当前阶段.md](docs/当前阶段.md)（现为 **phase 3**，做国标；不要拆掉睡岗/原 YOLO）。
+上游见 [docs/architecture.md](docs/architecture.md)「上游仓库」。验收与编译在同学 A 的 **WSL2 Ubuntu 22.04 x86_64**，不要在 Apple 芯片 Mac 上执行官方 `install_source.sh`。阶段规划只看 [docs/当前阶段.md](docs/当前阶段.md)（现为 **phase 4**，双源联调与交付材料；不要拆掉睡岗/原 YOLO）。
 
 ---
 

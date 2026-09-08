@@ -250,7 +250,7 @@ B 能改的已经在本仓库：公式、时序、ONNX 接入、告警 JSON 字�
 | 直连 RTSP / 工位摄像头 | `rtsp://{zlm}:9994/live/<ape_id>` |
 | 国标 demo-ipc | `rtsp://{zlm}:9994/rtp/34020000001320000001_34020000001320000001` |
 
-开机与保栈仍按 [启动手册.md](./启动手册.md) §1.0.0（A 的 `start_demo.ps1 -WithGbSim` + `--dual-sleep`）。原 YOLO 步骤见 [fixtures/gb28181-yolo-verify.md](./fixtures/gb28181-yolo-verify.md)。不要选启发式「睡觉」。录像引擎用算法服务器。
+开机与保栈仍按 [启动手册.md](./启动手册.md) §1.0.0（A 的 `start_demo.ps1 -WithGbSim` + `--dual-sleep`）。原 YOLO 步骤见 [fixtures/README.md](./fixtures/README.md)「验收点 3」。不要选启发式「睡觉」。录像引擎用算法服务器。
 
 ### 交给 C 进 PPT
 
