@@ -1,24 +1,21 @@
 <template>
-  <el-card :class="['box-card', { 'box-card--inline': inline }]" :style="cardStyle">
-    <div slot="header" class="clearfix">
-      <span> {{ title }} </span>
-      <el-button style="float: right; padding: 3px 0" type="text" @click="closeProof">关闭</el-button>
-    </div>
-    <el-row>
-      <el-col>
-        <div class="grid-content bg-purple">
-          <div class="block" style="margin-top: 25px;">
-            <video ref="flvVideo" height="500" muted controls playsinline></video>
-          </div>
-        </div>
-      </el-col>
-    </el-row>
-  </el-card>
+  <div :class="inline ? 'player-root--inline' : 'player-root'">
+    <div v-if="!inline" class="player-mask" @click="closeProof"></div>
+    <el-card :class="['box-card', { 'box-card--inline': inline }]" :style="cardStyle">
+      <div slot="header" class="clearfix">
+        <span> {{ title }} </span>
+        <el-button style="float: right; padding: 3px 0" type="text" @click="closeProof">关闭</el-button>
+      </div>
+      <div class="player-body">
+        <video ref="flvVideo" muted controls playsinline></video>
+      </div>
+    </el-card>
+  </div>
 </template>
 
 
 <script>
-import { attachFlvPlayer, createLiveFlvPlayer, destroyFlvPlayer, isFlvSupported, isFlvUrl, resetVideoElement } from '@/utils/flvPlayer';
+import { applyContainStyle, attachFlvPlayer, createLiveFlvPlayer, destroyFlvPlayer, isFlvSupported, isFlvUrl, resetVideoElement } from '@/utils/flvPlayer';
 
 export default {
   name: 'player',
@@ -49,7 +46,7 @@ export default {
 
   computed: {
     cardStyle() {
-      return this.inline ? {} : { zIndex: 1000 };
+      return this.inline ? {} : { zIndex: 4100 };
     }
   },
 
@@ -74,12 +71,21 @@ export default {
       return /^(https?:\/\/|wss?:\/\/|\/)/i.test(url || '');
     },
 
+    fitVideo(videoElement) {
+      if (!videoElement) return;
+      applyContainStyle(videoElement);
+      videoElement.style.width = '100%';
+      videoElement.style.height = 'auto';
+      videoElement.style.maxHeight = this.inline ? '320px' : '70vh';
+    },
+
     playHttpMedia(url) {
       const videoElement = this.$refs.flvVideo;
       if (!videoElement || !url) return;
       if (this.flvPlayer != null) this.closeFLVPlayer(true);
       videoElement.src = url;
       videoElement.muted = false;
+      this.fitVideo(videoElement);
       videoElement.play().catch(() => {
       });
     },
@@ -92,6 +98,7 @@ export default {
       if (isFlvSupported()) {
         this.flvPlayer = createLiveFlvPlayer(url);
         attachFlvPlayer(this.flvPlayer, videoElement);
+        this.fitVideo(videoElement);
         this.flvPlayer.play();
       }
     },
@@ -128,6 +135,7 @@ export default {
         });
 
         attachFlvPlayer(this.flvPlayer, videoElement);
+        this.fitVideo(videoElement);
         this.flvPlayer.play();
         this.flvPlayer.muted = false; // 确保新播放器不是静音状态
       }
@@ -208,14 +216,42 @@ export default {
   clear: both
 }
 
+.player-mask {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 4099;
+}
+
+.player-root--inline {
+  width: 100%;
+}
+
 .box-card {
   position: fixed;
-  top: 100px;
+  top: 80px;
   left: 50%;
   transform: translateX(-50%);
-  width: 1030px;
-  height: 620px;
-  z-index: 1000;
+  width: min(90vw, 720px);
+  height: auto;
+  max-height: 90vh;
+  z-index: 4100;
+}
+
+.player-body {
+  margin-top: 8px;
+}
+
+.box-card ::v-deep video {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 70vh;
+  background: #000;
+  object-fit: contain;
 }
 
 .box-card--inline {
@@ -225,10 +261,12 @@ export default {
   transform: none;
   width: 100%;
   height: auto;
+  max-height: none;
 }
 
 .box-card--inline ::v-deep video {
   width: 100%;
   height: 320px;
+  max-height: 320px;
 }
 </style>

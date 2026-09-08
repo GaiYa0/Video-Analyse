@@ -215,7 +215,7 @@
 
 .el-table .operation-column .cell {
   white-space: nowrap;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .el-table::before,

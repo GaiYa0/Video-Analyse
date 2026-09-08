@@ -94,7 +94,7 @@ export default {
         // console.log("初始化样式");
         //给父元素设置 overflow:hidden
         // this.screenWrapper.parentNode.style.overflow = "hidden";
-        this.screenWrapper.parentNode.style.backgroundColor = "rgb(3,7,40)";
+        this.screenWrapper.parentNode.style.backgroundColor = "#0e1116";
         this.screenWrapper.parentNode.scrollLeft = 0;
         this.screenWrapper.parentNode.scrollTop = 0;
 
