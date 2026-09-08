@@ -78,14 +78,37 @@ code=$(curl --noproxy 127.0.0.1 -sS -m 5 -o /dev/null -w '%{http_code}' "$WVP/" 
 ss -tlnp 2>/dev/null | grep -q ':9992' && pass "ZLM HTTP :9992" || bad "ZLM HTTP :9992 未监听"
 ss -tlnp 2>/dev/null | grep -qE ':5060' && pass "SIP :5060" || bad "SIP :5060 未监听"
 
-echo "=== ZLM app=rtp（国标点播）==="
+echo "=== ZLM hook / app=rtp ==="
 if [[ -n "$SECRET" ]]; then
+  pub=$(grep -E '^on_publish=' /opt/SVA/mediaServer/config.ini | head -1 | tr -d '\r')
+  playh=$(grep -E '^on_play=' /opt/SVA/mediaServer/config.ini | head -1 | tr -d '\r')
+  if echo "$pub" | grep -q '18080/index/hook/on_publish'; then
+    pass "on_publish → WVP（stream_replace）"
+  else
+    bad "on_publish 未指向 WVP（国标流会停在 SSRC hex，双平台转圈）: $pub"
+  fi
+  if echo "$playh" | grep -qE '^on_play=$'; then
+    pass "on_play 已清空"
+  else
+    warn "on_play 非空，播放鉴权可能 401: $playh"
+  fi
   media=$(curl --noproxy 127.0.0.1 -sS -m 5 \
     "$ZLM_HTTP/index/api/getMediaList?secret=${SECRET}&app=rtp" || true)
   if echo "$media" | grep -q "$RTP_STREAM"; then
-    pass "getMediaList 含 $RTP_STREAM"
+    pass "getMediaList 含命名流 $RTP_STREAM"
   else
-    bad "getMediaList 无 $RTP_STREAM（先点播 / 跑 start_gb_sim / 业务 warmRtp）"
+    if echo "$media" | python3 -c 'import sys,json,re
+try:
+    d=json.load(sys.stdin)
+except Exception:
+    raise SystemExit(1)
+hexes=[x.get("stream") for x in (d.get("data") or []) if re.fullmatch(r"[0-9A-Fa-f]{8}", str(x.get("stream") or ""))]
+print(",".join(hexes))
+' 2>/dev/null | grep -q '[0-9A-Fa-f]'; then
+      bad "getMediaList 只有 SSRC hex、没有 $RTP_STREAM（on_publish stream_replace 失败）"
+    else
+      bad "getMediaList 无 $RTP_STREAM（先点播 / 跑 start_gb_sim / 业务 warmRtp）"
+    fi
     echo "  hint: 预览或布控会触发 warmRtp；也可 WVP 通道「播放」"
   fi
 else

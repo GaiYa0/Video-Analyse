@@ -27,10 +27,12 @@ fi
 LAN_IP="${LAN_IP:-$(hostname -I | awk '{print $1}')}"
 python3 -c "
 from pathlib import Path
+import re
 lan = '''$LAN_IP'''
 p = Path('/opt/SVA/wvp/config/application-easysva.yml')
 section = None
 out = []
+seen_push_auth = False
 for line in p.read_text(encoding='utf-8').splitlines():
     s = line.strip()
     if line and not line[0].isspace() and s.endswith(':') and not s.startswith('#'):
@@ -42,9 +44,20 @@ for line in p.read_text(encoding='utf-8').splitlines():
     if section == 'media' and s.startswith('stream-ip:'):
         # 浏览器在演示机本机播；LAN:9992 不通（Clash / 未转发）
         line = line.split(':', 1)[0] + ': 127.0.0.1'
+    if s.startswith('request-timeout:'):
+        line = re.sub(r'request-timeout:\s*\S+', 'request-timeout: 180000', line)
+    if s.startswith('push-authority:'):
+        line = re.sub(r'push-authority:\s*\S+', 'push-authority: false', line)
+        seen_push_auth = True
     out.append(line)
-p.write_text('\\n'.join(out) + '\\n', encoding='utf-8')
-print('WVP SIP 绑定 %s:5060' % lan)
+text = '\n'.join(out) + '\n'
+if not seen_push_auth:
+    if re.search(r'(?m)^user-settings:\s*$', text):
+        text = re.sub(r'(?m)^user-settings:\s*$', 'user-settings:\n  push-authority: false', text, count=1)
+    else:
+        text += 'user-settings:\n  push-authority: false\n'
+p.write_text(text, encoding='utf-8')
+print('WVP SIP 绑定 %s:5060；push-authority=false；async timeout=180s' % lan)
 "
 
 mysql -h127.0.0.1 -P3307 -uroot -peasySVA.EZ -e \
@@ -113,14 +126,14 @@ if [[ "$WVP_READY" -ne 1 ]]; then
   exit 1
 fi
 
-# ZLM hook → WVP（国标点播必需）；不要挂 on_publish/on_play
-# 原因：WVP 启动时 setZLMConfig 会把 on_publish/on_play 写回 ZLM（要求 pushKey），
-# 导致 live/* RTMP（工位/test1/摄像头）401。必须等 WVP 就绪后再清空并校验。
-# 国标 rtp 点播只依赖 on_stream_not_found 等，不依赖 on_publish。
+# ZLM hook → WVP
+# 国标多端口模式下，ZLM 先用 SSRC hex 当 stream_id，必须靠 on_publish 返回 stream_replace
+# 才能改成 设备_通道；清空 on_publish 会导致业务/WVP 都去拉不存在的流名。
+# live/* RTMP 401 不靠清空 on_publish，而靠 user-settings.push-authority=false。
+# on_play 仍清空，避免播放鉴权误伤 /live/、/rtp/ 预览。
 INI=/opt/SVA/mediaServer/config.ini
 if [[ -f "$INI" ]]; then
   [[ -f "$INI.bak.pre-wvp" ]] || cp "$INI" "$INI.bak.pre-wvp"
-  # 给 WVP 首次 setZLMConfig 一点时间，再覆盖
   sleep 3
   python3 - <<'PY'
 from pathlib import Path
@@ -134,8 +147,9 @@ HOOK_WVP = {
     "on_stream_changed": "http://127.0.0.1:18080/index/hook/on_stream_changed",
     "on_stream_none_reader": "http://127.0.0.1:18080/index/hook/on_stream_none_reader",
     "on_stream_not_found": "http://127.0.0.1:18080/index/hook/on_stream_not_found",
+    "on_publish": "http://127.0.0.1:18080/index/hook/on_publish",
 }
-CLEAR_KEYS = ("on_publish", "on_play")
+PUBLISH_URL = HOOK_WVP["on_publish"]
 
 def rewrite_ini():
     lines = p.read_text(encoding="utf-8", errors="ignore").splitlines()
@@ -149,8 +163,8 @@ def rewrite_ini():
         "on_stream_changed": "on_stream_changed=" + HOOK_WVP["on_stream_changed"],
         "on_stream_none_reader": "on_stream_none_reader=" + HOOK_WVP["on_stream_none_reader"],
         "on_stream_not_found": "on_stream_not_found=" + HOOK_WVP["on_stream_not_found"],
+        "on_publish": "on_publish=" + PUBLISH_URL,
         "on_play": "on_play=",
-        "on_publish": "on_publish=",
     }
     general = {
         "maxstreamwaitms": "maxStreamWaitMS=25000",
@@ -175,7 +189,7 @@ def rewrite_ini():
             if section == "[api]" and key == "secret":
                 secret = s.split("=", 1)[1].strip()
         out.append(line)
-    missing = [hooks[k] for k in CLEAR_KEYS if k not in seen_hook]
+    missing = [hooks[k] for k in ("on_publish", "on_play") if k not in seen_hook]
     if missing and any(x.strip().lower() == "[hook]" for x in out):
         rebuilt, injected = [], False
         for line in out:
@@ -187,6 +201,13 @@ def rewrite_ini():
     p.write_text("\n".join(out) + "\n", encoding="utf-8")
     return secret
 
+def hook_val(data, suffix):
+    for k, v in data.items():
+        lk = str(k).lower().replace(".", "_")
+        if lk.endswith(suffix) or lk == "hook_" + suffix:
+            return str(v or "")
+    return ""
+
 def set_and_check(secret):
     qs = urlencode({
         "secret": secret,
@@ -196,9 +217,8 @@ def set_and_check(secret):
         "hook.on_stream_changed": HOOK_WVP["on_stream_changed"],
         "hook.on_stream_none_reader": HOOK_WVP["on_stream_none_reader"],
         "hook.on_server_started": HOOK_WVP["on_server_started"],
-        # 空串热更新：清掉 WVP setZLMConfig 写回的鉴权 hook
+        "hook.on_publish": PUBLISH_URL,
         "hook.on_play": "",
-        "hook.on_publish": "",
         "general.maxStreamWaitMS": "25000",
         "general.streamNoneReaderDelayMS": "60000",
     })
@@ -208,16 +228,9 @@ def set_and_check(secret):
         "http://127.0.0.1:9992/index/api/getServerConfig?secret=" + secret, timeout=5
     ) as r:
         data = (json.loads(r.read().decode("utf-8", "replace")).get("data") or [{}])[0]
-    pub = str(data.get("hook.on_publish") or data.get("hook.on_publish".lower()) or "")
-    play = str(data.get("hook.on_play") or "")
-    # ZLM 返回键名可能带 hook. 前缀或不带
-    for k, v in data.items():
-        lk = str(k).lower().replace(".", "_")
-        if lk.endswith("on_publish") or lk == "hook_on_publish":
-            pub = str(v or "")
-        if lk.endswith("on_play") or lk == "hook_on_play":
-            play = str(v or "")
-    ok = (not pub.strip()) and (not play.strip())
+    pub = hook_val(data, "on_publish")
+    play = hook_val(data, "on_play")
+    ok = (PUBLISH_URL in pub) and (not play.strip())
     print("verify on_publish=%r on_play=%r -> %s" % (pub, play, "OK" if ok else "NEED_RETRY"))
     return ok
 
@@ -235,13 +248,12 @@ else:
             ok = False
         if ok:
             break
-        # WVP 可能稍后再次 setZLMConfig，稍等再清
         time.sleep(2)
     if ok:
-        print("ZLM hook -> WVP :18080 (not_found/none_reader/changed); on_publish/on_play CLEARED")
+        print("ZLM hook -> WVP :18080 (publish/not_found/none_reader/changed); on_play CLEARED")
         print("maxStreamWaitMS=25000, streamNoneReaderDelayMS=60000")
     else:
-        print("ERROR: 无法清空 ZLM on_publish/on_play（WVP 可能仍在写回），live RTMP 可能 401")
+        print("ERROR: 国标 on_publish 未挂上或 on_play 未清空")
         raise SystemExit(2)
 PY
 fi

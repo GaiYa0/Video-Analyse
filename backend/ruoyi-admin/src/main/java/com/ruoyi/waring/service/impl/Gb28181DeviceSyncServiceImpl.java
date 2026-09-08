@@ -286,7 +286,7 @@ public class Gb28181DeviceSyncServiceImpl implements IGb28181DeviceSyncService {
             }
             log.info("ZLM 无 rtp 流，触发 on_stream_not_found: {}", streamId);
             triggerStreamNotFound(zlmServer, streamId);
-            if (wait && waitForRtpStream(zlmServer, streamId, 3)) {
+            if (wait && waitForRtpStream(zlmServer, streamId, 8)) {
                 return true;
             }
             if (wvpEnabled) {
@@ -300,7 +300,8 @@ public class Gb28181DeviceSyncServiceImpl implements IGb28181DeviceSyncService {
             if (!wait) {
                 return zlmHasRtpStream(zlmServer, streamId);
             }
-            return waitForRtpStream(zlmServer, streamId, 8);
+            // on_publish stream_replace 把 SSRC hex 改成 设备_通道，多等几秒
+            return waitForRtpStream(zlmServer, streamId, 20);
         } catch (Exception ex) {
             log.warn("ensureRtpReady 失败 stream={}: {}", streamId, ex.getMessage());
             return false;
@@ -322,6 +323,9 @@ public class Gb28181DeviceSyncServiceImpl implements IGb28181DeviceSyncService {
             if (zlmHasRtpStream(zlmServer, streamId)) {
                 log.info("国标 rtp 已就绪 stream={} after {}s", streamId, i + 1);
                 return true;
+            }
+            if (i == 2 || i == 8) {
+                log.info("等待命名流 {}（若 ZLM 仅有 8 位 SSRC hex，说明 on_publish stream_replace 未生效）", streamId);
             }
             try {
                 Thread.sleep(1000L);

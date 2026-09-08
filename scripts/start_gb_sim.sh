@@ -124,15 +124,25 @@ if [[ "$have_ch" != 1 ]]; then
 fi
 
 echo "=== WVP 点播 ==="
+# 释放「已有请求在途」；等 HTTP 异步超时锁清掉
 curl --noproxy 127.0.0.1 -sS -m 15 "${AUTH[@]}" \
   "$WVP/api/play/stop/${DEVICE_ID}/${CHANNEL_ID}" >/dev/null || true
-# 等上一轮 in-flight 点播结束，避免「已有请求在途」吃掉新 INVITE
-sleep 2
-PLAY=$(curl --noproxy 127.0.0.1 -sS -m 90 "${AUTH[@]}" \
-  "$WVP/api/play/start/${DEVICE_ID}/${CHANNEL_ID}" || true)
-echo "$PLAY" | python3 -c 'import sys; print(sys.stdin.read()[:500])'
+sleep 3
+PLAY=""
+for attempt in 1 2; do
+  PLAY=$(curl --noproxy 127.0.0.1 -sS -m 90 "${AUTH[@]}" \
+    "$WVP/api/play/start/${DEVICE_ID}/${CHANNEL_ID}" || true)
+  echo "play attempt ${attempt}: $(echo "$PLAY" | python3 -c 'import sys; print(sys.stdin.read()[:400])')"
+  if echo "$PLAY" | grep -q '"code":0'; then
+    break
+  fi
+  echo "点播未成功，stop 后重试"
+  curl --noproxy 127.0.0.1 -sS -m 15 "${AUTH[@]}" \
+    "$WVP/api/play/stop/${DEVICE_ID}/${CHANNEL_ID}" >/dev/null || true
+  sleep 5
+done
 echo
-STREAM=$(echo "$PLAY" | python3 -c 'import sys,json,re
+STREAM=$(echo "$PLAY" | python3 -c 'import sys,json
 raw=sys.stdin.read()
 try:
     d=json.loads(raw)
@@ -143,35 +153,64 @@ except Exception:
 if [[ -z "$STREAM" ]]; then
   STREAM="${DEVICE_ID}_${CHANNEL_ID}"
 fi
+EXPECT="${DEVICE_ID}_${CHANNEL_ID}"
 
-echo "=== ZLM getMediaList app=rtp ==="
+echo "=== ZLM getMediaList 必须出现命名流 ${EXPECT}（不能只是 SSRC hex）==="
 ok=0
-for i in $(seq 1 25); do
+hex_only=0
+for i in $(seq 1 30); do
   MEDIA=$(curl --noproxy 127.0.0.1 -sS -m 5 \
     "http://127.0.0.1:9992/index/api/getMediaList?secret=${SECRET}" || true)
-  HIT=$(python3 -c 'import json,sys
-raw=sys.argv[1] if len(sys.argv)>1 else ""
+  HIT=$(EXPECT="$EXPECT" python3 -c 'import json,os,sys,re
+raw=sys.stdin.read()
+expect=os.environ["EXPECT"]
 try:
     d=json.loads(raw or "{}")
 except Exception:
     d={}
 rows=[]
+named=False
+hex_only=False
 for x in (d.get("data") or []):
-    if x.get("app")=="rtp":
-        rows.append("%s %s schema=%s v=%s"% (x.get("app"), x.get("stream"), x.get("schema") or x.get("schema"), x.get("video") or x.get("tracks") or ""))
-print("\n".join(str(r) for r in rows))
-' "$MEDIA")
-  if [[ -n "$HIT" ]]; then
-    echo "$HIT"
+    if x.get("app")!="rtp":
+        continue
+    st=str(x.get("stream") or "")
+    rows.append("%s schema=%s"%(st, x.get("schema") or ""))
+    if st==expect:
+        named=True
+    elif re.fullmatch(r"[0-9A-Fa-f]{8}", st):
+        hex_only=True
+print("NAMED" if named else ("HEX" if (hex_only and rows) else "NONE"))
+print("\n".join(rows))
+' <<<"$MEDIA")
+  kind=$(printf '%s\n' "$HIT" | head -1)
+  rest=$(printf '%s\n' "$HIT" | tail -n +2)
+  if [[ -n "$rest" ]]; then
+    echo "$rest"
+  fi
+  if [[ "$kind" == "NAMED" ]]; then
     ok=1
     break
+  fi
+  if [[ "$kind" == "HEX" ]]; then
+    hex_only=1
+    echo "(仍是 SSRC hex，等待 on_publish stream_replace → ${EXPECT})"
   fi
   sleep 1
 done
 if [[ "$ok" != 1 ]]; then
-  echo "(尚无 rtp 流)"
+  echo "(尚无命名 rtp 流 ${EXPECT})"
+  if [[ "$hex_only" == 1 ]]; then
+    echo "FAIL: ZLM 只有 SSRC hex 流。请确认 on_publish 指向 WVP（stream_replace）。"
+  fi
   echo "--- sim ---"; tail -30 /opt/SVA/wvp/gb28181_sim.log
-  echo "--- wvp ---"; grep -E '点播|INVITE|rtp|超时' /opt/SVA/wvp/wvp.log | tail -30 || true
+  echo "--- wvp ---"; grep -E '点播|INVITE|rtp|超时|鉴权|stream_replace' /opt/SVA/wvp/wvp.log | tail -30 || true
+else
+  pkill -f "gb_hold_reader" 2>/dev/null || true
+  nohup timeout 120 curl -sS --noproxy 127.0.0.1 \
+    "http://127.0.0.1:9992/rtp/${EXPECT}.live.flv" \
+    -o /dev/null >/tmp/gb_hold_reader.log 2>&1 &
+  echo "已挂 120s FLV 占座，避免无人观看关流；打开预览后可忽略"
 fi
 
 echo "=== 同步业务库 ==="
