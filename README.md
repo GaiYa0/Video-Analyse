@@ -95,7 +95,7 @@ scripts/        一键启动、局域网、告警视频补救脚本
 | `scripts/start_easysva.sh` | WSL 内启动；支持 `--with-stream` 推 cup.mp4 测试流 |
 | `scripts/setup_windows_lan_access.ps1` | 管理员：防火墙 + `8080→80` 端口转发 |
 | `scripts/open_lan_firewall.bat` | 管理员：仅放行 80/8080 防火墙 |
-| `scripts/rewrite_play_url_for_lan.sh` | 把直连/国标 `play_url` 改为 `ws://<IP>:8080/live/...` 或 `/rtp/...` |
+| `scripts/rewrite_play_url_for_lan.sh` | 把直连/国标 `play_url` 改为 `http://<IP>:8080/live/...` 或 `/rtp/...`（HTTP-FLV，不要用 ws） |
 | `scripts/backfill_alarm_video_url.sh` | 历史告警 `video_url` 与磁盘 `main.mp4` 对齐 |
 | `scripts/switch_cup_to_a_server.sh` | 水杯布控改 A-SERVER 并等待新告警验证 |
 | `scripts/add_sva_pitch_degree.sql` | #30 合入后补 `h_waring.sva_pitch_degree`（告警列表必跑） |

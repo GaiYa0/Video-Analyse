@@ -96,7 +96,8 @@ export function stopDeviceMonitor(apeId) {
 export function previewDeviceMonitor(apeId) {
   return request({
     url: `/waring/device/monitor/${apeId}/preview`,
-    method: 'get'
+    method: 'get',
+    timeout: 23000
   })
 }
 
