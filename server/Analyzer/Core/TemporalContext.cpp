@@ -243,10 +243,12 @@ namespace SVAAnalyzer
             const bool wasSleeping = track.sleepOnDuty;
             track.headDownMs = evidence.headDownMs;
             track.sleepOnDuty = (label == SleepPose::FrameLabel::Sleep);
+            track.sleepScore = track.sleepOnDuty ? evidence.sleepScore : 0.0f;
             detect.headDownMs = evidence.headDownMs;
             detect.durationFrames = track.sleepPose.headDownFrames;
             detect.sleepOnDuty = track.sleepOnDuty;
             detect.sleepLevel = evidence.sleepLevel;
+            detect.sleepScore = evidence.sleepScore;
 
             if (track.sleepOnDuty && !wasSleeping)
             {
@@ -312,6 +314,7 @@ namespace SVAAnalyzer
                 detect.durationFrames = track.sleepPose.headDownFrames;
                 detect.sleepOnDuty = track.sleepOnDuty;
                 detect.sleepLevel = SleepPose::sleepLevelFor(track.headDownMs);
+                detect.sleepScore = track.sleepScore;
             }
         }
 

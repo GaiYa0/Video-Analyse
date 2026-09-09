@@ -118,6 +118,21 @@ H.264 流
 5. 后端只把档位映射成现网既有的 3/4/5 等级，**不新建等级名**，大屏的等级统计不用改。
 6. 升到严重档时 [SvaSleepNotifyService](../backend/ruoyi-admin/src/main/java/com/ruoyi/waring/service/SvaSleepNotifyService.java) 异步推一条站外通知（企业微信群机器人格式），开关与地址在 `sys_config` 的 `sva.sleep.webhook.enabled` / `sva.sleep.webhook.url`，默认关闭；没配地址只打日志，不影响落库。
 
+### 4.2 睡岗质量分（0–100）
+
+档位回答「是哪一档」，质量分回答「**证据有多硬**」，用来给告警列表排序。它**不参与任何判定**——分低照样报警，只是排得靠后。
+
+| 成分 | 权重 | 归一化方式 |
+| --- | --- | --- |
+| 峰值角 | 30 | `min(1, 峰值角 / 45°)` |
+| 占空比 | 25 | `min(1, 占空比 / 0.80)` |
+| 持续时长 | 25 | `min(1, headDownMs / 15000ms)`，15 秒后封顶 |
+| 头点静止 | 20 | `max(0, 1 − 漂移比 / 0.45)`，无锚点时记满分 |
+
+四路加权求和，结果钳在 0–100。四个归一化项在「刚好过门」时都是 1.0，所以**能报警的告警分不会低于 0**，而深度、时长、静止度都拉满的趴睡接近 100。非睡岗一律 0。
+
+字段名 `sleepScore`，与 `sleepLevel` 一起出现在 `detect.event` 和 `addFromSvaSimple`。常量见 `SleepPose.h` 的 `kSleepScoreWeight*`，Python 侧 `sleep_quality_score()` 由 parity 测试对齐。
+
 告警证据 MP4 按解码帧连续写，前缀仍是 **30** 帧（与原 YOLO 相同）。抽帧 / 追帧只跳过 YOLO，不把 `happen` 打成单帧脉冲，也不再丢掉 BGR 告警帧。
 
 验收：本地视频里睡岗要出事件，点头/看键盘/看手机/正面看镜头/背景里的人都不能出。正拍、侧拍趴桌都应能过 32°，约 2 秒变琥珀 `SLEEP?`、约 5 秒变黄 `SLEEP`、约 15 秒变红 `SLEEP!`。绿框 `UP <角度>` = 还在坐直；橙框 `BOW <角度> <秒数>` = 已经在计时但证据不足。成立那一刻 Analyzer 日志会打一行 `sleep_on_duty track=… level=suspect|confirmed|severe hold=… peak=… downRatio=… drift=…`。
@@ -144,11 +159,12 @@ H.264 流
   "pitchDegree": 0.0,
   "durationFrames": 0,
   "duration_ms": 0,
-  "sleepLevel": 0
+  "sleepLevel": 0,
+  "sleepScore": 0.0
 }
 ```
 
-`sleepLevel`：`0` 疑似（2s）/ `1` 确认（5s）/ `2` 严重（15s），非睡岗不带此字段。旧版 Analyzer 不发这个字段时，backend 按 `duration_ms` 用同一套阈值补档，行为不变。
+`sleepLevel`：`0` 疑似（2s）/ `1` 确认（5s）/ `2` 严重（15s），非睡岗不带此字段。`sleepScore`：0–100 质量分，见 §4.2，不参与判定。旧版 Analyzer 不发这两个字段时，backend 按 `duration_ms` 用同一套阈值补档，行为不变。
 
 Analyzer 在 `addFromSvaSimple` 和 `detect.event` 都会带上 `confidence`（YOLO 分数）、`pitchDegree`、`durationFrames`、`sleepLevel`，并优先带墙钟 `duration_ms`（`headDownMs`）。backend（#6）命中任一即入库为睡岗：`alarmType=SLEEP_ON_DUTY`，或 `behavior_type=sleep_on_duty`，或 `customEventName=睡岗`。有 `duration_ms` 直接写入；否则用 `durationFrames × 40ms`。
 
@@ -239,7 +255,8 @@ B 能改的已经在本仓库：公式、时序、ONNX 接入、告警 JSON 字�
 1. 睡岗判定：俯仰角 ≥ **32°**（无髋 38°），连续低头分三档——**2 秒疑似、5 秒确认、15 秒严重**；三档共用占空比 / 峰值 45° / 头点静止；正脸看镜头封顶 18° 不报。  
 2. 国标与直连公式相同，只换 `live/` → `rtp/<设备_通道>`。  
 3. 反例仍按 P2：打字、看手机、看镜头、空座位、背景人三档都不应报。  
-4. 档位只升不降：同一条告警随持续时长从疑似升到确认再到严重，严重档还会推一条通知。
+4. 档位只升不降：同一条告警随持续时长从疑似升到确认再到严重，严重档还会推一条通知。  
+5. 每条睡岗告警另带 **0–100 质量分**（峰值角/占空比/时长/静止度加权），供列表排序，不参与判定。
 
 ### 实测表（2026-09-08，三档待重测）
 

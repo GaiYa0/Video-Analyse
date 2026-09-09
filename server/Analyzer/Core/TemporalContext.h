@@ -59,6 +59,8 @@ namespace SVAAnalyzer
         SleepPose::TemporalState sleepPose;
         int64_t headDownMs = 0;
         bool sleepOnDuty = false;
+        // Best 0-100 quality seen on this track while asleep; 0 while upright.
+        float sleepScore = 0.0f;
         int64_t lastSleepDebugMs = 0;
     };
 

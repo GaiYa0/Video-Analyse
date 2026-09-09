@@ -31,6 +31,16 @@ SLEEP_MAX_HEAD_DRIFT_RATIO = 0.45
 SLEEP_DRIFT_EXEMPT_PEAK_DEG = 90.0
 MAX_FRAME_DELTA_MS = 1000
 
+# Quality score weights (percent). The gates say "is this sleep"; the score says
+# "how convincing", so a reviewer can rank alarms. It never gates anything.
+SLEEP_SCORE_WEIGHT_PEAK = 30.0
+SLEEP_SCORE_WEIGHT_DOWN_RATIO = 25.0
+SLEEP_SCORE_WEIGHT_HOLD = 25.0
+SLEEP_SCORE_WEIGHT_DRIFT = 20.0
+SLEEP_SCORE_MAX = 100.0
+SLEEP_SCORE_HOLD_FULL_MS = 15000.0
+SLEEP_SCORE_DRIFT_FREE = 1.0
+
 # Tier index: -1 not head-down, 0 suspect (2s), 1 confirmed (5s), 2 severe (15s).
 SLEEP_LEVEL_NONE = -1
 SLEEP_LEVEL_SUSPECT = 0
@@ -134,6 +144,7 @@ class FrameDecision:
     peak_pitch_deg: float = 0.0
     head_drift_px: float = 0.0
     sleep_level: int = SLEEP_LEVEL_NONE
+    sleep_score: float = 0.0
 
 
 def _reset_streak(state: TemporalState) -> None:
@@ -208,6 +219,29 @@ def _sleep_evidence_satisfied(state: TemporalState, head_down_ms: int) -> bool:
     return True
 
 
+def sleep_quality_score(state: TemporalState, head_down_ms: int) -> float:
+    """0-100 confidence for a confirmed sleep, independent of the tier.
+
+    The evidence gates answer "is this sleep on duty". This score answers "how
+    convincing is the evidence", so alarms can be ranked in a list. It never gates
+    anything: a low score still alarms, it just sorts lower.
+    """
+    peak_norm = min(1.0, state.peak_pitch_deg / SLEEP_PEAK_PITCH_DEG)
+    ratio_norm = min(1.0, _down_ratio(state) / SLEEP_MIN_DOWN_RATIO)
+    hold_norm = min(1.0, head_down_ms / SLEEP_SCORE_HOLD_FULL_MS)
+    drift_norm = SLEEP_SCORE_DRIFT_FREE
+    if state.anchor_scale_px > 0.0:
+        drift_ratio = state.max_head_drift_px / state.anchor_scale_px
+        drift_norm = max(0.0, min(1.0, 1.0 - drift_ratio / SLEEP_MAX_HEAD_DRIFT_RATIO))
+    score = (
+        peak_norm * SLEEP_SCORE_WEIGHT_PEAK
+        + ratio_norm * SLEEP_SCORE_WEIGHT_DOWN_RATIO
+        + hold_norm * SLEEP_SCORE_WEIGHT_HOLD
+        + drift_norm * SLEEP_SCORE_WEIGHT_DRIFT
+    )
+    return max(0.0, min(SLEEP_SCORE_MAX, score))
+
+
 def _label_for_evidence(state: TemporalState, head_down_ms: int, decision: FrameDecision) -> FrameDecision:
     """Label plus tier in one place, so a blocked window can never report a tier.
 
@@ -217,6 +251,9 @@ def _label_for_evidence(state: TemporalState, head_down_ms: int, decision: Frame
     if not _sleep_evidence_satisfied(state, head_down_ms):
         decision.label = FrameLabel.BOW
         decision.sleep_level = SLEEP_LEVEL_NONE
+        decision.sleep_score = 0.0
+        return decision
+    decision.sleep_score = sleep_quality_score(state, head_down_ms)
     return decision
 
 

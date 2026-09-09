@@ -88,6 +88,8 @@ namespace SVAAnalyzer
         bool sleepOnDuty = false;
         // -1 not head-down, 0 suspect (2s), 1 confirmed (5s), 2 severe (15s).
         int sleepLevel = -1;
+        // 0-100 confidence, only meaningful when sleepLevel >= 0.
+        float sleepScore = 0.0f;
 
         // Behavior analysis (from BehaviorEvaluator)
         std::string ruleId;

@@ -28,6 +28,7 @@ from .temporal import (
     SLEEP_MIN_DOWN_RATIO,
     SLEEP_MIN_VALID_FRAMES,
     SLEEP_PEAK_PITCH_DEG,
+    SLEEP_SCORE_MAX,
     SLEEP_SEVERE_HOLD_MS,
     SLEEP_SUSPECT_HOLD_MS,
     FrameDecision,
@@ -37,6 +38,7 @@ from .temporal import (
     sleep_enter_hold_ms,
     sleep_level_for,
     sleep_level_name,
+    sleep_quality_score,
     update_temporal,
 )
 
@@ -64,6 +66,7 @@ __all__ = [
     "SLEEP_MIN_DOWN_RATIO",
     "SLEEP_MIN_VALID_FRAMES",
     "SLEEP_PEAK_PITCH_DEG",
+    "SLEEP_SCORE_MAX",
     "SLEEP_SEVERE_HOLD_MS",
     "SLEEP_SUSPECT_HOLD_MS",
     "FrameDecision",
@@ -76,6 +79,7 @@ __all__ = [
     "sleep_enter_hold_ms",
     "sleep_level_for",
     "sleep_level_name",
+    "sleep_quality_score",
     "try_compute_pitch_deg",
     "update_temporal",
 ]

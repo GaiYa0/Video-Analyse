@@ -31,6 +31,8 @@ namespace SVAAnalyzer
 		int64_t durationMs = 0;
 		// -1 not head-down, 0 suspect (2s), 1 confirmed (5s), 2 severe (15s).
 		int sleepLevel = -1;
+		// 0-100 confidence, only meaningful when sleepLevel >= 0.
+		float sleepScore = 0.0f;
 
 	private:
 		int mBufInitSize = 0; // buf初始化时的长度

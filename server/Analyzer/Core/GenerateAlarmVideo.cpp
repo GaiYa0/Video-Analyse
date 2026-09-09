@@ -647,6 +647,7 @@ namespace SVAAnalyzer
             param["pitchDegree"] = mAlarm->pitchDegree;
             param["durationFrames"] = mAlarm->durationFrames;
             param["sleepLevel"] = mAlarm->sleepLevel;
+            param["sleepScore"] = mAlarm->sleepScore;
             if (mAlarm->durationMs > 0)
             {
                 param["duration_ms"] = static_cast<Json::Int64>(mAlarm->durationMs);

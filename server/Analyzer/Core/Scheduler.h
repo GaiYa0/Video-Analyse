@@ -140,6 +140,8 @@ namespace SVAAnalyzer
 		int64_t durationMs = 0;
 		// -1 not head-down, 0 suspect (2s), 1 confirmed (5s), 2 severe (15s).
 		int sleepLevel = -1;
+		// 0-100 confidence, only meaningful when sleepLevel >= 0.
+		float sleepScore = 0.0f;
 		std::string ruleId;
 		std::string customEventName;
 		std::string behaviorType;
@@ -222,6 +224,8 @@ namespace SVAAnalyzer
 		int64_t durationMs = 0;
 		// Monotonic within one event: a sleeper only ever escalates.
 		int sleepLevel = -1;
+		// Best quality seen within this event.
+		float sleepScore = 0.0f;
 		std::vector<std::string> algorithmCodes;
 		std::unordered_set<std::string> algorithmCodeSet;
 	};

@@ -45,6 +45,13 @@ EXPECTED = {
     "kSleepPeakPitchDeg": temporal.SLEEP_PEAK_PITCH_DEG,
     "kSleepMaxHeadDriftRatio": temporal.SLEEP_MAX_HEAD_DRIFT_RATIO,
     "kSleepDriftExemptPeakDeg": temporal.SLEEP_DRIFT_EXEMPT_PEAK_DEG,
+    "kSleepScoreWeightPeak": temporal.SLEEP_SCORE_WEIGHT_PEAK,
+    "kSleepScoreWeightDownRatio": temporal.SLEEP_SCORE_WEIGHT_DOWN_RATIO,
+    "kSleepScoreWeightHold": temporal.SLEEP_SCORE_WEIGHT_HOLD,
+    "kSleepScoreWeightDrift": temporal.SLEEP_SCORE_WEIGHT_DRIFT,
+    "kSleepScoreMax": temporal.SLEEP_SCORE_MAX,
+    "kSleepScoreHoldFullMs": temporal.SLEEP_SCORE_HOLD_FULL_MS,
+    "kSleepScoreDriftFree": temporal.SLEEP_SCORE_DRIFT_FREE,
     "kMaxFrameDeltaMs": temporal.MAX_FRAME_DELTA_MS,
 }
 

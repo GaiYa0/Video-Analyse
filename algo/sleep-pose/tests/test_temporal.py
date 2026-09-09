@@ -12,6 +12,7 @@ from sleep_pose.temporal import (
     FrameLabel,
     TemporalState,
     sleep_level_for,
+    sleep_quality_score,
     update_temporal,
 )
 
@@ -184,6 +185,24 @@ class TruePositiveTests(unittest.TestCase):
             if decision.label == FrameLabel.SLEEP and (not seen or seen[-1] != decision.sleep_level):
                 seen.append(decision.sleep_level)
         self.assertEqual(seen, [SLEEP_LEVEL_SUSPECT, SLEEP_LEVEL_CONFIRMED, SLEEP_LEVEL_SEVERE])
+
+    def test_quality_score_grows_with_evidence(self):
+        # Score must separate a deep, still, long slump from a shallow brief one.
+        strong = TemporalState()
+        strong_last = _run(strong, [_frame(95.0, head_x=(i % 3), head_y=(i % 2)) for i in range(400)])
+        weak = TemporalState()
+        weak_last = _run(weak, [_frame(50.0, head_x=(i % 4), head_y=(i % 3)) for i in range(70)])
+        self.assertEqual(strong_last.label, FrameLabel.SLEEP)
+        self.assertEqual(weak_last.label, FrameLabel.SLEEP)
+        self.assertGreater(strong_last.sleep_score, weak_last.sleep_score)
+        self.assertGreaterEqual(strong_last.sleep_score, 80.0)
+        self.assertLessEqual(strong_last.sleep_score, 100.0)
+
+    def test_quality_score_is_zero_when_not_sleeping(self):
+        state = TemporalState()
+        last = _run(state, [_frame(36.0)] * 500)
+        self.assertEqual(last.label, FrameLabel.BOW)
+        self.assertEqual(last.sleep_score, 0.0)
 
     def test_suspect_tier_fires_before_five_seconds(self):
         state = TemporalState()

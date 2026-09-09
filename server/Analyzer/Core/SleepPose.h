@@ -70,6 +70,19 @@ namespace SVAAnalyzer
                 return "none";
             }
         }
+
+        // Quality score weights (percent). The gates already say "is this sleep";
+        // the score says "how convincing", so a reviewer can rank alarms.
+        constexpr float kSleepScoreWeightPeak = 30.0f;
+        constexpr float kSleepScoreWeightDownRatio = 25.0f;
+        constexpr float kSleepScoreWeightHold = 25.0f;
+        constexpr float kSleepScoreWeightDrift = 20.0f;
+        constexpr float kSleepScoreMax = 100.0f;
+        // The hold component saturates at the severe tier: past 15s more time adds
+        // nothing a reviewer cares about.
+        constexpr float kSleepScoreHoldFullMs = 15000.0f;
+        // No anchor (no scale to normalise against) scores as if perfectly still.
+        constexpr float kSleepScoreDriftFree = 1.0f;
         constexpr int64_t kDefaultRecoverHoldMs = 600;
         constexpr float kHeadAboveNeckMinPx = 8.0f;
         constexpr float kPitchAttackAlpha = 0.55f;
@@ -227,6 +240,10 @@ namespace SVAAnalyzer
             float smoothedPitchDeg = 0.0f;
             // -1 not head-down, 0 suspect, 1 confirmed, 2 severe.
             int sleepLevel = -1;
+            // 0-100 confidence, only meaningful when sleepLevel >= 0.
+            float sleepScore = 0.0f;
+            // Ruler at anchor time; needed to normalise drift in the score.
+            float anchorScalePx = 0.0f;
         };
 
         struct TemporalState
@@ -629,6 +646,7 @@ namespace SVAAnalyzer
             evidence.headDriftPx = state.maxHeadDriftPx;
             evidence.smoothedPitchDeg = state.smoothedPitchDeg;
             evidence.sleepLevel = sleepLevelFor(headDownMs);
+            evidence.anchorScalePx = state.anchorScalePx;
         }
 
         /**
@@ -707,14 +725,42 @@ namespace SVAAnalyzer
          * @brief Label plus tier in one place, so a blocked window can never report a
          * tier just because the clock kept running.
          */
+        /**
+         * @brief 0-100 confidence for a *confirmed* sleep, independent of the tier.
+         *
+         * The evidence gates answer "is this sleep on duty". This score answers "how
+         * convincing is the evidence", so alarms can be ranked in a list. It never
+         * gates anything: a low score still alarms, it just sorts lower.
+         */
+        inline float sleepQualityScore(const FrameEvidence &evidence)
+        {
+            const float peakNorm = std::min(1.0f, evidence.peakPitchDeg / kSleepPeakPitchDeg);
+            const float ratioNorm = std::min(1.0f, evidence.downRatio / kSleepMinDownRatio);
+            const float holdNorm = std::min(1.0f, static_cast<float>(evidence.headDownMs) / kSleepScoreHoldFullMs);
+            float driftNorm = kSleepScoreDriftFree;
+            if (evidence.anchorScalePx > 0.0f)
+            {
+                const float driftRatio = evidence.headDriftPx / evidence.anchorScalePx;
+                driftNorm = std::max(0.0f, std::min(1.0f,
+                    1.0f - driftRatio / kSleepMaxHeadDriftRatio));
+            }
+            const float score = peakNorm * kSleepScoreWeightPeak
+                                + ratioNorm * kSleepScoreWeightDownRatio
+                                + holdNorm * kSleepScoreWeightHold
+                                + driftNorm * kSleepScoreWeightDrift;
+            return std::max(0.0f, std::min(kSleepScoreMax, score));
+        }
+
         inline FrameLabel labelForEvidence(const TemporalState &state, int64_t headDownMs,
                                           FrameEvidence &evidence)
         {
             if (!sleepEvidenceSatisfied(state, headDownMs, evidence))
             {
                 evidence.sleepLevel = -1;
+                evidence.sleepScore = 0.0f;
                 return FrameLabel::Bow;
             }
+            evidence.sleepScore = sleepQualityScore(evidence);
             return FrameLabel::Sleep;
         }
 
