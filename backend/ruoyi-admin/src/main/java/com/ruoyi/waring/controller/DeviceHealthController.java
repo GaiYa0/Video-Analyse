@@ -1,6 +1,7 @@
 package com.ruoyi.waring.controller;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -8,10 +9,14 @@ import java.util.Map;
 import com.ruoyi.common.core.controller.BaseController;
 import com.ruoyi.common.core.domain.AjaxResult;
 import com.ruoyi.common.utils.StringUtils;
+import com.ruoyi.system.domain.DeploymentTask;
+import com.ruoyi.system.service.IDeploymentTaskService;
 import com.ruoyi.web.service.deployment.DeploymentAnalyzerClient;
 import com.ruoyi.waring.domain.HDevice;
 import com.ruoyi.waring.service.HDeviceService;
 import jakarta.annotation.Resource;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -32,12 +37,19 @@ public class DeviceHealthController extends BaseController
     /** 健康分档：≥90 良好、≥70 注意、其余异常。 */
     private static final int SCORE_GOOD = 90;
     private static final int SCORE_WARN = 70;
+    /** deployment_task.status 的实际取值。 */
+    private static final String STATUS_RUNNING = "RUNNING";
 
     @Resource
     private HDeviceService hDeviceService;
 
     @Resource
     private DeploymentAnalyzerClient deploymentAnalyzerClient;
+
+    @Resource
+    private IDeploymentTaskService deploymentTaskService;
+
+    private static final Logger log = LoggerFactory.getLogger(DeviceHealthController.class);
 
     /**
      * 单设备健康度。deviceId 为业务设备编号（ape_id）。
@@ -101,7 +113,13 @@ public class DeviceHealthController extends BaseController
         row.put("deviceName", StringUtils.defaultIfBlank(device.getName(), deviceId));
         row.put("deviceType", StringUtils.defaultIfBlank(device.getDevice_type(), "rtsp"));
 
-        DeploymentAnalyzerClient.AnalyzerHealth health = deploymentAnalyzerClient.probeHealth(deviceId);
+        // Analyzer 的 /api/controls 用 deploymentId 作为 code，不返回 streamCode，
+        // 所以先查该设备下「运行中」的布控任务编号再去匹配。
+        Collection<String> runningDeploymentIds = resolveRunningDeploymentIds(deviceId);
+        row.put("runningDeployments", runningDeploymentIds.size());
+
+        DeploymentAnalyzerClient.AnalyzerHealth health =
+            deploymentAnalyzerClient.probeHealth(deviceId, runningDeploymentIds);
         if (health == null)
         {
             // 设备没绑到可用 Analyzer：布控根本起不来。
@@ -126,7 +144,9 @@ public class DeviceHealthController extends BaseController
             {
                 // 没有布控在跑不等于故障，只是「未监控」。
                 score -= 30;
-                issues.add("当前无布控在拉流");
+                issues.add(runningDeploymentIds.isEmpty()
+                    ? "该设备当前没有运行中的布控"
+                    : "布控已下发但分析器未在执行");
             }
             else if (health.checkFps > 0 && health.checkFps < 1.0)
             {
@@ -155,6 +175,11 @@ public class DeviceHealthController extends BaseController
         row.put("analyzerUrl", health.analyzerUrl);
         row.put("streamAttached", health.streamAttached);
         row.put("checkFps", health.checkFps);
+        if (StringUtils.isNotBlank(health.matchedDeploymentId))
+        {
+            row.put("matchedDeploymentId", health.matchedDeploymentId);
+            row.put("controlStreamUrl", health.controlStreamUrl);
+        }
         row.put("detectFrameDropped", health.detectFrameDropped);
         row.put("detectFramePostFailed", health.detectFramePostFailed);
         row.put("detectEventPostFailed", health.detectEventPostFailed);
@@ -168,5 +193,33 @@ public class DeviceHealthController extends BaseController
             row.put("error", health.error);
         }
         return row;
+    }
+
+    /**
+     * 该设备下状态为「运行中」的布控任务编号。
+     * 布控启动时 Analyzer 的 code 就是 deploymentId，用它匹配 /api/controls 的返回项。
+     *
+     * 注意 deployment_task.status 存的是 RUNNING / STOPPED 字样，不是 0/1。
+     */
+    private Collection<String> resolveRunningDeploymentIds(String deviceId)
+    {
+        List<String> ids = new ArrayList<>();
+        try
+        {
+            List<DeploymentTask> tasks = deploymentTaskService.selectDeploymentTaskList(STATUS_RUNNING, null, null);
+            for (DeploymentTask task : tasks)
+            {
+                if (task != null && deviceId.equals(StringUtils.trimToEmpty(task.getDeviceId()))
+                    && StringUtils.isNotBlank(task.getDeploymentId()))
+                {
+                    ids.add(task.getDeploymentId().trim());
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            log.warn("查询设备布控任务失败, deviceId={}, err={}", deviceId, ex.getMessage());
+        }
+        return ids;
     }
 }

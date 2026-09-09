@@ -25,6 +25,7 @@ import org.springframework.web.client.RestTemplate;
 
 import java.net.SocketTimeoutException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -309,9 +310,13 @@ public class DeploymentAnalyzerClient
     /**
      * 设备健康度探针：读 Analyzer 已有的 /api/health 与 /api/controls，不新增上报通道。
      *
-     * 返回 null 表示连不上该 Analyzer（健康度最差的一种）。
+     * @param apeId          设备编号，用于定位绑定的 Analyzer
+     * @param deploymentIds  该设备上「已启动」的布控任务编号；用于判断是否真的有布控在拉流。
+     *                       Analyzer 的 /api/controls 用 POST，且返回项里的 code 就是 deploymentId，
+     *                       不返回 streamCode，所以不能拿 apeId 直接匹配。
+     * @return null 表示该设备没绑定可用 Analyzer（健康度最差的一种）
      */
-    public AnalyzerHealth probeHealth(String apeId)
+    public AnalyzerHealth probeHealth(String apeId, Collection<String> deploymentIds)
     {
         BindingConfig bindingConfig = resolveBinding(apeId);
         if (bindingConfig == null)
@@ -335,20 +340,7 @@ public class DeploymentAnalyzerClient
                 health.detectPostCircuitStreams = metrics.path("detectPostCircuitStreams").asLong(0);
             }
 
-            String controlsBody = restTemplate.getForObject(baseUrl + "/api/controls", String.class);
-            JsonNode controlsRoot = StringUtils.isEmpty(controlsBody) ? null : OBJECT_MAPPER.readTree(controlsBody);
-            if (controlsRoot != null && controlsRoot.path("data").isArray())
-            {
-                for (JsonNode item : controlsRoot.path("data"))
-                {
-                    if (apeId.equals(item.path("streamCode").asText("")))
-                    {
-                        health.streamAttached = true;
-                        health.checkFps = item.path("checkFps").asDouble(0);
-                        break;
-                    }
-                }
-            }
+            health.streamAttached = hasRunningControl(baseUrl, deploymentIds, health);
             health.reachable = true;
         }
         catch (Exception ex)
@@ -358,6 +350,61 @@ public class DeploymentAnalyzerClient
             health.error = ex.getMessage();
         }
         return health;
+    }
+
+    /**
+     * POST /api/controls 查该设备是否有布控在跑。
+     *
+     * 两个坑：这个接口只接受 POST，且解析空 body 会走 invalid request parameter 分支；
+     * 返回项的 code 是 deploymentId，没有 streamCode。
+     */
+    private boolean hasRunningControl(String baseUrl, Collection<String> deploymentIds, AnalyzerHealth health)
+    {
+        if (deploymentIds == null || deploymentIds.isEmpty())
+        {
+            return false;
+        }
+        try
+        {
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(new LinkedHashMap<>(), headers);
+            ResponseEntity<String> response = restTemplate.postForEntity(baseUrl + "/api/controls", entity, String.class);
+            String body = response.getBody();
+            if (StringUtils.isEmpty(body))
+            {
+                return false;
+            }
+            JsonNode root = OBJECT_MAPPER.readTree(body);
+            // code != 1000 表示 Analyzer 侧没有控制在执行，属正常情况而非故障。
+            if (root.path("code").asInt(0) != 1000)
+            {
+                return false;
+            }
+            JsonNode data = root.path("data");
+            if (!data.isArray())
+            {
+                return false;
+            }
+            for (JsonNode item : data)
+            {
+                String code = item.path("code").asText("");
+                if (StringUtils.isEmpty(code) || !deploymentIds.contains(code))
+                {
+                    continue;
+                }
+                health.matchedDeploymentId = code;
+                health.checkFps = item.path("checkFps").asDouble(0);
+                health.controlStreamUrl = item.path("streamUrl").asText("");
+                return true;
+            }
+            return false;
+        }
+        catch (Exception ex)
+        {
+            log.warn("查询 Analyzer 控制列表失败, url={}, err={}", baseUrl, ex.getMessage());
+            return false;
+        }
     }
 
     /** 设备健康度快照。 */
@@ -373,6 +420,10 @@ public class DeploymentAnalyzerClient
         public long detectPostCircuitStreams;
         public String analyzerUrl = "";
         public String error = "";
+        /** 命中的布控任务编号（Analyzer 侧 code），未命中为空。 */
+        public String matchedDeploymentId = "";
+        /** Analyzer 实际在拉的流地址，便于和库里配置对照。 */
+        public String controlStreamUrl = "";
     }
 
     private AnalyzerResult postJson(String url, Map<String, Object> payload, String action)
