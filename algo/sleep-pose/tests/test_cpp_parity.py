@@ -32,7 +32,9 @@ EXPECTED = {
     "kMinPersonBoxHeightRatio": geometry.MIN_PERSON_BOX_HEIGHT_RATIO,
     "kMaxHeadAboveNeckRatio": geometry.MAX_HEAD_ABOVE_NECK_RATIO,
     "kNoHipEnterPenaltyDeg": geometry.NO_HIP_ENTER_PENALTY_DEG,
+    "kSleepSuspectHoldMs": temporal.SLEEP_SUSPECT_HOLD_MS,
     "kDefaultSleepHoldMs": temporal.SLEEP_HOLD_MS,
+    "kSleepSevereHoldMs": temporal.SLEEP_SEVERE_HOLD_MS,
     "kDefaultRecoverHoldMs": temporal.RECOVER_HOLD_MS,
     "kPitchAttackAlpha": temporal.PITCH_ATTACK_ALPHA,
     "kPitchReleaseAlpha": temporal.PITCH_RELEASE_ALPHA,
@@ -66,9 +68,25 @@ class ParityTests(unittest.TestCase):
                 self.assertIn(name, self.cpp, f"{name} not found in SleepPose.h")
                 self.assertAlmostEqual(self.cpp[name], float(python_value), places=6)
 
-    def test_hold_time_is_five_seconds(self):
+    def test_hold_tiers_are_two_five_fifteen(self):
+        self.assertEqual(temporal.SLEEP_SUSPECT_HOLD_MS, 2000)
         self.assertEqual(temporal.SLEEP_HOLD_MS, 5000)
+        self.assertEqual(temporal.SLEEP_SEVERE_HOLD_MS, 15000)
+        self.assertEqual(self.cpp["kSleepSuspectHoldMs"], 2000)
         self.assertEqual(self.cpp["kDefaultSleepHoldMs"], 5000)
+        self.assertEqual(self.cpp["kSleepSevereHoldMs"], 15000)
+
+    def test_tier_lookup_matches(self):
+        for head_down_ms, level in (
+            (1999, temporal.SLEEP_LEVEL_NONE),
+            (2000, temporal.SLEEP_LEVEL_SUSPECT),
+            (4999, temporal.SLEEP_LEVEL_SUSPECT),
+            (5000, temporal.SLEEP_LEVEL_CONFIRMED),
+            (14999, temporal.SLEEP_LEVEL_CONFIRMED),
+            (15000, temporal.SLEEP_LEVEL_SEVERE),
+        ):
+            with self.subTest(head_down_ms=head_down_ms):
+                self.assertEqual(temporal.sleep_level_for(head_down_ms), level)
 
 
 if __name__ == "__main__":

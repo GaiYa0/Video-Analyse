@@ -138,6 +138,8 @@ namespace SVAAnalyzer
 		float pitchDegree = 0.0f;
 		int durationFrames = 0;
 		int64_t durationMs = 0;
+		// -1 not head-down, 0 suspect (2s), 1 confirmed (5s), 2 severe (15s).
+		int sleepLevel = -1;
 		std::string ruleId;
 		std::string customEventName;
 		std::string behaviorType;
@@ -218,6 +220,8 @@ namespace SVAAnalyzer
 		float pitchDegree = 0.0f;
 		int durationFrames = 0;
 		int64_t durationMs = 0;
+		// Monotonic within one event: a sleeper only ever escalates.
+		int sleepLevel = -1;
 		std::vector<std::string> algorithmCodes;
 		std::unordered_set<std::string> algorithmCodeSet;
 	};

@@ -23,17 +23,52 @@ namespace SVAAnalyzer
         constexpr float kDefaultPitchDownDeg = 32.0f;
         constexpr float kDefaultPitchRecoverDeg = 22.0f;
         constexpr float kUprightPitchCapDeg = 18.0f;
-        constexpr int64_t kDefaultSleepHoldMs = 5000;
+        // Three severity tiers, all sharing the same evidence gates. Only the hold
+        // time differs, so the P2 counter-examples (typing, phone, facing the camera)
+        // stay unreported even in the loosest tier.
+        constexpr int64_t kSleepSuspectHoldMs = 2000;  // 疑似睡岗
+        constexpr int64_t kDefaultSleepHoldMs = 5000;  // 确认睡岗
+        constexpr int64_t kSleepSevereHoldMs = 15000;  // 严重睡岗
         constexpr int64_t kMaxSleepHoldMs = 3600000;
 
-        // 布控页会下发 2500ms，盖掉 5 秒口径。空值或过短都抬到默认。
-        inline int64_t clampSleepHoldMs(int64_t thresholdMs)
+        // The hold clock always starts at the suspect tier. The deployment page still
+        // posts 2500ms; that value is ignored on purpose so the three tiers stay fixed.
+        inline int64_t sleepEnterHoldMs()
         {
-            if (thresholdMs <= 0)
+            return kSleepSuspectHoldMs;
+        }
+
+        // -1 = not head-down, 0 = suspect, 1 = confirmed, 2 = severe.
+        inline int sleepLevelFor(int64_t headDownMs)
+        {
+            if (headDownMs >= kSleepSevereHoldMs)
             {
-                return kDefaultSleepHoldMs;
+                return 2;
             }
-            return std::max<int64_t>(kDefaultSleepHoldMs, std::min<int64_t>(kMaxSleepHoldMs, thresholdMs));
+            if (headDownMs >= kDefaultSleepHoldMs)
+            {
+                return 1;
+            }
+            if (headDownMs >= kSleepSuspectHoldMs)
+            {
+                return 0;
+            }
+            return -1;
+        }
+
+        inline const char *sleepLevelName(int level)
+        {
+            switch (level)
+            {
+            case 2:
+                return "severe";
+            case 1:
+                return "confirmed";
+            case 0:
+                return "suspect";
+            default:
+                return "none";
+            }
         }
         constexpr int64_t kDefaultRecoverHoldMs = 600;
         constexpr float kHeadAboveNeckMinPx = 8.0f;
@@ -185,6 +220,8 @@ namespace SVAAnalyzer
             float peakPitchDeg = 0.0f;
             float headDriftPx = 0.0f;
             float smoothedPitchDeg = 0.0f;
+            // -1 not head-down, 0 suspect, 1 confirmed, 2 severe.
+            int sleepLevel = -1;
         };
 
         struct TemporalState
@@ -557,8 +594,7 @@ namespace SVAAnalyzer
         }
 
         inline void resetStreak(TemporalState &state)
-        {
-            state.headDownFrames = 0;
+        {            state.headDownFrames = 0;
             state.headDownSinceMs = 0;
             state.recoverSinceMs = 0;
             state.downMs = 0;
@@ -586,17 +622,21 @@ namespace SVAAnalyzer
             evidence.peakPitchDeg = state.peakPitchDeg;
             evidence.headDriftPx = state.maxHeadDriftPx;
             evidence.smoothedPitchDeg = state.smoothedPitchDeg;
+            evidence.sleepLevel = sleepLevelFor(headDownMs);
         }
 
         /**
          * @brief Head-down long enough is necessary but not sufficient. Reading, typing
          * and phone use all keep the head low; they differ in duty cycle, in how deep
          * the head actually goes, and in how much it drifts.
+         *
+         * The hold time now selects a tier instead of gating a single alarm: any tier
+         * (suspect at 2s) is enough for the label, and the tier is reported alongside.
          */
         inline bool sleepEvidenceSatisfied(const TemporalState &state, int64_t headDownMs,
-                                           int64_t holdMs, const FrameEvidence &evidence)
+                                           const FrameEvidence &evidence)
         {
-            if (headDownMs < holdMs)
+            if (sleepLevelFor(headDownMs) < 0)
             {
                 return false;
             }
@@ -625,9 +665,9 @@ namespace SVAAnalyzer
         }
 
         inline const char *sleepEvidenceBlockName(const TemporalState &state, int64_t headDownMs,
-                                                  int64_t holdMs, const FrameEvidence &evidence)
+                                                  const FrameEvidence &evidence)
         {
-            if (headDownMs < holdMs)
+            if (sleepLevelFor(headDownMs) < 0)
             {
                 return "hold";
             }
@@ -655,6 +695,21 @@ namespace SVAAnalyzer
             return "ok";
         }
 
+        /**
+         * @brief Label plus tier in one place, so a blocked window can never report a
+         * tier just because the clock kept running.
+         */
+        inline FrameLabel labelForEvidence(const TemporalState &state, int64_t headDownMs,
+                                          FrameEvidence &evidence)
+        {
+            if (!sleepEvidenceSatisfied(state, headDownMs, evidence))
+            {
+                evidence.sleepLevel = -1;
+                return FrameLabel::Bow;
+            }
+            return FrameLabel::Sleep;
+        }
+
         inline FrameLabel updateTemporal(TemporalState &state,
                                          const FrameInput &frame,
                                          int64_t nowMs,
@@ -664,6 +719,7 @@ namespace SVAAnalyzer
                                          int64_t recoverHoldMs,
                                          FrameEvidence &evidence)
         {
+            (void)holdMs;  // tiers are fixed in sleepLevelFor; the rule value is ignored
             const int64_t deltaMs = state.lastUpdateMs > 0
                                         ? std::max<int64_t>(0, std::min<int64_t>(kMaxFrameDeltaMs, nowMs - state.lastUpdateMs))
                                         : 0;
@@ -694,9 +750,7 @@ namespace SVAAnalyzer
                     fillEvidence(state, 0, evidence);
                     return FrameLabel::Upright;
                 }
-                return sleepEvidenceSatisfied(state, headDownMs, holdMs, evidence)
-                           ? FrameLabel::Sleep
-                           : FrameLabel::Bow;
+                return labelForEvidence(state, headDownMs, evidence);
             }
 
             float rawPitch = frame.pitchDeg;
@@ -712,9 +766,7 @@ namespace SVAAnalyzer
                 state.gapMs += deltaMs;
                 const int64_t headDownMs = std::max<int64_t>(0, nowMs - state.headDownSinceMs);
                 fillEvidence(state, headDownMs, evidence);
-                return sleepEvidenceSatisfied(state, headDownMs, holdMs, evidence)
-                           ? FrameLabel::Sleep
-                           : FrameLabel::Bow;
+                return labelForEvidence(state, headDownMs, evidence);
             }
 
             if (!state.hasSmoothed)
@@ -770,9 +822,7 @@ namespace SVAAnalyzer
 
                 const int64_t headDownMs = std::max<int64_t>(0, nowMs - state.headDownSinceMs);
                 fillEvidence(state, headDownMs, evidence);
-                return sleepEvidenceSatisfied(state, headDownMs, holdMs, evidence)
-                           ? FrameLabel::Sleep
-                           : FrameLabel::Bow;
+                return labelForEvidence(state, headDownMs, evidence);
             }
 
             if (state.headDownFrames > 0)
@@ -787,9 +837,7 @@ namespace SVAAnalyzer
                     state.notDownMs += deltaMs;
                     const int64_t headDownMs = std::max<int64_t>(0, nowMs - state.headDownSinceMs);
                     fillEvidence(state, headDownMs, evidence);
-                    return sleepEvidenceSatisfied(state, headDownMs, holdMs, evidence)
-                               ? FrameLabel::Sleep
-                               : FrameLabel::Bow;
+                    return labelForEvidence(state, headDownMs, evidence);
                 }
             }
 
