@@ -594,7 +594,8 @@ namespace SVAAnalyzer
         }
 
         inline void resetStreak(TemporalState &state)
-        {            state.headDownFrames = 0;
+        {
+            state.headDownFrames = 0;
             state.headDownSinceMs = 0;
             state.recoverSinceMs = 0;
             state.downMs = 0;
