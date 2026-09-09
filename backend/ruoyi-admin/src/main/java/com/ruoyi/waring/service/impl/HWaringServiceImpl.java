@@ -456,6 +456,67 @@ public class HWaringServiceImpl implements HWaringService {
         return num;
     }
 
+    // 误报率闭环统计：按告警类型聚合已处理总数与误报数
+    @Override
+    public List<Map<String, Object>> getFalsePositiveStats(Long userId, String org_index, String type) {
+        HWaring waring = buildStatsTimeRange(type);
+        if (org_index != null && !org_index.equals("10")) {
+            waring.setOrg_index(org_index);
+            return hWaringMapper.getFalsePositiveStatsByOrgIndex(waring);
+        }
+        if (org_index != null) {
+            return hWaringMapper.getFalsePositiveStats(waring);
+        }
+        SysUser user = userMapper.selectUserById(userId);
+        SysDept dept = sysDeptMapper.selectDeptById(user.getDeptId());
+        if (!com.ruoyi.common.utils.SecurityUtils.isAdmin(userId) && !dept.getOrgIndex().equals("10")) {
+            waring.setOrg_index(dept.getOrgIndex());
+            return hWaringMapper.getFalsePositiveStatsByOrgIndex(waring);
+        }
+        return hWaringMapper.getFalsePositiveStats(waring);
+    }
+
+    // 睡岗质量分分桶 vs 实际误报率
+    @Override
+    public List<Map<String, Object>> getSleepScoreBuckets(Long userId, String org_index, String type) {
+        HWaring waring = buildStatsTimeRange(type);
+        if (org_index != null && !org_index.equals("10")) {
+            waring.setOrg_index(org_index);
+        }
+        return hWaringMapper.getSleepScoreBuckets(waring);
+    }
+
+    /**
+     * 周/月/季/年的时间窗，与 getTypeSpread 保持一致：type 为空按本月。
+     */
+    private HWaring buildStatsTimeRange(String type) {
+        HWaring waring = new HWaring();
+        String normalized = type == null ? "2" : type;
+        switch (normalized) {
+            case "1": {
+                waring.setBegin(TimeUtil.getBeginDayOfWeek().getTime() / 1000);
+                waring.setEnd(TimeUtil.getEndDayOfWeek().getTime() / 1000);
+                break;
+            }
+            case "3": {
+                waring.setBegin(TimeUtil.getCurrentQuarterStartTime().getTime() / 1000);
+                waring.setEnd(TimeUtil.getCurrentQuarterEndTime().getTime() / 1000);
+                break;
+            }
+            case "4": {
+                waring.setBegin(TimeUtil.getBeginDayOfYear().getTime() / 1000);
+                waring.setEnd(TimeUtil.getEndDayOfYear().getTime() / 1000);
+                break;
+            }
+            default: {
+                waring.setBegin(TimeUtil.getBeginDayOfMonth().getTime() / 1000);
+                waring.setEnd(TimeUtil.getEndDayOfMonth().getTime() / 1000);
+                break;
+            }
+        }
+        return waring;
+    }
+
     @Override
     public int getMonthWaringByhandle(Long userId, String org_index) {
         long begin = TimeUtil.getBeginDayOfMonth().getTime() / 1000;
