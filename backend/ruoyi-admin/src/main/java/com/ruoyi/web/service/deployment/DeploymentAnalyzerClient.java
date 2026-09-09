@@ -306,6 +306,75 @@ public class DeploymentAnalyzerClient
         return buildAlgorithmStreamUrl(bindingConfig, deploymentId);
     }
 
+    /**
+     * 设备健康度探针：读 Analyzer 已有的 /api/health 与 /api/controls，不新增上报通道。
+     *
+     * 返回 null 表示连不上该 Analyzer（健康度最差的一种）。
+     */
+    public AnalyzerHealth probeHealth(String apeId)
+    {
+        BindingConfig bindingConfig = resolveBinding(apeId);
+        if (bindingConfig == null)
+        {
+            return null;
+        }
+        String baseUrl = bindingConfig.getAnalyzerBaseUrl();
+        AnalyzerHealth health = new AnalyzerHealth();
+        health.analyzerUrl = baseUrl;
+        try
+        {
+            String healthBody = restTemplate.getForObject(baseUrl + "/api/health", String.class);
+            JsonNode healthRoot = StringUtils.isEmpty(healthBody) ? null : OBJECT_MAPPER.readTree(healthBody);
+            if (healthRoot != null)
+            {
+                JsonNode metrics = healthRoot.path("metrics");
+                health.detectFrameDropped = metrics.path("detectFrameDropped").asLong(0);
+                health.detectFramePostFailed = metrics.path("detectFramePostFailed").asLong(0);
+                health.detectEventPostFailed = metrics.path("detectEventPostFailed").asLong(0);
+                health.detectLifecycleActive = metrics.path("detectLifecycleActive").asLong(0);
+                health.detectPostCircuitStreams = metrics.path("detectPostCircuitStreams").asLong(0);
+            }
+
+            String controlsBody = restTemplate.getForObject(baseUrl + "/api/controls", String.class);
+            JsonNode controlsRoot = StringUtils.isEmpty(controlsBody) ? null : OBJECT_MAPPER.readTree(controlsBody);
+            if (controlsRoot != null && controlsRoot.path("data").isArray())
+            {
+                for (JsonNode item : controlsRoot.path("data"))
+                {
+                    if (apeId.equals(item.path("streamCode").asText("")))
+                    {
+                        health.streamAttached = true;
+                        health.checkFps = item.path("checkFps").asDouble(0);
+                        break;
+                    }
+                }
+            }
+            health.reachable = true;
+        }
+        catch (Exception ex)
+        {
+            log.warn("设备健康度探测失败, deviceId={}, analyzer={}, err={}", apeId, baseUrl, ex.getMessage());
+            health.reachable = false;
+            health.error = ex.getMessage();
+        }
+        return health;
+    }
+
+    /** 设备健康度快照。 */
+    public static class AnalyzerHealth
+    {
+        public boolean reachable;
+        public boolean streamAttached;
+        public double checkFps;
+        public long detectFrameDropped;
+        public long detectFramePostFailed;
+        public long detectEventPostFailed;
+        public long detectLifecycleActive;
+        public long detectPostCircuitStreams;
+        public String analyzerUrl = "";
+        public String error = "";
+    }
+
     private AnalyzerResult postJson(String url, Map<String, Object> payload, String action)
     {
         try
@@ -566,8 +635,7 @@ public class DeploymentAnalyzerClient
     }
 
     private static class BindingConfig
-    {
-        private final String zlmHost;
+    {        private final String zlmHost;
         private final String zlmApp;
         private final int zlmMediaRtspPort;
         private final int zlmMediaHttpPort;
