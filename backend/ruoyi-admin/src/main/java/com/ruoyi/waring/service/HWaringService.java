@@ -79,6 +79,12 @@ public interface HWaringService {
 
     List<Map<String, Object>> getTypeSpread(Long userId, String org_index, String type);
 
+    /** 误报率闭环统计：按告警类型聚合已处理总数与误报数。 */
+    List<Map<String, Object>> getFalsePositiveStats(Long userId, String org_index, String type);
+
+    /** 睡岗质量分分桶 vs 实际误报率。 */
+    List<Map<String, Object>> getSleepScoreBuckets(Long userId, String org_index, String type);
+
     Details getOne(int w_id);
 
     List<HWaring> getHistoryWaring(String place);

@@ -330,6 +330,29 @@ public class IndexController extends BaseController {
     }
 
     /**
+     * 误报率闭环统计：按告警类型给出「已处理数 / 误报数 / 误报率」。
+     *
+     * 只统计有人工处理记录（h_handle）的告警，未处理的不进分母，
+     * 否则新告警会把误报率稀释成 0。
+     */
+    @GetMapping("/getFalsePositiveStats")
+    @ResponseBody
+    public AjaxResult getFalsePositiveStats(String org_index, String type) {
+        List<Map<String, Object>> map = hWaringService.getFalsePositiveStats(getUserId(), org_index, type);
+        return new AjaxResult(200, "操作成功", map);
+    }
+
+    /**
+     * 睡岗质量分分桶 vs 实际误报率：验证质量分「高分档误报更少」是否成立。
+     */
+    @GetMapping("/getSleepScoreBuckets")
+    @ResponseBody
+    public AjaxResult getSleepScoreBuckets(String org_index, String type) {
+        List<Map<String, Object>> map = hWaringService.getSleepScoreBuckets(getUserId(), org_index, type);
+        return new AjaxResult(200, "操作成功", map);
+    }
+
+    /**
      * 挂牌公示报警
      */
     @GetMapping("/getHandleData")

@@ -109,6 +109,9 @@ public class HWaringController extends BaseController implements SvaDetectEventC
     @Resource
     private SvaSleepNotifyService sleepNotifyService;
 
+    @Resource
+    private AlarmEmailNotifyService alarmEmailNotifyService;
+
     @Autowired
     private ISysDeptService deptService;
 
@@ -445,6 +448,10 @@ public class HWaringController extends BaseController implements SvaDetectEventC
             if (pitchDegree != null) {
                 waring.setSva_pitch_degree(pitchDegree);
             }
+            Double sleepScore = resolveDouble(body, "sleepScore", "sleep_score");
+            if (sleepScore != null) {
+                waring.setSva_sleep_score(clampSleepScore(sleepScore));
+            }
 
             int insert = hWaringService.insertWaring(waring);
             if (insert == 1) {
@@ -747,9 +754,13 @@ public class HWaringController extends BaseController implements SvaDetectEventC
             update.setAlarm_type_name(sleepTier.typeName);
             severeEscalated = sleepTier == SLEEP_TIERS[SLEEP_TIERS.length - 1];
         }
+        Double sleepScore = resolveDouble(body, "sleepScore", "sleep_score");
+        if (shouldApplySleepScore(existing, sleepScore)) {
+            update.setSva_sleep_score(clampSleepScore(sleepScore));
+        }
         int updated = hWaringService.updateSvaLifecycleWaring(update);
-        log.info("SVA规则事件落库更新: eventId={} behaviorType={} eventState={} updated={} controlCode={} trackId={} durationMs={} sleepLevel={} severeEscalated={}",
-            eventId, behaviorType, eventState, updated, controlCode, trackId, durationMs, sleepLevel, severeEscalated);
+        log.info("SVA规则事件落库更新: eventId={} behaviorType={} eventState={} updated={} controlCode={} trackId={} durationMs={} sleepLevel={} sleepScore={} severeEscalated={}",
+            eventId, behaviorType, eventState, updated, controlCode, trackId, durationMs, sleepLevel, sleepScore, severeEscalated);
         if (severeEscalated) {
             // 通知复用已有字段，不再查库。
             update.setDevice_name(existing.getDevice_name());
@@ -757,6 +768,7 @@ public class HWaringController extends BaseController implements SvaDetectEventC
             update.setOrg_name(existing.getOrg_name());
             update.setSva_pitch_degree(existing.getSva_pitch_degree());
             sleepNotifyService.notifySevere(update, durationMs);
+            alarmEmailNotifyService.notifyAlarm(update);
         }
     }
 
@@ -1484,6 +1496,35 @@ public class HWaringController extends BaseController implements SvaDetectEventC
             return true;
         }
         return levelRank(tier.level) > levelRank(existing.getAlarm_level());
+    }
+
+    private static Double clampSleepScore(Double score)
+    {
+        if (score == null)
+        {
+            return null;
+        }
+        if (score < 0.0)
+        {
+            return 0.0;
+        }
+        return Math.min(100.0, (double) Math.round(score));
+    }
+
+    /**
+     * 睡岗质量分只升不降：同一事件内取最大值，与 sleepLevel 的单调规则一致。
+     */
+    private static boolean shouldApplySleepScore(HWaring existing, Double score)
+    {
+        if (score == null)
+        {
+            return false;
+        }
+        if (existing == null || existing.getSva_sleep_score() == null)
+        {
+            return true;
+        }
+        return score > existing.getSva_sleep_score();
     }
 
     private static int levelRank(String level) {

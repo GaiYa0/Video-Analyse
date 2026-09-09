@@ -104,6 +104,12 @@ public class HWaring extends BaseEntity {
 
     private Double sva_pitch_degree;
 
+    /**
+     * 睡岗质量分 0-100：峰值角 / 占空比 / 时长 / 静止度加权。
+     * Analyzer 上报 sleepScore，非睡岗为 null。
+     */
+    private Double sva_sleep_score;
+
     private Boolean ai_review_enabled;
 
     private String ai_review_prompt;

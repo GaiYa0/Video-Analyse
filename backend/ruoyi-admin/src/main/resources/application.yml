@@ -62,6 +62,24 @@ spring:
     basename: i18n/messages
   profiles:
     active: druid
+  # 告警邮件通知（睡岗严重档）。默认关闭，由 sys_config 的 sva.sleep.email.enabled 控制是否真的发。
+  # 演示机把 host/username/password 换成自己的 SMTP（QQ/163 用授权码）。
+  mail:
+    host: smtp.qq.com
+    port: 465
+    username: ""
+    password: ""
+    protocol: smtps
+    default-encoding: UTF-8
+    properties:
+      mail:
+        smtp:
+          auth: true
+          ssl:
+            enable: true
+          connectiontimeout: 5000
+          timeout: 8000
+          writetimeout: 8000
   # 文件上传
   servlet:
     multipart:

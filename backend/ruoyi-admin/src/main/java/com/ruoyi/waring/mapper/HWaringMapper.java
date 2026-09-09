@@ -81,6 +81,14 @@ public interface HWaringMapper {
 
     List<Map<String, Object>> getTypeSpreadByOrgIndex(HWaring waring);
 
+    /** 误报率闭环统计：按告警类型聚合已处理总数与误报数。 */
+    List<Map<String, Object>> getFalsePositiveStats(HWaring waring);
+
+    List<Map<String, Object>> getFalsePositiveStatsByOrgIndex(HWaring waring);
+
+    /** 睡岗质量分分桶 vs 实际误报率，验证质量分是否有效。 */
+    List<Map<String, Object>> getSleepScoreBuckets(HWaring waring);
+
     List<Map<String, Object>> getYearTrend(HWaring waring);
 
     List<Map<String, Object>> getYearTrendByOrgIndex(HWaring waring);

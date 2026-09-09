@@ -42,6 +42,7 @@
         <result property="end_time" column="end_time"/>
         <result property="duration_ms" column="duration_ms"/>
         <result property="sva_pitch_degree" column="sva_pitch_degree"/>
+        <result property="sva_sleep_score" column="sva_sleep_score"/>
         <result property="sva_media_status" column="sva_media_status"/>
         <result property="sva_media_error" column="sva_media_error"/>
         <result property="ai_review_status" column="ai_review_status"/>
@@ -91,6 +92,7 @@
                              DATE_FORMAT(hw.end_time, '%Y-%m-%d %H:%i:%s') AS end_time,
                              hw.duration_ms AS duration_ms,
                              hw.sva_pitch_degree AS sva_pitch_degree,
+                             hw.sva_sleep_score AS sva_sleep_score,
                              hw.sva_media_status AS sva_media_status,
                              hw.sva_media_error AS sva_media_error,
                              (SELECT t.status
@@ -235,6 +237,7 @@
             <if test="end_time != null">end_time,</if>
             <if test="duration_ms != null">duration_ms,</if>
             <if test="sva_pitch_degree != null">sva_pitch_degree,</if>
+            <if test="sva_sleep_score != null">sva_sleep_score,</if>
             <if test="sva_media_status != null">sva_media_status,</if>
             <if test="sva_media_error != null">sva_media_error,</if>
         </trim>
@@ -277,6 +280,7 @@
             <if test="end_time != null">#{end_time},</if>
             <if test="duration_ms != null">#{duration_ms},</if>
             <if test="sva_pitch_degree != null">#{sva_pitch_degree},</if>
+            <if test="sva_sleep_score != null">#{sva_sleep_score},</if>
             <if test="sva_media_status != null">#{sva_media_status},</if>
             <if test="sva_media_error != null">#{sva_media_error},</if>
         </trim>
@@ -314,6 +318,7 @@
             <if test="end_time != null">end_time = #{end_time},</if>
             <if test="duration_ms != null">duration_ms = #{duration_ms},</if>
             <if test="sva_pitch_degree != null">sva_pitch_degree = #{sva_pitch_degree},</if>
+            <if test="sva_sleep_score != null">sva_sleep_score = #{sva_sleep_score},</if>
             <if test="sva_media_status != null">sva_media_status = #{sva_media_status},</if>
             <if test="sva_media_error != null">sva_media_error = #{sva_media_error},</if>
         </set>
@@ -715,6 +720,75 @@
         GROUP BY alarm_type_name;
     </select>
 
+    <!--
+      误报率闭环统计：按告警类型聚合「已处理总数 / 误报数」。
+      只统计有人工处理记录（h_handle）的告警，未处理的不进分母，
+      否则新告警会把误报率稀释成 0。h_title 取最新一条处理记录。
+    -->
+    <select id="getFalsePositiveStats" parameterType="HWaring" resultType="map">
+        SELECT
+            h_waring.alarm_type_name AS alarm_type_name,
+            count(*) AS handled_num,
+            sum(CASE WHEN h_handle.h_title = '误报' THEN 1 ELSE 0 END) AS false_positive_num,
+            round(100.0 * sum(CASE WHEN h_handle.h_title = '误报' THEN 1 ELSE 0 END) / count(*), 2) AS false_positive_rate
+        FROM h_waring
+        INNER JOIN h_handle ON h_handle.h_id = (
+            SELECT h.h_id FROM h_handle h
+            WHERE h.w_id = h_waring.w_id
+            ORDER BY h.h_create_time DESC, h.h_id DESC
+            LIMIT 1)
+        WHERE h_waring.is_enable = 1
+          AND UNIX_TIMESTAMP(h_waring.alarm_time) &gt;= #{begin}
+          AND UNIX_TIMESTAMP(h_waring.alarm_time) &lt;= #{end}
+        GROUP BY h_waring.alarm_type_name
+        ORDER BY false_positive_rate DESC, handled_num DESC
+    </select>
+
+    <select id="getFalsePositiveStatsByOrgIndex" parameterType="HWaring" resultType="map">
+        SELECT
+            h_waring.alarm_type_name AS alarm_type_name,
+            count(*) AS handled_num,
+            sum(CASE WHEN h_handle.h_title = '误报' THEN 1 ELSE 0 END) AS false_positive_num,
+            round(100.0 * sum(CASE WHEN h_handle.h_title = '误报' THEN 1 ELSE 0 END) / count(*), 2) AS false_positive_rate
+        FROM h_waring
+        INNER JOIN h_handle ON h_handle.h_id = (
+            SELECT h.h_id FROM h_handle h
+            WHERE h.w_id = h_waring.w_id
+            ORDER BY h.h_create_time DESC, h.h_id DESC
+            LIMIT 1)
+        WHERE h_waring.is_enable = 1
+          AND h_waring.org_index = #{org_index}
+          AND UNIX_TIMESTAMP(h_waring.alarm_time) &gt;= #{begin}
+          AND UNIX_TIMESTAMP(h_waring.alarm_time) &lt;= #{end}
+        GROUP BY h_waring.alarm_type_name
+        ORDER BY false_positive_rate DESC, handled_num DESC
+    </select>
+
+    <!--
+      睡岗质量分与实际误报的对照：按 20 分一档分桶，看高分档是否真的误报更少。
+      这是「质量分有没有用」的量化验证，不参与判定。
+    -->
+    <select id="getSleepScoreBuckets" parameterType="HWaring" resultType="map">
+        SELECT
+            floor(h_waring.sva_sleep_score / 20) * 20 AS score_bucket,
+            count(*) AS handled_num,
+            sum(CASE WHEN h_handle.h_title = '误报' THEN 1 ELSE 0 END) AS false_positive_num,
+            round(100.0 * sum(CASE WHEN h_handle.h_title = '误报' THEN 1 ELSE 0 END) / count(*), 2) AS false_positive_rate
+        FROM h_waring
+        INNER JOIN h_handle ON h_handle.h_id = (
+            SELECT h.h_id FROM h_handle h
+            WHERE h.w_id = h_waring.w_id
+            ORDER BY h.h_create_time DESC, h.h_id DESC
+            LIMIT 1)
+        WHERE h_waring.is_enable = 1
+          AND h_waring.sva_behavior_type = 'sleep_on_duty'
+          AND h_waring.sva_sleep_score IS NOT NULL
+          AND UNIX_TIMESTAMP(h_waring.alarm_time) &gt;= #{begin}
+          AND UNIX_TIMESTAMP(h_waring.alarm_time) &lt;= #{end}
+        GROUP BY score_bucket
+        ORDER BY score_bucket
+    </select>
+
     <select id="getTypeSpreadByOrgIndex" parameterType="HWaring" resultType="map">
         SELECT count(*) as num, alarm_type_name
         FROM h_waring
@@ -753,6 +827,7 @@
                 DATE_FORMAT(h_waring.end_time, '%Y-%m-%d %H:%i:%s') AS end_time,
                 h_waring.duration_ms,
                 h_waring.sva_pitch_degree,
+                h_waring.sva_sleep_score,
                     (SELECT h.h_title
                         FROM h_handle h
                       WHERE h.w_id = h_waring.w_id

@@ -59,6 +59,13 @@ public class AiReviewServiceImpl implements IAiReviewService
     private static final int DEFAULT_BATCH_SIZE = 20;
     private static final long RETRY_DELAY_MILLIS = 60_000L;
 
+    /** 系统提示词：约束输出结构，两个服务端分支共用。 */
+    private static final String REVIEW_SYSTEM_PROMPT =
+        "你是工业安全告警复核助手。请仅输出JSON对象，不要输出Markdown代码块。"
+            + "JSON字段必须包含decision、confidence、false_positive_score、observed、pose_match、summary、reason。"
+            + "decision只允许true_alarm、false_alarm、uncertain。"
+            + "observed必须是你在图中真实看到的内容，不确定就写不确定，禁止编造画面里没有的物体或场景。";
+
     @Resource
     private AiReviewTaskMapper aiReviewTaskMapper;
 
@@ -356,7 +363,7 @@ public class AiReviewServiceImpl implements IAiReviewService
 
         Map<String, Object> system = new HashMap<>();
         system.put("role", "system");
-        system.put("content", "你是工业安全告警复核助手。请仅输出JSON对象，不要输出Markdown代码块。JSON字段必须包含decision、confidence、false_positive_score、summary、reason。decision只允许true_alarm、false_alarm、uncertain。");
+        system.put("content", REVIEW_SYSTEM_PROMPT);
         messages.add(system);
 
         Map<String, Object> user = new HashMap<>();
@@ -385,7 +392,7 @@ public class AiReviewServiceImpl implements IAiReviewService
         List<Map<String, Object>> messages = new ArrayList<>();
 
         Map<String, Object> systemText = new LinkedHashMap<>();
-        systemText.put("text", "你是工业安全告警复核助手。请仅输出JSON对象，不要输出Markdown代码块。JSON字段必须包含decision、confidence、false_positive_score、summary、reason。decision只允许true_alarm、false_alarm、uncertain。");
+        systemText.put("text", REVIEW_SYSTEM_PROMPT);
         List<Map<String, Object>> systemContent = new ArrayList<>();
         systemContent.add(systemText);
         Map<String, Object> system = new LinkedHashMap<>();
@@ -596,14 +603,70 @@ public class AiReviewServiceImpl implements IAiReviewService
         return "image/jpeg";
     }
 
+    /**
+     * 复核提示词。
+     *
+     * 原版只给「类型 / 设备 / 时间」三个字段，模型看不到算法已经算出的量化证据，
+     * 只能凭图猜——实测中 qwen-vl-max 会把工位截图说成「有人在打网球」。
+     * 这里把俯仰角、持续时长、质量分、档位一并交给模型，并写清「什么算误报」。
+     */
     private String buildReviewPrompt(HWaring waring)
     {
-        return String.format(
-            "请结合图片判断当前告警是否可能误报，并输出结构化JSON。告警类型：%s；设备名称：%s；告警时间：%s。若无法确认，请返回uncertain。",
-            StringUtils.defaultIfBlank(waring.getAlarm_type_name(), "未知"),
-            StringUtils.defaultIfBlank(waring.getDevice_name(), "未知"),
-            StringUtils.defaultIfBlank(waring.getAlarm_time(), "未知")
-        );
+        StringBuilder builder = new StringBuilder();
+        builder.append("你是工业安全告警复核助手。请只输出JSON对象，不要输出Markdown代码块。\n\n");
+
+        builder.append("【告警信息】\n");
+        builder.append("行为类型：").append(StringUtils.defaultIfBlank(waring.getAlarm_type_name(), "未知")).append('\n');
+        builder.append("设备：").append(StringUtils.defaultIfBlank(waring.getDevice_name(), waring.getDevice_id())).append('\n');
+        builder.append("时间：").append(StringUtils.defaultIfBlank(waring.getAlarm_time(), "未知")).append('\n');
+
+        // 算法证据：模型看图看不出「低了多少度、低了多久」，这些只有算法知道。
+        boolean hasEvidence = false;
+        StringBuilder evidence = new StringBuilder();
+        if (waring.getSva_pitch_degree() != null)
+        {
+            evidence.append("- 头部俯仰角：").append(String.format("%.0f", waring.getSva_pitch_degree()))
+                .append("°（进入低头阈值 32°，越接近 90° 越像头贴桌面）\n");
+            hasEvidence = true;
+        }
+        if (waring.getDuration_ms() != null && waring.getDuration_ms() > 0)
+        {
+            evidence.append("- 持续低头时长：").append(String.format("%.1f", waring.getDuration_ms() / 1000.0))
+                .append(" 秒（确认档 5 秒，严重档 15 秒）\n");
+            hasEvidence = true;
+        }
+        if (waring.getSva_sleep_score() != null)
+        {
+            evidence.append("- 睡岗质量分：").append(String.format("%.0f", waring.getSva_sleep_score()))
+                .append("/100（峰值角 30% + 占空比 25% + 时长 25% + 头点静止 20%）\n");
+            hasEvidence = true;
+        }
+        if (StringUtils.isNotBlank(waring.getAlarm_level_name()))
+        {
+            evidence.append("- 告警档位：").append(waring.getAlarm_level_name()).append('\n');
+            hasEvidence = true;
+        }
+        if (hasEvidence)
+        {
+            builder.append("\n【算法判定证据】（由姿态模型计算，供你参考，不要盲从）\n").append(evidence);
+        }
+
+        builder.append("\n【任务】结合图片判断这条告警是否误报。\n");
+        builder.append("判定标准：\n");
+        builder.append("- 图中人确实趴在桌上/头长时间深低且没有在做别的事 → decision=true_alarm\n");
+        builder.append("- 图中人在低头看手机、看键盘、写字、捡东西、抬头看屏幕 → decision=false_alarm\n");
+        builder.append("- 画面里没有对应的人、或图片模糊看不清 → decision=uncertain\n");
+        builder.append("- 算法证据与图片矛盾时（例如角度很深但人在正常坐姿），以图片为准并说明矛盾\n");
+
+        builder.append("\n【输出JSON字段】\n");
+        builder.append("decision：true_alarm / false_alarm / uncertain\n");
+        builder.append("confidence：0~1 的把握度\n");
+        builder.append("false_positive_score：0~1 的误报可能性\n");
+        builder.append("observed：你在图中实际看到的内容，一句话，不要编造\n");
+        builder.append("pose_match：boolean，图中人的姿态是否与算法判定一致\n");
+        builder.append("summary：一句话结论\n");
+        builder.append("reason：判断依据，说明你看到了什么、为什么这样判\n");
+        return builder.toString();
     }
 
     private String buildReviewPrompt(HWaring waring, AiReviewTask task)
@@ -678,7 +741,21 @@ public class AiReviewServiceImpl implements IAiReviewService
         outcome.confidence = json.path("confidence").isNumber() ? json.path("confidence").asDouble() : 0D;
         outcome.falsePositiveScore = json.path("false_positive_score").isNumber() ? json.path("false_positive_score").asDouble() : 0D;
         outcome.summary = truncate(json.path("summary").asText(""), 2000);
-        outcome.reason = truncate(json.path("reason").asText(""), 4000);
+
+        // observed / pose_match 不新增数据库列，拼进 reason 一起留档，
+        // 这样前端不用改也能看到「模型到底看到了什么」。
+        String reason = json.path("reason").asText("");
+        String observed = json.path("observed").asText("");
+        if (StringUtils.isNotEmpty(observed))
+        {
+            reason = "看到：" + observed + (StringUtils.isEmpty(reason) ? "" : "；判断依据：" + reason);
+        }
+        if (json.has("pose_match") && !json.path("pose_match").isNull())
+        {
+            boolean poseMatch = json.path("pose_match").asBoolean(true);
+            reason = (poseMatch ? "姿态与算法一致" : "姿态与算法不一致") + (StringUtils.isEmpty(reason) ? "" : "；" + reason);
+        }
+        outcome.reason = truncate(reason, 4000);
         outcome.rawResponseJson = rawResponse;
         return outcome;
     }
