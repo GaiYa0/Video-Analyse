@@ -1,8 +1,14 @@
 package com.ruoyi.waring.service;
 
+import java.net.URI;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.ruoyi.common.config.RuoYiConfig;
+import com.ruoyi.common.constant.Constants;
 import com.ruoyi.common.core.domain.entity.SysDept;
 import com.ruoyi.common.core.domain.entity.SysUser;
 import com.ruoyi.common.core.text.Convert;
@@ -16,10 +22,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.mail.SimpleMailMessage;
+import org.springframework.core.io.FileSystemResource;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Service;
+
+import jakarta.mail.internet.MimeMessage;
 
 /**
  * 告警邮件通知。
@@ -44,6 +53,9 @@ public class AlarmEmailNotifyService
 
     private static final int DEFAULT_MAX_RECIPIENTS = 10;
     private static final String LEVEL_SEVERE = "5";
+    /** 关键帧三连图在邮件里的 Content-ID，与 HTML 正文的 cid: 引用一致。 */
+    private static final String KEYFRAME_CID = "keyframes";
+    private static final String KEYFRAME_FILE_NAME = "keyframes.jpg";
 
     @Resource
     private ISysConfigService sysConfigService;
@@ -169,11 +181,14 @@ public class AlarmEmailNotifyService
     {
         try
         {
-            SimpleMailMessage message = new SimpleMailMessage();
-            message.setFrom(mailFrom);
-            message.setTo(recipients.toArray(new String[0]));
-            message.setSubject(buildSubject(waring));
-            message.setText(buildBody(waring));
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+            helper.setFrom(mailFrom);
+            helper.setTo(recipients.toArray(new String[0]));
+            helper.setSubject(buildSubject(waring));
+            // 正文用 HTML，关键帧三连图作为内联资源（cid 引用），邮件里直接看到对比图。
+            helper.setText(buildHtmlBody(waring), true);
+            attachKeyframeStrip(helper, waring);
             mailSender.send(message);
             log.info("告警邮件已发送: wId={} to={}", waring.getW_id(), recipients);
         }
@@ -181,6 +196,143 @@ public class AlarmEmailNotifyService
         {
             log.warn("告警邮件发送失败: wId={} {}", waring.getW_id(), ex.getMessage());
         }
+    }
+
+    /**
+     * 关键帧三连图内联进邮件。图由 Analyzer 写在封面图同目录的 keyframes.jpg。
+     * 找不到就跳过，纯文字邮件照常发。
+     */
+    private void attachKeyframeStrip(MimeMessageHelper helper, HWaring waring)
+    {
+        try
+        {
+            Path strip = resolveKeyframeStrip(waring);
+            if (strip == null)
+            {
+                return;
+            }
+            helper.addInline(KEYFRAME_CID, new FileSystemResource(strip.toFile()), "image/jpeg");
+        }
+        catch (Exception ex)
+        {
+            log.debug("关键帧三连图内联失败, wId={} {}", waring.getW_id(), ex.getMessage());
+        }
+    }
+
+    /**
+     * 从封面图路径推导同目录的 keyframes.jpg，并映射到本地上传目录。
+     */
+    private Path resolveKeyframeStrip(HWaring waring)
+    {
+        String imagePath = StringUtils.trimToEmpty(waring.getPicture_url());
+        if (StringUtils.isEmpty(imagePath))
+        {
+            return null;
+        }
+        String relative = imagePath.replace('\\', '/');
+        if (relative.startsWith("http://") || relative.startsWith("https://"))
+        {
+            try
+            {
+                relative = URI.create(relative).getPath();
+            }
+            catch (Exception ignored)
+            {
+                return null;
+            }
+        }
+        while (relative.startsWith("/"))
+        {
+            relative = relative.substring(1);
+        }
+        if (relative.startsWith(Constants.RESOURCE_PREFIX))
+        {
+            relative = relative.substring(Constants.RESOURCE_PREFIX.length());
+        }
+        int slash = relative.lastIndexOf('/');
+        if (slash <= 0)
+        {
+            return null;
+        }
+        String stripRelative = relative.substring(0, slash + 1) + KEYFRAME_FILE_NAME;
+        String profile = StringUtils.trimToEmpty(RuoYiConfig.getProfile());
+        if (StringUtils.isEmpty(profile))
+        {
+            return null;
+        }
+        Path candidate = Paths.get(profile, stripRelative);
+        return Files.isRegularFile(candidate) ? candidate : null;
+    }
+
+    private String buildHtmlBody(HWaring waring)
+    {
+        StringBuilder builder = new StringBuilder();
+        builder.append("<div style=\"font-family:-apple-system,'Segoe UI',sans-serif;font-size:14px;color:#222;\">");
+        builder.append("<h3 style=\"margin:0 0 12px;\">")
+            .append(escapeHtml(buildSubject(waring)))
+            .append("</h3>");
+        builder.append("<table cellpadding=\"6\" cellspacing=\"0\" style=\"border-collapse:collapse;\">");
+        appendRow(builder, "告警类型", StringUtils.defaultIfBlank(waring.getAlarm_type_name(), "—"));
+        appendRow(builder, "告警等级", StringUtils.defaultIfBlank(waring.getAlarm_level_name(), "—"));
+        appendRow(builder, "设备", StringUtils.defaultIfBlank(waring.getDevice_name(), waring.getDevice_id()));
+        if (StringUtils.isNotBlank(waring.getOrg_name()))
+        {
+            appendRow(builder, "组织", waring.getOrg_name());
+        }
+        appendRow(builder, "时间", StringUtils.trimToEmpty(waring.getAlarm_time()));
+        if (waring.getDuration_ms() != null && waring.getDuration_ms() > 0)
+        {
+            appendRow(builder, "持续", String.format("%.1f 秒", waring.getDuration_ms() / 1000.0));
+        }
+        if (waring.getSva_pitch_degree() != null)
+        {
+            appendRow(builder, "俯仰角", String.format("%.0f°", waring.getSva_pitch_degree()));
+        }
+        if (waring.getSva_sleep_score() != null)
+        {
+            appendRow(builder, "睡岗质量分", String.format("%.0f / 100", waring.getSva_sleep_score()));
+        }
+        appendRow(builder, "事件号", StringUtils.trimToEmpty(waring.getId()));
+        builder.append("</table>");
+
+        if (resolveKeyframeStrip(waring) != null)
+        {
+            builder.append("<p style=\"margin:16px 0 6px;\">关键帧（起始 / 峰值 / 结束）：</p>");
+            builder.append("<img src=\"cid:").append(KEYFRAME_CID)
+                .append("\" alt=\"keyframes\" style=\"max-width:100%;border:1px solid #ddd;\"/>");
+        }
+        else if (StringUtils.isNotBlank(waring.getPicture_absolute_url()))
+        {
+            // 没有三连图时退回封面截图，注意邮件客户端不认相对路径。
+            builder.append("<p style=\"margin:16px 0 6px;\">告警截图：</p>");
+            builder.append("<img src=\"").append(escapeHtml(waring.getPicture_absolute_url()))
+                .append("\" alt=\"snapshot\" style=\"max-width:100%;border:1px solid #ddd;\"/>");
+        }
+
+        builder.append("<p style=\"margin-top:16px;color:#666;\">请登录平台查看视频证据。</p>");
+        builder.append("</div>");
+        return builder.toString();
+    }
+
+    private void appendRow(StringBuilder builder, String label, String value)
+    {
+        builder.append("<tr><td style=\"color:#666;padding-right:14px;white-space:nowrap;\">")
+            .append(escapeHtml(label))
+            .append("</td><td style=\"color:#111;font-weight:600;\">")
+            .append(escapeHtml(value))
+            .append("</td></tr>");
+    }
+
+    private String escapeHtml(String value)
+    {
+        if (value == null)
+        {
+            return "";
+        }
+        return value.replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+            .replace("\"", "&quot;");
     }
 
     private String buildSubject(HWaring waring)
