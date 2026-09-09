@@ -109,6 +109,9 @@ public class HWaringController extends BaseController implements SvaDetectEventC
     @Resource
     private SvaSleepNotifyService sleepNotifyService;
 
+    @Resource
+    private AlarmEmailNotifyService alarmEmailNotifyService;
+
     @Autowired
     private ISysDeptService deptService;
 
@@ -765,6 +768,7 @@ public class HWaringController extends BaseController implements SvaDetectEventC
             update.setOrg_name(existing.getOrg_name());
             update.setSva_pitch_degree(existing.getSva_pitch_degree());
             sleepNotifyService.notifySevere(update, durationMs);
+            alarmEmailNotifyService.notifyAlarm(update);
         }
     }
 
