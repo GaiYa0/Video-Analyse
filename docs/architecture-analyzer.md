@@ -176,7 +176,7 @@ Nginx 需把 `/websocket/` 反代到 9114（官方安装脚本如此配置）。
 }
 ```
 
-现网 `detect.event` 会先插入告警行（封面用 start 截图，并带预设 `video_path`）。Analyzer 再把 mp4 写到同一路径。睡岗时叠加 `behavior_type=sleep_on_duty`、`alarmType=SLEEP_ON_DUTY`、`customEventName=睡岗`，以及 `confidence` / `pitchDegree` / `durationFrames` / `duration_ms`（见 [algorithm-sleep.md](./algorithm-sleep.md)）。编码失败会打 `genAlarmVideo failed`，不再静默丢掉。
+现网 `detect.event` 会先插入告警行（封面用 start 截图，并带预设 `video_path`）。Analyzer 再把 mp4 写到同一路径。睡岗时叠加 `behavior_type=sleep_on_duty`、`alarmType=SLEEP_ON_DUTY`、`customEventName=睡岗`，以及 `confidence` / `pitchDegree` / `durationFrames` / `duration_ms` / `sleepLevel`（见 [algorithm-sleep.md](./algorithm-sleep.md)）。`sleepLevel` 为 0/1/2，对应 2s 疑似、5s 确认、15s 严重三档；同一事件内只升不降，backend 据此写 `alarm_level` 与分档类型名。编码失败会打 `genAlarmVideo failed`，不再静默丢掉。
 
 backend 入库：
 

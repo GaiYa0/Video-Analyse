@@ -20,9 +20,11 @@ cd algo\sleep-pose
 python -m unittest discover -s tests -v
 ```
 
-持续低头 **≥ 5s** 且够深、够静止才报。打字看资料、低头看手机、正脸看镜头、背景小人、只露一个肩、中途人走开都不应报。正拍/侧拍用同一套俯仰角；正脸对着镜头时角度封顶。
+持续低头分三档：**≥2s 疑似 / ≥5s 确认 / ≥15s 严重**。三档共用同一套证据门（占空比、峰值 45°、头点静止、有效帧），只差时长；证据不足时不会因为计时走到 15 秒就报严重。打字看资料、低头看手机、正脸看镜头、背景小人、只露一个肩、中途人走开三档都不应报。正拍/侧拍用同一套俯仰角；正脸对着镜头时角度封顶。
 
-`tests/test_cpp_parity.py` 会直接读 `server/Analyzer/Core/SleepPose.h`，逐个比对常量。改了一边忘了另一边，这条会红。
+`update_temporal()` 返回的 `FrameDecision.sleep_level` 即档位（`-1` 未低头 / `0` 疑似 / `1` 确认 / `2` 严重），与 Analyzer 上报的 `sleepLevel` 同义。
+
+`tests/test_cpp_parity.py` 会直接读 `server/Analyzer/Core/SleepPose.h`，逐个比对常量（含三档阈值）。改了一边忘了另一边，这条会红。
 
 ## 本地视频
 

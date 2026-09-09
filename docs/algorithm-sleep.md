@@ -13,8 +13,8 @@ H.264 流
   → 原管线解码（不改）
   → on_sleep_pose（YOLO11n-Pose ONNX，person）
   → 头点 + 颈点 + 髋/肩，正侧拍共用俯仰角
-  → 平滑 + 滞回：短低头=bow，连续低头≥5s=sleep；正脸朝镜头且头仍在脖子上方不报
-  → 原告警 HTTP：behavior_type=sleep_on_duty
+  → 平滑 + 滞回：短低头=bow，连续低头 2s/5s/15s 分三档；正脸朝镜头且头仍在脖子上方不报
+  → 原告警 HTTP：behavior_type=sleep_on_duty，附 sleepLevel
 ```
 
 原算法 `on_yolo11n_80` / `on_yolo26n_80` 仍加载、仍走原来的框检测解码，**不替换、不改输出维**。
@@ -25,7 +25,7 @@ H.264 流
 | 模型文件 | `{modelDir}/yolo11n-pose.onnx`（`*.onnx` 不进 git） |
 | 目标类 | `person` |
 | 行为类型 | `sleep_on_duty` |
-| 告警类型 | `SLEEP_ON_DUTY` / 展示名「睡岗」 |
+| 告警类型 | `SLEEP_ON_DUTY` / 展示名分三档：疑似睡岗 / 确认睡岗 / 严重睡岗 |
 
 模型不存在时 Analyzer **照常启动**原 YOLO；选睡岗会打「不支持的算法」，这是预期。
 
@@ -62,20 +62,20 @@ H.264 流
 | --- | --- | --- |
 | `PITCH_DOWN_DEG` | 32 | 进入低头（无髋时 38） |
 | `PITCH_RECOVER_DEG` | 22 | 滞回：已低头后低于此值才开始「恢复计时」 |
-| `SLEEP_HOLD_MS` | **5000** | 连续低头达到此时长才可能报睡岗 |
+| `SLEEP_HOLD_MS` | **5000** | 确认档：连续低头达到此值算稳定识别 |
 | `RECOVER_HOLD_MS` | 600 | 抬起必须稳住这么久才清零 |
 | `PITCH_SMOOTH` | 上升 0.55 / 下降 0.28 | 低头跟上快，抬起滤波慢 |
 | `MIN_KEYPOINT_CONF` | 0.25 | 单点最低置信度 |
 | `MIN_BODY_SCALE_PX` | 24 | 尺子下限 |
 | `MAX_HEAD_ABOVE_NECK_RATIO` | 0.50 | 非正脸时，头最多高出颈线这么多还能算低头 |
 
-布控规则若带 `sleep_on_duty`：`thresholdMs` = 持续时间；`distanceThresholdPx` 复用为低头角度；`directionToleranceDeg` 复用为滞回差（默认 10）。选了 `on_sleep_pose` 但没下发规则时，Analyzer 会补一条默认规则（5 秒）。
+布控规则若带 `sleep_on_duty`：`distanceThresholdPx` 复用为低头角度；`directionToleranceDeg` 复用为滞回差（默认 10）。`thresholdMs` **不再生效**（见 §4.1）。选了 `on_sleep_pose` 但没下发规则时，Analyzer 会补一条默认规则。
 
-**注意**：布控页现在会自动写一条 `sleep_on_duty`，持续时间**写死 2500ms**，会盖掉 Analyzer 的 5 秒默认值。本机这条布控若 `behaviorRules` 为空，用的就是 Analyzer 的 5 秒。页面默认值在 `web/`，归同学 C。滞回差在页面上没有输入框，恒等于 `低头角 − 10`。
+**注意**：布控页现在会自动写一条 `sleep_on_duty`，持续时间默认仍是 **2500ms**（`web/src/views/deployment/add.vue`）。三档改造后这个值被 `SleepPose::sleepEnterHoldMs()` 忽略，进入计时门槛恒为 2 秒，页面数字只是显示值。改 `web/` 归同学 C。滞回差在页面上没有输入框，恒等于 `低头角 − 10`。
 
 ---
 
-## 4. 多帧：低头 vs 睡岗
+## 4. 多帧：低头 vs 睡岗（三档分级）
 
 每个 `trackId` 一份状态（与 Python `TemporalState` 相同）。判定用的是 **平滑后的角**，不是原始单帧。
 
@@ -97,11 +97,30 @@ H.264 流
 | 有效帧 | ≥ **3** 帧真实姿态 | 靠单帧凑出来的时长。低帧率下 12 帧等于十几秒，会把已经趴下的人挡住 |
 | 丢帧占比 | 累计缺失 / 窗口 ≤ **0.35** | 中途被挡、人走开 |
 
-告警前的第二道门（`isSleepOnDutyHit`）**不再**看运动状态、躯干速度、轨迹年龄或 `dwellMs`。现网只认：`sleepOnDuty` 已成立、轨迹有效、人在闭合区域内、且 `headDownMs` ≥ 规则时长（空规则时 5000ms）。运动门已从 `BehaviorEvaluator.cpp` 拿掉，避免低帧率或轻微晃动把已经趴下的人挡掉。
+告警前的第二道门（`isSleepOnDutyHit`）**不再**看运动状态、躯干速度、轨迹年龄或 `dwellMs`。现网只认：`sleepOnDuty` 已成立、轨迹有效、人在闭合区域内、且 `headDownMs` ≥ **2 秒**（三档里最松的一档）。运动门已从 `BehaviorEvaluator.cpp` 拿掉，避免低帧率或轻微晃动把已经趴下的人挡掉。
+
+### 4.1 三档分级（2026-09-09 起）
+
+连续低头时长决定**档位**，不再只决定「报或不报」。三档共用上面那张证据门表格，**只差时长**：
+
+| 档位 | `sleepLevel` | 持续低头 | 画框 | 告警类型名 | 告警等级 |
+| --- | --- | --- | --- | --- | --- |
+| 疑似睡岗 | `0` | ≥ **2s** | 琥珀 `SLEEP?` | 疑似睡岗 | `3` / 提示 |
+| 确认睡岗 | `1` | ≥ **5s** | 黄色 `SLEEP` | 确认睡岗 | `4` / 警告 |
+| 严重睡岗 | `2` | ≥ **15s** | 红色 `SLEEP!` | 严重睡岗 | `5` / 严重 |
+
+规则：
+
+1. **档位只随时长变化，证据门不放松**。占空比 0.80、峰值 45°、漂移 0.45×尺子、有效帧 ≥3 一条都不改，所以看键盘（36°）、看手机（头在动）、看镜头这些反例**三档都不报**——`sleepLevelFor` 只在 `sleepEvidenceSatisfied` 通过后才给出档位，被挡住的窗口不会因为计时走到 15 秒就冒充严重。
+2. **同一事件内档位单调不减**。Analyzer 的 `EventState.sleepLevel` 与 backend 的 `alarm_level` 都只升不降：报过疑似后继续趴着，同一条告警记录被升级为确认、再升级为严重，**不会新插一条**。
+3. **进入计时门槛恒为 2 秒**。`SleepPose::sleepEnterHoldMs()` 写死 2000，布控页下发的 `thresholdMs`（现为 2500）**不再生效**——三档是算法口径，不由页面配置。`clampSleepHoldMs` 已删除。
+4. 常量在 [server/Analyzer/Core/SleepPose.h](../server/Analyzer/Core/SleepPose.h)：`kSleepSuspectHoldMs` / `kDefaultSleepHoldMs` / `kSleepSevereHoldMs`；Python 侧 [algo/sleep-pose/sleep_pose/temporal.py](../algo/sleep-pose/sleep_pose/temporal.py) 由 `test_cpp_parity.py` 保证一致。
+5. 后端只把档位映射成现网既有的 3/4/5 等级，**不新建等级名**，大屏的等级统计不用改。
+6. 升到严重档时 [SvaSleepNotifyService](../backend/ruoyi-admin/src/main/java/com/ruoyi/waring/service/SvaSleepNotifyService.java) 异步推一条站外通知（企业微信群机器人格式），开关与地址在 `sys_config` 的 `sva.sleep.webhook.enabled` / `sva.sleep.webhook.url`，默认关闭；没配地址只打日志，不影响落库。
 
 告警证据 MP4 按解码帧连续写，前缀仍是 **30** 帧（与原 YOLO 相同）。抽帧 / 追帧只跳过 YOLO，不把 `happen` 打成单帧脉冲，也不再丢掉 BGR 告警帧。
 
-验收：本地视频里睡岗要出事件，点头/看键盘/看手机/正面看镜头/背景里的人都不能出。正拍、侧拍趴桌都应能过 32° 并在约 5 秒后变黄框。绿框 `UP <角度>` = 还在坐直；橙框 `BOW <角度> <秒数>` = 已经在计时；黄框 `SLEEP <角度> <秒数>` = 睡岗成立。成立那一刻 Analyzer 日志会打一行 `sleep_on_duty track=… peak=… downRatio=… drift=…`。
+验收：本地视频里睡岗要出事件，点头/看键盘/看手机/正面看镜头/背景里的人都不能出。正拍、侧拍趴桌都应能过 32°，约 2 秒变琥珀 `SLEEP?`、约 5 秒变黄 `SLEEP`、约 15 秒变红 `SLEEP!`。绿框 `UP <角度>` = 还在坐直；橙框 `BOW <角度> <秒数>` = 已经在计时但证据不足。成立那一刻 Analyzer 日志会打一行 `sleep_on_duty track=… level=suspect|confirmed|severe hold=… peak=… downRatio=… drift=…`。
 
 告警封面用 **事件 start** 的那张图，不要用结束帧（坐直后会把趴桌盖掉）。视频路径在 start 时就带上 `alarm/.../evt-.../main.mp4`；Analyzer 不再丢掉排队中的告警片段。旧告警若 `video_url` 为空，点「播放视频证据」仍会提示不存在，那是当时没写成片，不是播放器坏了。
 
@@ -124,11 +143,16 @@ H.264 流
   "confidence": 0.0,
   "pitchDegree": 0.0,
   "durationFrames": 0,
-  "duration_ms": 0
+  "duration_ms": 0,
+  "sleepLevel": 0
 }
 ```
 
-Analyzer 在 `addFromSvaSimple` 和 `detect.event` 都会带上 `confidence`（YOLO 分数）、`pitchDegree`、`durationFrames`，并优先带墙钟 `duration_ms`（`headDownMs`）。backend（#6）命中任一即入库为睡岗：`alarmType=SLEEP_ON_DUTY`，或 `behavior_type=sleep_on_duty`，或 `customEventName=睡岗`。有 `duration_ms` 直接写入；否则用 `durationFrames × 40ms`。`pitchDegree` 现网尚未入库（归 C）。不要新建表。
+`sleepLevel`：`0` 疑似（2s）/ `1` 确认（5s）/ `2` 严重（15s），非睡岗不带此字段。旧版 Analyzer 不发这个字段时，backend 按 `duration_ms` 用同一套阈值补档，行为不变。
+
+Analyzer 在 `addFromSvaSimple` 和 `detect.event` 都会带上 `confidence`（YOLO 分数）、`pitchDegree`、`durationFrames`、`sleepLevel`，并优先带墙钟 `duration_ms`（`headDownMs`）。backend（#6）命中任一即入库为睡岗：`alarmType=SLEEP_ON_DUTY`，或 `behavior_type=sleep_on_duty`，或 `customEventName=睡岗`。有 `duration_ms` 直接写入；否则用 `durationFrames × 40ms`。
+
+`pitchDegree` 现网已入库、已展示，不是待办：`HWaringController` 用 `resolveDouble(body, "pitchDegree", "pitch_degree")` 写入 `h_waring.sva_pitch_degree`（列见 `scripts/add_sva_pitch_degree.sql`），告警详情页 `WarningDetailDialog.vue` 已有「俯仰角」。不要新建表。
 
 启发式 `behavior_type=sleep` **不要**当睡岗。
 
@@ -201,7 +225,7 @@ B 能改的已经在本仓库：公式、时序、ONNX 接入、告警 JSON 字�
 
 ## 7. 验收点 4：国标与直连同一套阈值（实测）
 
-国标**不改** §2–4 的 32° / 5 秒 / 占空比。只换 Analyzer 打开的 URL。backend `DeploymentAnalyzerClient.buildStreamUrl`：`device_type=gb28181` 时 `resolveGbRtpPull` 得到 `rtp/<设备_通道>`，否则 `live/<ape_id>`。发给 Analyzer 的是：
+国标**不改** §2–4 的 32° / 2s·5s·15s / 占空比。只换 Analyzer 打开的 URL。backend `DeploymentAnalyzerClient.buildStreamUrl`：`device_type=gb28181` 时 `resolveGbRtpPull` 得到 `rtp/<设备_通道>`，否则 `live/<ape_id>`。发给 Analyzer 的是：
 
 | 源 | `streamUrl` |
 | --- | --- |
@@ -212,13 +236,14 @@ B 能改的已经在本仓库：公式、时序、ONNX 接入、告警 JSON 字�
 
 ### 交给 C 进 PPT
 
-1. 睡岗判定：俯仰角 ≥ **32°**（无髋 38°），连续 **5 秒**，再加占空比 / 峰值 45° / 头点静止；正脸看镜头封顶 18° 不报。  
+1. 睡岗判定：俯仰角 ≥ **32°**（无髋 38°），连续低头分三档——**2 秒疑似、5 秒确认、15 秒严重**；三档共用占空比 / 峰值 45° / 头点静止；正脸看镜头封顶 18° 不报。  
 2. 国标与直连公式相同，只换 `live/` → `rtp/<设备_通道>`。  
-3. 反例仍按 P2：打字、看手机、看镜头、空座位、背景人不应报。
+3. 反例仍按 P2：打字、看手机、看镜头、空座位、背景人三档都不应报。  
+4. 档位只升不降：同一条告警随持续时长从疑似升到确认再到严重，严重档还会推一条通知。
 
-### 实测表（2026-09-08）
+### 实测表（2026-09-08，三档待重测）
 
-本机 WSL24 只能探 Analyzer 是否活着（无 WVP）。验收以同学 A 的 Ubuntu 22.04 演示机为准。当天与 A 联调：**国标出框、国标睡岗、直连睡岗与原 YOLO 回归均通过**。公式未改。
+本机 WSL24 只能探 Analyzer 是否活着（无 WVP）。验收以同学 A 的 Ubuntu 22.04 演示机为准。当天与 A 联调：**国标出框、国标睡岗、直连睡岗与原 YOLO 回归均通过**（当时是单档 5 秒口径）。三档改造后需重跑一遍，结果填在下面新加的三行。
 
 | 项 | 机器 | `streamUrl` / 探测 | 结果 |
 | --- | --- | --- | --- |
@@ -229,5 +254,8 @@ B 能改的已经在本仓库：公式、时序、ONNX 接入、告警 JSON 字�
 | 国标睡岗 | A 演示机 `on_sleep_pose` | 同上 `rtp/` | **过**（报睡岗） |
 | 直连睡岗 | A 演示机工位 | `rtsp://127.0.0.1:9994/live/<ape_id>` | **过** |
 | 直连原 YOLO 回归 | A 演示机 | `live/<ape_id>` | **过** |
+| 三档：疑似 2s | A 演示机 `on_sleep_pose` | `rtp/` 或 `live/` | 待重测：琥珀 `SLEEP?` + `sleepLevel=0` + 等级「提示」 |
+| 三档：确认 5s | 同上，同一条告警 | 同上 | 待重测：升级为黄色 `SLEEP` + `sleepLevel=1` + 等级「警告」 |
+| 三档：严重 15s | 同上，同一条告警 | 同上 | 待重测：升级为红色 `SLEEP!` + `sleepLevel=2` + 等级「严重」+ 通知 |
 
-开机仍按 [启动手册.md](./启动手册.md) §1.0.0。C 写 PPT 用上面「交给 C」三句，不要另编国标阈值。`phase` 保持 4，交付材料归 C。
+开机仍按 [启动手册.md](./启动手册.md) §1.0.0。C 写 PPT 用上面「交给 C」四句，不要另编国标阈值。`phase` 保持 4，交付材料归 C。
