@@ -71,7 +71,7 @@ H.264 流
 
 布控规则若带 `sleep_on_duty`：`thresholdMs` = 持续时间；`distanceThresholdPx` 复用为低头角度；`directionToleranceDeg` 复用为滞回差（默认 10）。选了 `on_sleep_pose` 但没下发规则时，Analyzer 会补一条默认规则（5 秒）。
 
-**注意**：布控页现在会自动写一条 `sleep_on_duty`，持续时间**写死 2500ms**，会盖掉 Analyzer 的 5 秒默认值。本机这条布控若 `behaviorRules` 为空，用的就是 Analyzer 的 5 秒。页面默认值在 `web/`，归同学 C。滞回差在页面上没有输入框，恒等于 `低头角 − 10`。
+**注意**：布控页现在会自动写一条 `sleep_on_duty`，持续时间默认仍是 **2500ms**（`web/src/views/deployment/add.vue`）。Analyzer 侧 `SleepPose::clampSleepHoldMs`（`server/Analyzer/Core/SleepPose.h`）会把空值或过短的值抬到 **5000ms**，所以 2500ms 不会真的把判定缩短——页面上那个数字只是显示值与算法口径不一致，改 `web/` 归同学 C。本机这条布控若 `behaviorRules` 为空，用的就是 Analyzer 的 5 秒。滞回差在页面上没有输入框，恒等于 `低头角 − 10`。
 
 ---
 
@@ -95,7 +95,7 @@ H.264 流
 | 峰值角 | 平滑角至少到过 **45°** | 浅低头看键盘（33° 左右）永远不够 |
 | 头点静止 | 相对锚点最大漂移 ≤ **0.45 × 尺子** | 看手机、写字这类「头低但一直在动」 |
 | 有效帧 | ≥ **3** 帧真实姿态 | 靠单帧凑出来的时长。低帧率下 12 帧等于十几秒，会把已经趴下的人挡住 |
-| 丢帧占比 | 累计缺失 / 窗口 ≤ **0.35** | 中途被挡、人走开 |
+| 丢帧占比 | 累计缺失 / 窗口 ≤ **0.50** | 中途被挡、人走开 |
 
 告警前的第二道门（`isSleepOnDutyHit`）**不再**看运动状态、躯干速度、轨迹年龄或 `dwellMs`。现网只认：`sleepOnDuty` 已成立、轨迹有效、人在闭合区域内、且 `headDownMs` ≥ 规则时长（空规则时 5000ms）。运动门已从 `BehaviorEvaluator.cpp` 拿掉，避免低帧率或轻微晃动把已经趴下的人挡掉。
 
@@ -128,7 +128,9 @@ H.264 流
 }
 ```
 
-Analyzer 在 `addFromSvaSimple` 和 `detect.event` 都会带上 `confidence`（YOLO 分数）、`pitchDegree`、`durationFrames`，并优先带墙钟 `duration_ms`（`headDownMs`）。backend（#6）命中任一即入库为睡岗：`alarmType=SLEEP_ON_DUTY`，或 `behavior_type=sleep_on_duty`，或 `customEventName=睡岗`。有 `duration_ms` 直接写入；否则用 `durationFrames × 40ms`。`pitchDegree` 现网尚未入库（归 C）。不要新建表。
+Analyzer 在 `addFromSvaSimple` 和 `detect.event` 都会带上 `confidence`（YOLO 分数）、`pitchDegree`、`durationFrames`，并优先带墙钟 `duration_ms`（`headDownMs`）。backend（#6）命中任一即入库为睡岗：`alarmType=SLEEP_ON_DUTY`，或 `behavior_type=sleep_on_duty`，或 `customEventName=睡岗`。有 `duration_ms` 直接写入；否则用 `durationFrames × 40ms`。
+
+`pitchDegree` 现网已入库、已展示，不是待办：`HWaringController` 用 `resolveDouble(body, "pitchDegree", "pitch_degree")` 写入 `h_waring.sva_pitch_degree`（列见 `scripts/add_sva_pitch_degree.sql`），告警详情页 `WarningDetailDialog.vue` 已有「俯仰角」。不要新建表。
 
 启发式 `behavior_type=sleep` **不要**当睡岗。
 
