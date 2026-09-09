@@ -28,6 +28,7 @@ public class Details {
     private String end_time;
     private Long duration_ms;
     private Double sva_pitch_degree;
+    private Double sva_sleep_score;
     private String ai_review_status;
     private String ai_review_decision;
     private String ai_review_summary;
