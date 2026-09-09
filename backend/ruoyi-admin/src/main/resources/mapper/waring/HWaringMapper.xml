@@ -291,6 +291,8 @@
             <if test="alarm_time != null">alarm_time = #{alarm_time},</if>
             <if test="picture_url != null">picture_url = #{picture_url},</if>
             <if test="alarm_type_name != null">alarm_type_name = #{alarm_type_name},</if>
+            <if test="alarm_level != null">alarm_level = #{alarm_level},</if>
+            <if test="alarm_level_name != null">alarm_level_name = #{alarm_level_name},</if>
             <if test="picture_absolute_url != null">picture_absolute_url = #{picture_absolute_url},</if>
             <if test="video_url != null">video_url = #{video_url},</if>
             <if test="video_absolute_url != null">video_absolute_url = #{video_absolute_url},</if>

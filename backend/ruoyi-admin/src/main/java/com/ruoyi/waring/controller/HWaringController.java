@@ -96,11 +96,18 @@ public class HWaringController extends BaseController implements SvaDetectEventC
     private static final String SLEEP_ON_DUTY_ALARM_TYPE_NAME = "睡岗";
     private static final String SLEEP_ON_DUTY_BEHAVIOR_TYPE = "sleep_on_duty";
     private static final long SLEEP_FRAME_DURATION_MS = 40L;
+    // 与 server/Analyzer/Core/SleepPose.h 的三档保持一致。
+    private static final long SLEEP_SUSPECT_HOLD_MS = 2000L;
+    private static final long SLEEP_CONFIRMED_HOLD_MS = 5000L;
+    private static final long SLEEP_SEVERE_HOLD_MS = 15000L;
 
     @Autowired
     private RestTemplate restTemplate;
     @Resource
     private RedisTemplate<Object, Object> redisTemplate;
+
+    @Resource
+    private SvaSleepNotifyService sleepNotifyService;
 
     @Autowired
     private ISysDeptService deptService;
@@ -386,11 +393,12 @@ public class HWaringController extends BaseController implements SvaDetectEventC
             String customAlarmTypeName = resolveCustomAlarmTypeName(body);
             String rawBehaviorType = resolveString(body, "behavior_type", "behaviorType");
             boolean sleepOnDuty = isSleepOnDutyAlarm(body, customAlarmTypeName, rawBehaviorType);
+            SleepTier sleepTier = sleepTierOf(resolveSleepLevel(body, rawBehaviorType, sleepOnDuty));
             if (sleepOnDuty) {
                 waring.setAlarm_type(SLEEP_ON_DUTY_ALARM_TYPE);
-                waring.setAlarm_type_name(SLEEP_ON_DUTY_ALARM_TYPE_NAME);
+                waring.setAlarm_type_name(sleepTier == null ? SLEEP_ON_DUTY_ALARM_TYPE_NAME : sleepTier.typeName);
                 waring.setSva_behavior_type(SLEEP_ON_DUTY_BEHAVIOR_TYPE);
-                waring.setSva_business_event_name(SLEEP_ON_DUTY_ALARM_TYPE_NAME);
+                waring.setSva_business_event_name(sleepTier == null ? SLEEP_ON_DUTY_ALARM_TYPE_NAME : sleepTier.typeName);
             } else {
                 waring.setAlarm_type("SVA_SIMPLE");
                 waring.setAlarm_type_name(customAlarmTypeName.isEmpty() ? "SVA告警" : customAlarmTypeName);
@@ -399,8 +407,13 @@ public class HWaringController extends BaseController implements SvaDetectEventC
             waring.setSva_business_event_id(resolveLong(body, "businessEventId", "business_event_id"));
             waring.setSva_business_template_id(resolveString(body, "businessTemplateId", "business_template_id", "templateId", "template_id"));
             waring.setSva_business_template_version(resolveInteger(body, "businessTemplateVersion", "business_template_version", "templateVersion", "template_version"));
-            waring.setAlarm_level("3");
-            waring.setAlarm_level_name("一般");
+            if (sleepTier != null) {
+                waring.setAlarm_level(sleepTier.level);
+                waring.setAlarm_level_name(sleepTier.levelName);
+            } else {
+                waring.setAlarm_level("3");
+                waring.setAlarm_level_name("一般");
+            }
             waring.setDevice_id(deviceId);
             waring.setDevice_name(deviceName);
             waring.setOrg_index(orgIndex);
@@ -608,6 +621,8 @@ public class HWaringController extends BaseController implements SvaDetectEventC
         String alarmTime = normalizeAlarmTime(resolveEventStartTime(body));
         String eventTime = normalizeAlarmTime(resolveEventCurrentTime(body));
         Long durationMs = calculateDurationMs(body);
+        int sleepLevel = resolveSleepLevel(body, behaviorType, false);
+        SleepTier sleepTier = sleepTierOf(sleepLevel);
 
         DeploymentTask deploymentTask = null;
         HDevice device = null;
@@ -676,7 +691,8 @@ public class HWaringController extends BaseController implements SvaDetectEventC
                 videoPath, absoluteVideoUrl, mediaStatus,
                 durationMs, "end".equals(eventState) ? eventTime : null, alarmTypeMeta, customAlarmTypeName,
                 businessEventId, businessTemplateId, businessTemplateVersion,
-                aiReviewEnabled, deploymentTask == null ? null : deploymentTask.getAiReviewPrompt());
+                aiReviewEnabled, deploymentTask == null ? null : deploymentTask.getAiReviewPrompt(),
+                sleepTier);
             int insert = hWaringService.insertWaring(waring);
             log.info("SVA规则事件落库插入: eventId={} behaviorType={} eventState={} inserted={} controlCode={} trackId={}",
                 eventId, behaviorType, eventState, insert, controlCode, trackId);
@@ -723,9 +739,25 @@ public class HWaringController extends BaseController implements SvaDetectEventC
         if ("end".equals(eventState)) {
             update.setEnd_time(eventTime);
         }
+        // 睡岗档位只升不降：疑似→确认→严重 是升级，不允许回退。
+        boolean severeEscalated = false;
+        if (sleepTier != null && shouldApplySleepTier(existing, sleepTier)) {
+            update.setAlarm_level(sleepTier.level);
+            update.setAlarm_level_name(sleepTier.levelName);
+            update.setAlarm_type_name(sleepTier.typeName);
+            severeEscalated = sleepTier == SLEEP_TIERS[SLEEP_TIERS.length - 1];
+        }
         int updated = hWaringService.updateSvaLifecycleWaring(update);
-        log.info("SVA规则事件落库更新: eventId={} behaviorType={} eventState={} updated={} controlCode={} trackId={} durationMs={}",
-            eventId, behaviorType, eventState, updated, controlCode, trackId, durationMs);
+        log.info("SVA规则事件落库更新: eventId={} behaviorType={} eventState={} updated={} controlCode={} trackId={} durationMs={} sleepLevel={} severeEscalated={}",
+            eventId, behaviorType, eventState, updated, controlCode, trackId, durationMs, sleepLevel, severeEscalated);
+        if (severeEscalated) {
+            // 通知复用已有字段，不再查库。
+            update.setDevice_name(existing.getDevice_name());
+            update.setDevice_id(existing.getDevice_id());
+            update.setOrg_name(existing.getOrg_name());
+            update.setSva_pitch_degree(existing.getSva_pitch_degree());
+            sleepNotifyService.notifySevere(update, durationMs);
+        }
     }
 
     private HWaring buildRuleWaring(String eventId, String controlCode, String eventKey, String eventState,
@@ -735,16 +767,25 @@ public class HWaringController extends BaseController implements SvaDetectEventC
         String videoPath, String absoluteVideoUrl, String mediaStatus, Long durationMs,
         String endTime, AlarmTypeMeta alarmTypeMeta, String customAlarmTypeName,
         Long businessEventId, String businessTemplateId, Integer businessTemplateVersion,
-        boolean aiReviewEnabled, String aiReviewPrompt) {
+        boolean aiReviewEnabled, String aiReviewPrompt, SleepTier sleepTier) {
         HWaring waring = new HWaring();
         waring.setId(eventId);
         waring.setAlarm_type(alarmTypeMeta.alarmType);
         String resolvedAlarmTypeName = customAlarmTypeName == null || customAlarmTypeName.trim().isEmpty()
             ? alarmTypeMeta.alarmTypeName
             : customAlarmTypeName.trim();
+        if (sleepTier != null) {
+            // 睡岗三档：类型名随档位走，等级用现网 3/4/5。
+            resolvedAlarmTypeName = sleepTier.typeName;
+        }
         waring.setAlarm_type_name(resolvedAlarmTypeName);
-        waring.setAlarm_level("3");
-        waring.setAlarm_level_name("一般");
+        if (sleepTier != null) {
+            waring.setAlarm_level(sleepTier.level);
+            waring.setAlarm_level_name(sleepTier.levelName);
+        } else {
+            waring.setAlarm_level("3");
+            waring.setAlarm_level_name("一般");
+        }
         waring.setDevice_id(deviceId);
         waring.setDevice_name(deviceName);
         waring.setOrg_index(orgIndex);
@@ -1368,6 +1409,91 @@ public class HWaringController extends BaseController implements SvaDetectEventC
         private AlarmTypeMeta(String alarmType, String alarmTypeName) {
             this.alarmType = alarmType;
             this.alarmTypeName = alarmTypeName;
+        }
+    }
+
+    /**
+     * 睡岗三档：疑似(2s) / 确认(5s) / 严重(15s)。
+     * 等级沿用现网 3-提示 / 4-警告 / 5-严重，类型名分档但都含「睡岗」。
+     */
+    private static class SleepTier {
+        private final String level;
+        private final String levelName;
+        private final String typeName;
+
+        private SleepTier(String level, String levelName, String typeName) {
+            this.level = level;
+            this.levelName = levelName;
+            this.typeName = typeName;
+        }
+    }
+
+    private static final SleepTier[] SLEEP_TIERS = new SleepTier[] {
+        new SleepTier("3", "提示", "疑似睡岗"),
+        new SleepTier("4", "警告", "确认睡岗"),
+        new SleepTier("5", "严重", "严重睡岗"),
+    };
+
+    private static SleepTier sleepTierOf(int sleepLevel) {
+        if (sleepLevel < 0) {
+            return null;
+        }
+        if (sleepLevel >= SLEEP_TIERS.length) {
+            return SLEEP_TIERS[SLEEP_TIERS.length - 1];
+        }
+        return SLEEP_TIERS[sleepLevel];
+    }
+
+    /**
+     * Analyzer 直接带 sleepLevel；旧版 Analyzer 只带 duration_ms，按同一套阈值补档。
+     */
+    private int resolveSleepLevel(JSONObject body, String behaviorType, boolean sleepOnDuty) {
+        if (body == null) {
+            return -1;
+        }
+        boolean isSleep = sleepOnDuty
+            || SLEEP_ON_DUTY_BEHAVIOR_TYPE.equals(behaviorType == null ? "" : behaviorType.trim().toLowerCase(Locale.ROOT));
+        if (!isSleep) {
+            return -1;
+        }
+        Integer level = resolveInteger(body, "sleepLevel", "sleep_level");
+        if (level != null) {
+            return level;
+        }
+        Long durationMs = resolveSleepDurationMs(body);
+        if (durationMs == null) {
+            return -1;
+        }
+        if (durationMs >= SLEEP_SEVERE_HOLD_MS) {
+            return 2;
+        }
+        if (durationMs >= SLEEP_CONFIRMED_HOLD_MS) {
+            return 1;
+        }
+        return durationMs >= SLEEP_SUSPECT_HOLD_MS ? 0 : -1;
+    }
+
+    /**
+     * 同一事件内等级只升不降：报过疑似之后再报确认，是升级而不是回退。
+     */
+    private static boolean shouldApplySleepTier(HWaring existing, SleepTier tier) {
+        if (tier == null) {
+            return false;
+        }
+        if (existing == null) {
+            return true;
+        }
+        return levelRank(tier.level) > levelRank(existing.getAlarm_level());
+    }
+
+    private static int levelRank(String level) {
+        if (level == null) {
+            return 0;
+        }
+        try {
+            return Integer.parseInt(level.trim());
+        } catch (NumberFormatException ex) {
+            return 0;
         }
     }
 
