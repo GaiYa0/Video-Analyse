@@ -13,6 +13,7 @@ Thumbs.db
 !web/.env.staging
 *.pem
 *.key
+mail.password
 
 backend/**/target/
 *.class

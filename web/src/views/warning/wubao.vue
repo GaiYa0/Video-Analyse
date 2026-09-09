@@ -57,6 +57,16 @@
           <span>{{ parseTime(scope.row.alarm_time) }}</span>
         </template>
       </el-table-column>
+      <el-table-column label="质量分" width="100" align="center">
+        <template slot="header">
+          <el-tooltip content="睡岗证据硬度 0–100，不参与是否报警；旧告警为空" placement="top">
+            <span>质量分</span>
+          </el-tooltip>
+        </template>
+        <template slot-scope="scope">
+          <span>{{ formatSleepScore(scope.row.sva_sleep_score) }}</span>
+        </template>
+      </el-table-column>
       <el-table-column label="状态" prop="is_handle" width="80">
         <template slot-scope="scope">
           <span :style="{ color: scope.row.is_handle === 1 ? 'green' : 'orange' }">
@@ -87,6 +97,9 @@
       :detail-video-loading="detailVideoLoading"
       :rtsp-url="rtspUrl"
       :action-row-id="detailActionRow.w_id"
+      :show-sleep-badge="true"
+      :show-sva-fields="true"
+      :show-ai-fields="true"
       @close="handleDetailDialogClose"
       @submit="comfirmSolve"
       @play-video="playDetailVideo"

@@ -13,6 +13,26 @@
                        @click="$emit('play-video')">
               {{ detailVideoVisible ? '重新加载视频证据' : '播放视频证据' }}
             </el-button>
+            <el-button
+              v-if="keyframeUrl"
+              size="mini"
+              type="success"
+              icon="el-icon-picture-outline"
+              @click="keyframeVisible = !keyframeVisible"
+            >
+              {{ keyframeVisible ? '收起三连图' : '查看三连图' }}
+            </el-button>
+          </div>
+          <div v-if="keyframeVisible && keyframeUrl" class="detail-keyframe-panel">
+            <div class="detail-keyframe-caption">左：起始　中：峰值（头最低）　右：结束</div>
+            <el-image
+              class="detail-keyframe-image"
+              :src="keyframeUrl"
+              :preview-src-list="[keyframeUrl]"
+              fit="contain"
+            >
+              <div slot="error" class="detail-keyframe-error">未找到三连图文件</div>
+            </el-image>
           </div>
           <div v-if="detailVideoVisible" class="detail-video-panel">
             <player :viewProof="detailVideoVisible" :rtspUrl="rtspUrl" :inline="true"
@@ -48,6 +68,7 @@
               <el-descriptions-item label="事件阶段"> {{ getEventStateLabel(detailsInfo.sva_event_state) }}</el-descriptions-item>
               <el-descriptions-item label="持续时长"> {{ formatDuration(detailsInfo.duration_ms) }}</el-descriptions-item>
               <el-descriptions-item v-if="isSleepPitchVisible(detailsInfo)" label="俯仰角"> {{ formatPitchDegree(detailsInfo.sva_pitch_degree) }}</el-descriptions-item>
+              <el-descriptions-item v-if="isSleepPitchVisible(detailsInfo)" label="质量分"> {{ formatSleepScore(detailsInfo.sva_sleep_score) }}</el-descriptions-item>
               <el-descriptions-item label="结束时间"> {{ detailsInfo.end_time || '---' }}</el-descriptions-item>
             </template>
             <el-descriptions-item label="处理状态"> {{ isHandled(detailsInfo.is_handle) ? '已处理' : '未处理' }}
@@ -71,8 +92,6 @@
                 </el-tag>
               </el-descriptions-item>
               <el-descriptions-item label="AI复核结论"> {{ getAiDecisionLabel(detailsInfo.ai_review_decision) }}
-              </el-descriptions-item>
-              <el-descriptions-item label="误报分数"> {{ formatAiScore(detailsInfo.ai_false_positive_score) }}
               </el-descriptions-item>
               <el-descriptions-item label="AI复核时间"> {{ detailsInfo.ai_review_time || '---' }}
               </el-descriptions-item>
@@ -182,6 +201,11 @@ export default {
       default: false
     }
   },
+  data() {
+    return {
+      keyframeVisible: false
+    }
+  },
   computed: {
     dialogVisible: {
       get() {
@@ -190,6 +214,17 @@ export default {
       set(value) {
         this.$emit('update:visible', value)
       }
+    },
+    keyframeUrl() {
+      return this.resolveKeyframeUrl(this.detailsInfo && this.detailsInfo.picture_absolute_url)
+    }
+  },
+  watch: {
+    visible() {
+      this.keyframeVisible = false
+    },
+    keyframeUrl() {
+      this.keyframeVisible = false
     }
   },
   methods: {
@@ -209,6 +244,19 @@ export default {
     isSleepType(name) {
       return String(name || '').indexOf('睡岗') !== -1
     },
+    resolveKeyframeUrl(src) {
+      const raw = String(src || '').trim()
+      if (!raw) {
+        return ''
+      }
+      const qIndex = raw.indexOf('?')
+      const path = qIndex >= 0 ? raw.slice(0, qIndex) : raw
+      const query = qIndex >= 0 ? raw.slice(qIndex) : ''
+      if (!/\/main\.jpe?g$/i.test(path)) {
+        return ''
+      }
+      return path.replace(/\/main\.jpe?g$/i, '/keyframes.jpg') + query
+    },
     isSleepPitchVisible(detail = {}) {
       const behaviorType = String(detail.sva_behavior_type || '').trim()
       return this.isSleepType(detail.alarm_type_name)
@@ -225,6 +273,17 @@ export default {
         return '---'
       }
       return `${numericValue.toFixed(1)}°`
+    },
+    formatSleepScore(value) {
+      if (value === undefined || value === null || value === '') {
+        return '---'
+      }
+      const numericValue = Number(value)
+      if (!Number.isFinite(numericValue)) {
+        return '---'
+      }
+      const clamped = Math.min(100, Math.max(0, numericValue))
+      return `${Math.round(clamped)} / 100`
     },
     isHandled(value) {
       return String(value) === '1'
@@ -258,16 +317,6 @@ export default {
       if (decision === 'false_alarm') return '疑似误报'
       if (decision === 'uncertain') return '待人工确认'
       return '---'
-    },
-    formatAiScore(score) {
-      if (score === undefined || score === null || score === '') {
-        return '---'
-      }
-      const numericScore = Number(score)
-      if (!Number.isFinite(numericScore)) {
-        return '---'
-      }
-      return numericScore.toFixed(2)
     },
     getBehaviorTypeLabel(behaviorType) {
       if (behaviorType === undefined || behaviorType === null || behaviorType === '') {
@@ -319,6 +368,31 @@ export default {
 <style scoped>
 .detail-video-toolbar {
   margin-top: 16px;
+}
+
+.detail-video-toolbar .el-button + .el-button {
+  margin-left: 8px;
+}
+
+.detail-keyframe-panel {
+  margin-top: 12px;
+}
+
+.detail-keyframe-caption {
+  margin-bottom: 8px;
+  color: #909399;
+  font-size: 12px;
+}
+
+.detail-keyframe-image {
+  width: 100%;
+  max-height: 280px;
+}
+
+.detail-keyframe-error {
+  padding: 24px 0;
+  color: #909399;
+  text-align: center;
 }
 
 .detail-video-panel {

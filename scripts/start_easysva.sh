@@ -22,6 +22,10 @@ fi
 export DEBIAN_FRONTEND=noninteractive
 
 JDBC_URL='jdbc:mysql://127.0.0.1:3307/easySVA?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=true&serverTimezone=GMT%2B8'
+UPLOAD_DIR='/var/www/SVA-web/upload'
+MAIL_HOST='smtp.163.com'
+MAIL_USER='murd3r17@163.com'
+MAIL_PASS_FILE='/opt/SVA/backend/mail.password'
 TEST_VIDEO='/opt/easySVA-lib/opencv/doc/js_tutorials/js_assets/cup.mp4'
 RTMP_URL='rtmp://127.0.0.1:9995/live/test1'
 
@@ -61,8 +65,19 @@ if pgrep -f 'backend.jar' >/dev/null; then
 fi
 cd /opt/SVA/backend
 : > log.out
+MAIL_ARGS=(
+  --spring.mail.host="$MAIL_HOST"
+  --spring.mail.port=465
+  --spring.mail.username="$MAIL_USER"
+  --spring.mail.protocol=smtps
+)
+if [[ -s "$MAIL_PASS_FILE" ]]; then
+  MAIL_ARGS+=(--spring.mail.password="$(tr -d '\r\n' < "$MAIL_PASS_FILE")")
+fi
 nohup java -jar backend.jar \
   --spring.datasource.druid.master.url="$JDBC_URL" \
+  --ruoyi.profile="$UPLOAD_DIR" \
+  "${MAIL_ARGS[@]}" \
   > log.out 2>&1 &
 
 backend_ok=0

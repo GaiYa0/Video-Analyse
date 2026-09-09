@@ -199,6 +199,18 @@ export default {
       return String(name || '').indexOf('睡岗') !== -1
     },
 
+    formatSleepScore(value) {
+      if (value === undefined || value === null || value === '') {
+        return '—'
+      }
+      const numericValue = Number(value)
+      if (!Number.isFinite(numericValue)) {
+        return '—'
+      }
+      const clamped = Math.min(100, Math.max(0, numericValue))
+      return String(Math.round(clamped))
+    },
+
     isHandled(value) {
       return String(value) === '1'
     },

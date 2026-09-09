@@ -65,9 +65,9 @@ spring:
   # 告警邮件通知（睡岗严重档）。默认关闭，由 sys_config 的 sva.sleep.email.enabled 控制是否真的发。
   # 演示机把 host/username/password 换成自己的 SMTP（QQ/163 用授权码）。
   mail:
-    host: smtp.qq.com
+    host: smtp.163.com
     port: 465
-    username: ""
+    username: murd3r17@163.com
     password: ""
     protocol: smtps
     default-encoding: UTF-8
