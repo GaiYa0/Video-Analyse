@@ -189,7 +189,7 @@ namespace SVAAnalyzer
         {
             downDeg = SleepPose::kDefaultPitchDownDeg;
             recoverDeg = SleepPose::kDefaultPitchRecoverDeg;
-            holdMs = SleepPose::kDefaultSleepHoldMs;
+            holdMs = SleepPose::sleepEnterHoldMs();
             for (size_t i = 0; i < control.behaviorRules.size(); ++i)
             {
                 const BehaviorRuleConfig &rule = control.behaviorRules[i];
@@ -197,9 +197,10 @@ namespace SVAAnalyzer
                 {
                     continue;
                 }
+                // The hold value only starts the clock; the 2s/5s/15s tiers are fixed.
                 if (rule.thresholdMs > 0)
                 {
-                    holdMs = SleepPose::clampSleepHoldMs(rule.thresholdMs);
+                    holdMs = SleepPose::sleepEnterHoldMs();
                 }
                 if (rule.distanceThresholdPx > 0.0)
                 {
@@ -217,7 +218,7 @@ namespace SVAAnalyzer
         {
             float downDeg = SleepPose::kDefaultPitchDownDeg;
             float recoverDeg = SleepPose::kDefaultPitchRecoverDeg;
-            int64_t holdMs = SleepPose::kDefaultSleepHoldMs;
+            int64_t holdMs = SleepPose::sleepEnterHoldMs();
             resolveSleepPoseThresholds(control, downDeg, recoverDeg, holdMs);
 
             SleepPose::FrameInput frame;
@@ -242,14 +243,18 @@ namespace SVAAnalyzer
             const bool wasSleeping = track.sleepOnDuty;
             track.headDownMs = evidence.headDownMs;
             track.sleepOnDuty = (label == SleepPose::FrameLabel::Sleep);
+            track.sleepScore = track.sleepOnDuty ? evidence.sleepScore : 0.0f;
             detect.headDownMs = evidence.headDownMs;
             detect.durationFrames = track.sleepPose.headDownFrames;
             detect.sleepOnDuty = track.sleepOnDuty;
+            detect.sleepLevel = evidence.sleepLevel;
+            detect.sleepScore = evidence.sleepScore;
 
             if (track.sleepOnDuty && !wasSleeping)
             {
-                LOGI("sleep_on_duty track=%d hold=%lldms peak=%.0fdeg downRatio=%.2f gapRatio=%.2f drift=%.0fpx frames=%d",
+                LOGI("sleep_on_duty track=%d level=%s hold=%lldms peak=%.0fdeg downRatio=%.2f gapRatio=%.2f drift=%.0fpx frames=%d",
                      track.trackId,
+                     SleepPose::sleepLevelName(evidence.sleepLevel),
                      static_cast<long long>(evidence.headDownMs),
                      evidence.peakPitchDeg,
                      evidence.downRatio,
@@ -262,7 +267,7 @@ namespace SVAAnalyzer
             {
                 // Tuning these gates against real footage needs the numbers, not guesses.
                 track.lastSleepDebugMs = timestampMs;
-                LOGI("sleep_probe track=%d pitch=%s%.0f reject=%s kps=%d headAbove=%.0fpx scale=%.0fpx hip=%d hold=%lldms peak=%.0f downRatio=%.2f gapRatio=%.2f drift=%.0fpx frames=%d sleep=%d block=%s speed=%.1f age=%d dwell=%lld",
+                LOGI("sleep_probe track=%d pitch=%s%.0f reject=%s kps=%d headAbove=%.0fpx scale=%.0fpx hip=%d hold=%lldms level=%s peak=%.0f downRatio=%.2f gapRatio=%.2f drift=%.0fpx frames=%d sleep=%d block=%s speed=%.1f age=%d dwell=%lld",
                      track.trackId,
                      frame.valid ? "" : "x",
                      detect.pitchDegree,
@@ -272,13 +277,14 @@ namespace SVAAnalyzer
                      detect.poseScalePx,
                      detect.poseHasHip ? 1 : 0,
                      static_cast<long long>(evidence.headDownMs),
+                     SleepPose::sleepLevelName(evidence.sleepLevel),
                      evidence.peakPitchDeg,
                      evidence.downRatio,
                      evidence.gapRatio,
                      evidence.headDriftPx,
                      evidence.validFrames,
                      track.sleepOnDuty ? 1 : 0,
-                     SleepPose::sleepEvidenceBlockName(track.sleepPose, evidence.headDownMs, holdMs, evidence),
+                     SleepPose::sleepEvidenceBlockName(track.sleepPose, evidence.headDownMs, evidence),
                      track.speedPxPerSec,
                      track.ageFrames,
                      static_cast<long long>(std::max<int64_t>(0, track.lastSeenTimestampMs - track.firstSeenTimestampMs)));
@@ -307,6 +313,8 @@ namespace SVAAnalyzer
                 detect.headDownMs = track.headDownMs;
                 detect.durationFrames = track.sleepPose.headDownFrames;
                 detect.sleepOnDuty = track.sleepOnDuty;
+                detect.sleepLevel = SleepPose::sleepLevelFor(track.headDownMs);
+                detect.sleepScore = track.sleepScore;
             }
         }
 

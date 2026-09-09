@@ -76,6 +76,8 @@ namespace SVAAnalyzer
             dst->pitchDegree = src->pitchDegree;
             dst->durationFrames = src->durationFrames;
             dst->durationMs = src->durationMs;
+            dst->sleepLevel = src->sleepLevel;
+            dst->sleepScore = src->sleepScore;
             return dst;
         }
     }
@@ -411,6 +413,8 @@ namespace SVAAnalyzer
                 alarm->pitchDegree = std::max(alarm->pitchDegree, alarmFrame->pitchDegree);
                 alarm->durationFrames = std::max(alarm->durationFrames, alarmFrame->durationFrames);
                 alarm->durationMs = std::max(alarm->durationMs, alarmFrame->durationMs);
+                alarm->sleepLevel = std::max(alarm->sleepLevel, alarmFrame->sleepLevel);
+                alarm->sleepScore = std::max(alarm->sleepScore, alarmFrame->sleepScore);
             }
 
             const int64_t nowTs = getCurTimestamp();
@@ -944,6 +948,8 @@ namespace SVAAnalyzer
                             event->pitchDegree = 0;
                             event->durationFrames = 0;
                             event->durationMs = 0;
+                            event->sleepLevel = -1;
+                            event->sleepScore = 0.0f;
                             for (const DetectObject &det : happenDetects)
                             {
                                 if (!det.happen)
@@ -957,6 +963,8 @@ namespace SVAAnalyzer
                                 }
                                 event->durationFrames = std::max(event->durationFrames, det.durationFrames);
                                 event->durationMs = std::max(event->durationMs, det.headDownMs);
+                                event->sleepLevel = std::max(event->sleepLevel, det.sleepLevel);
+                                event->sleepScore = std::max(event->sleepScore, det.sleepScore);
                             }
                             event->aggregateBehaviors = aggMatches;
                             if (!aggMatches.empty())
@@ -1086,13 +1094,22 @@ namespace SVAAnalyzer
                                         const double heldSec = static_cast<double>(det.headDownMs) / 1000.0;
                                         if (det.sleepOnDuty || (det.happen && det.behaviorType == "sleep_on_duty"))
                                         {
+                                            const char *levelTag = det.sleepLevel >= 2 ? "SLEEP!" : (det.sleepLevel == 1 ? "SLEEP" : "SLEEP?");
+                                            if (det.sleepLevel >= 2)
+                                            {
+                                                boxColor = cv::Scalar(0, 0, 255);
+                                            }
+                                            else if (det.sleepLevel == 0)
+                                            {
+                                                boxColor = cv::Scalar(0, 191, 255);
+                                            }
                                             if (det.pitchValid)
                                             {
-                                                std::snprintf(sleepBuf, sizeof(sleepBuf), "SLEEP %.0f %.1fs", det.pitchDegree, heldSec);
+                                                std::snprintf(sleepBuf, sizeof(sleepBuf), "%s %.0f %.1fs", levelTag, det.pitchDegree, heldSec);
                                             }
                                             else
                                             {
-                                                std::snprintf(sleepBuf, sizeof(sleepBuf), "SLEEP %.1fs", heldSec);
+                                                std::snprintf(sleepBuf, sizeof(sleepBuf), "%s %.1fs", levelTag, heldSec);
                                             }
                                             title = sleepBuf;
                                         }
@@ -1156,6 +1173,8 @@ namespace SVAAnalyzer
                             dst->pitchDegree = 0;
                             dst->durationFrames = 0;
                             dst->durationMs = 0;
+                            dst->sleepLevel = -1;
+                            dst->sleepScore = 0.0f;
                             for (const DetectObject &det : happenDetects)
                             {
                                 if (!det.happen)
@@ -1173,6 +1192,8 @@ namespace SVAAnalyzer
                                 }
                                 dst->durationFrames = std::max(dst->durationFrames, det.durationFrames);
                                 dst->durationMs = std::max(dst->durationMs, det.headDownMs);
+                                dst->sleepLevel = std::max(dst->sleepLevel, det.sleepLevel);
+                                dst->sleepScore = std::max(dst->sleepScore, det.sleepScore);
                             }
                         };
 

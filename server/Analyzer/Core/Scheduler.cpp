@@ -1053,6 +1053,8 @@ namespace SVAAnalyzer
             root["confidence"] = confidence;
             root["pitchDegree"] = pitchDegree;
             root["durationFrames"] = durationFrames;
+            root["sleepLevel"] = std::max(state.sleepLevel, event.sleepLevel);
+            root["sleepScore"] = std::max(state.sleepScore, event.sleepScore);
             if (durationMs > 0)
             {
                 root["duration_ms"] = static_cast<Json::Int64>(durationMs);
@@ -1692,6 +1694,8 @@ namespace SVAAnalyzer
                 state.pitchDegree = event->pitchDegree;
                 state.durationFrames = event->durationFrames;
                 state.durationMs = event->durationMs;
+                state.sleepLevel = event->sleepLevel;
+                state.sleepScore = event->sleepScore;
                 if (saveAlarmMedia)
                 {
                     bindAlarmMedia(state.controlCode, "", state.eventId, state.behaviorType, state.ruleId, state.videoPath, state.imagePath);
@@ -1707,6 +1711,8 @@ namespace SVAAnalyzer
             state.pitchDegree = std::max(state.pitchDegree, event->pitchDegree);
             state.durationFrames = std::max(state.durationFrames, event->durationFrames);
             state.durationMs = std::max(state.durationMs, event->durationMs);
+            state.sleepLevel = std::max(state.sleepLevel, event->sleepLevel);
+            state.sleepScore = std::max(state.sleepScore, event->sleepScore);
             if (!event->imagePath.empty())
             {
                 state.imagePath = event->imagePath;
