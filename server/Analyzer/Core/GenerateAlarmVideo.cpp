@@ -347,6 +347,60 @@ namespace SVAAnalyzer
         return true;
     }
 
+    void GenerateAlarmVideo::writeKeyframeStrip(const std::string &coverImagePath, int coverIndex)
+    {
+        if (mAlarm == nullptr || mAlarm->frames.empty() || mAlarm->width <= 0 || mAlarm->height <= 0)
+        {
+            return;
+        }
+        const int lastIndex = static_cast<int>(mAlarm->frames.size()) - 1;
+        // 峰值帧：俯仰角最深的那一帧。没有 pose 时退化为封面帧。
+        int peakIndex = coverIndex;
+        float peakPitch = -1.0f;
+        for (size_t i = 0; i < mAlarm->frames.size(); ++i)
+        {
+            Frame *frame = mAlarm->frames[i];
+            if (frame != nullptr && frame->pitchDegree > peakPitch)
+            {
+                peakPitch = frame->pitchDegree;
+                peakIndex = static_cast<int>(i);
+            }
+        }
+
+        const int indices[3] = {coverIndex, peakIndex, lastIndex};
+        const char *labels[3] = {"start", "peak", "end"};
+        cv::Mat panels[3];
+        for (int slot = 0; slot < 3; ++slot)
+        {
+            const int index = std::max(0, std::min(lastIndex, indices[slot]));
+            Frame *frame = mAlarm->frames[index];
+            if (frame == nullptr)
+            {
+                return;
+            }
+            cv::Mat image(mAlarm->height, mAlarm->width, CV_8UC3, frame->getBuf());
+            cv::Mat panel = image.clone();
+            const std::string caption = std::string(labels[slot]) + " " + std::to_string(index);
+            cv::putText(panel, caption, cv::Point(16, 40), cv::FONT_HERSHEY_SIMPLEX, 1.2,
+                        cv::Scalar(0, 0, 0), 6, cv::LINE_AA);
+            cv::putText(panel, caption, cv::Point(16, 40), cv::FONT_HERSHEY_SIMPLEX, 1.2,
+                        cv::Scalar(0, 255, 255), 2, cv::LINE_AA);
+            panels[slot] = panel;
+        }
+
+        cv::Mat strip;
+        cv::hconcat(std::vector<cv::Mat>{panels[0], panels[1], panels[2]}, strip);
+        const std::filesystem::path coverPath(coverImagePath);
+        const std::filesystem::path stripPath = coverPath.parent_path() / "keyframes.jpg";
+        if (!cv::imwrite(stripPath.string(), strip))
+        {
+            LOGE("writeKeyframeStrip() imwrite failed: %s", stripPath.string().c_str());
+            return;
+        }
+        LOGI("writeKeyframeStrip() wrote %s (start=%d peak=%d end=%d)",
+             stripPath.string().c_str(), indices[0], peakIndex, lastIndex);
+    }
+
     bool GenerateAlarmVideo::genAlarmVideo()
     {
         // C++ 17创建文件夹 https://pythonjishu.com/cgnqifmjqqrgjnj/
@@ -476,6 +530,13 @@ namespace SVAAnalyzer
                     break;
                 }
             }
+        }
+
+        // 关键帧三连图：起始（首次报警）/ 峰值（角度最深）/ 结束，拼成一张对比图。
+        // 比整段视频更适合放进邮件和答辩材料——一眼看清「怎么趴下去的」。
+        if (!mAlarm->frames.empty())
+        {
+            writeKeyframeStrip(image_path_abs, coverIndex);
         }
 
         for (size_t i = 0; i < mAlarm->frames.size(); i++)

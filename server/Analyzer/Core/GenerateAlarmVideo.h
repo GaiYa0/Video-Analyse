@@ -62,6 +62,8 @@ namespace SVAAnalyzer
 		Alarm *mAlarm;
 		bool initCodecCtx(const char *url);
 		void destoryCodecCtx();
+		// 关键帧三连图：起始 / 峰值 / 结束，写到 coverImagePath 同目录的 keyframes.jpg
+		void writeKeyframeStrip(const std::string &coverImagePath, int coverIndex);
 
 		AVFormatContext *mFmtCtx = nullptr;
 		// 视频帧
