@@ -42,6 +42,7 @@ EXPECTED = {
     "kSleepMinValidFrames": temporal.SLEEP_MIN_VALID_FRAMES,
     "kSleepPeakPitchDeg": temporal.SLEEP_PEAK_PITCH_DEG,
     "kSleepMaxHeadDriftRatio": temporal.SLEEP_MAX_HEAD_DRIFT_RATIO,
+    "kSleepDriftExemptPeakDeg": temporal.SLEEP_DRIFT_EXEMPT_PEAK_DEG,
     "kMaxFrameDeltaMs": temporal.MAX_FRAME_DELTA_MS,
 }
 

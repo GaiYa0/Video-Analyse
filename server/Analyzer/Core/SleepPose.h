@@ -73,6 +73,11 @@ namespace SVAAnalyzer
         constexpr int kSleepMinValidFrames = 3;
         constexpr float kSleepPeakPitchDeg = 45.0f;
         constexpr float kSleepMaxHeadDriftRatio = 0.45f;
+        // Face-on-desk (~90–135°) already passed the peak gate. A looping demo clip
+        // or the last inches of slumping moves the head far past 0.45×scale from the
+        // first-bow anchor; that is not "fidgeting with a phone". Phone use stays
+        // around 50–70° and is still blocked by drift.
+        constexpr float kSleepDriftExemptPeakDeg = 90.0f;
         constexpr int64_t kMaxFrameDeltaMs = 1000;
 
         struct Keypoint
@@ -616,7 +621,8 @@ namespace SVAAnalyzer
             {
                 return false;
             }
-            if (state.hasAnchor && state.anchorScalePx > 0.0f &&
+            if (state.peakPitchDeg < kSleepDriftExemptPeakDeg &&
+                state.hasAnchor && state.anchorScalePx > 0.0f &&
                 state.maxHeadDriftPx > kSleepMaxHeadDriftRatio * state.anchorScalePx)
             {
                 return false;
@@ -647,7 +653,8 @@ namespace SVAAnalyzer
             {
                 return "peak";
             }
-            if (state.hasAnchor && state.anchorScalePx > 0.0f &&
+            if (state.peakPitchDeg < kSleepDriftExemptPeakDeg &&
+                state.hasAnchor && state.anchorScalePx > 0.0f &&
                 state.maxHeadDriftPx > kSleepMaxHeadDriftRatio * state.anchorScalePx)
             {
                 return "drift";

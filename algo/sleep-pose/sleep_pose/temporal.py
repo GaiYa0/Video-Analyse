@@ -26,6 +26,7 @@ SLEEP_MAX_GAP_RATIO = 0.50
 SLEEP_MIN_VALID_FRAMES = 3
 SLEEP_PEAK_PITCH_DEG = 45.0
 SLEEP_MAX_HEAD_DRIFT_RATIO = 0.45
+SLEEP_DRIFT_EXEMPT_PEAK_DEG = 90.0
 MAX_FRAME_DELTA_MS = 1000
 
 
@@ -155,7 +156,8 @@ def _sleep_evidence_satisfied(state: TemporalState, head_down_ms: int, hold_ms: 
     if state.peak_pitch_deg < SLEEP_PEAK_PITCH_DEG:
         return False
     if (
-        state.has_anchor
+        state.peak_pitch_deg < SLEEP_DRIFT_EXEMPT_PEAK_DEG
+        and state.has_anchor
         and state.anchor_scale_px > 0.0
         and state.max_head_drift_px > SLEEP_MAX_HEAD_DRIFT_RATIO * state.anchor_scale_px
     ):
