@@ -101,6 +101,17 @@ class FalsePositiveTests(unittest.TestCase):
         self.assertGreater(last.head_drift_px, 0.45 * SCALE_PX)
         self.assertEqual(last.label, FrameLabel.BOW)
 
+    def test_face_on_desk_loop_drift_still_sleeps(self):
+        # GB demo clip loops ~16s: the head "teleports" from the first-bow anchor
+        # while the person is already face-down (~135°). That must not look like
+        # phone fidgeting.
+        state = TemporalState()
+        frames = [_frame(135.0, head_x=float((i % 80) * 4), head_y=float((i % 50) * 3)) for i in range(400)]
+        last = _run(state, frames)
+        self.assertGreater(last.head_drift_px, 0.45 * SCALE_PX)
+        self.assertGreaterEqual(last.peak_pitch_deg, 90.0)
+        self.assertEqual(last.label, FrameLabel.SLEEP)
+
     def test_shallow_bow_never_reaches_peak(self):
         # Sustained 36°: over the entry threshold, never deep enough to be a slump.
         state = TemporalState()
