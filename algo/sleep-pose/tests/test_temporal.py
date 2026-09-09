@@ -2,9 +2,16 @@ import unittest
 
 from sleep_pose.temporal import (
     SLEEP_HOLD_MS,
+    SLEEP_LEVEL_CONFIRMED,
+    SLEEP_LEVEL_NONE,
+    SLEEP_LEVEL_SEVERE,
+    SLEEP_LEVEL_SUSPECT,
+    SLEEP_SEVERE_HOLD_MS,
+    SLEEP_SUSPECT_HOLD_MS,
     FrameInput,
     FrameLabel,
     TemporalState,
+    sleep_level_for,
     update_temporal,
 )
 
@@ -66,7 +73,7 @@ class TemporalTests(unittest.TestCase):
         state = TemporalState()
         last = _run(state, [40.0] * 30)
         self.assertEqual(last.label, FrameLabel.BOW)
-        self.assertLess(last.head_down_ms, SLEEP_HOLD_MS)
+        self.assertLess(last.head_down_ms, SLEEP_SUSPECT_HOLD_MS)
         last = _run(state, [8.0] * 20, start_ms=30 * FRAME_MS)
         self.assertEqual(last.label, FrameLabel.UPRIGHT)
 
@@ -119,6 +126,7 @@ class FalsePositiveTests(unittest.TestCase):
         self.assertGreaterEqual(last.head_down_ms, SLEEP_HOLD_MS)
         self.assertLess(last.peak_pitch_deg, 45.0)
         self.assertEqual(last.label, FrameLabel.BOW)
+        self.assertEqual(last.sleep_level, SLEEP_LEVEL_NONE)
 
     def test_person_leaves_mid_streak_resets(self):
         # 1s head down, then the pose is gone for 9s. The old clock kept running.
@@ -161,10 +169,37 @@ class TruePositiveTests(unittest.TestCase):
 
     def test_short_nap_under_hold_does_not_fire(self):
         state = TemporalState()
-        frames = 3000 // FRAME_MS
+        frames = 1500 // FRAME_MS
         last = _run(state, [_frame(85.0)] * frames)
         self.assertEqual(last.label, FrameLabel.BOW)
+        self.assertLess(last.head_down_ms, SLEEP_SUSPECT_HOLD_MS)
+
+    def test_three_tiers_escalate_in_place(self):
+        # One continuous nap crosses all three tiers without ever restarting.
+        state = TemporalState()
+        seq = [_frame(85.0, head_x=(i % 3), head_y=(i % 2)) for i in range(SLEEP_SEVERE_HOLD_MS // FRAME_MS + 5)]
+        seen = []
+        for i, frame in enumerate(seq):
+            decision = update_temporal(state, frame, i * FRAME_MS)
+            if decision.label == FrameLabel.SLEEP and (not seen or seen[-1] != decision.sleep_level):
+                seen.append(decision.sleep_level)
+        self.assertEqual(seen, [SLEEP_LEVEL_SUSPECT, SLEEP_LEVEL_CONFIRMED, SLEEP_LEVEL_SEVERE])
+
+    def test_suspect_tier_fires_before_five_seconds(self):
+        state = TemporalState()
+        last = _run(state, [_frame(85.0, head_x=(i % 3), head_y=(i % 2)) for i in range(SLEEP_SUSPECT_HOLD_MS // FRAME_MS + 5)])
+        self.assertEqual(last.label, FrameLabel.SLEEP)
+        self.assertEqual(last.sleep_level, SLEEP_LEVEL_SUSPECT)
+        self.assertGreaterEqual(last.head_down_ms, SLEEP_SUSPECT_HOLD_MS)
         self.assertLess(last.head_down_ms, SLEEP_HOLD_MS)
+
+    def test_false_positive_classes_never_reach_any_tier(self):
+        # The 2s tier must not resurrect what the evidence gates already reject.
+        state = TemporalState()
+        frames = [_frame(36.0)] * 500
+        last = _run(state, frames)
+        self.assertEqual(last.label, FrameLabel.BOW)
+        self.assertEqual(last.sleep_level, SLEEP_LEVEL_NONE)
 
     def test_brief_pose_dropout_survives(self):
         # Losing a frame or two mid-nap must not restart the hold clock.
