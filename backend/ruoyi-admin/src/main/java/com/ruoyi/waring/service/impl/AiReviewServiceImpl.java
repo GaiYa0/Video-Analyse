@@ -54,6 +54,8 @@ public class AiReviewServiceImpl implements IAiReviewService
     private static final String DEFAULT_OPENAI_MODEL = "qwen3-vl";
     private static final String DEFAULT_ALIYUN_MODEL = "qwen-vl-max";
     private static final String DEFAULT_ALIYUN_ENDPOINT = "https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation";
+    /** 演示机 Analyzer / Nginx 告警落盘根目录；application.yml 默认仍是 Windows 的 D:/ruoyi/uploadPath。 */
+    private static final String DEMO_UPLOAD_DIR = "/var/www/SVA-web/upload";
     private static final int MAX_INLINE_IMAGE_BYTES = 10 * 1024 * 1024;
     private static final int DEFAULT_MAX_RETRIES = 3;
     private static final int DEFAULT_BATCH_SIZE = 20;
@@ -62,7 +64,7 @@ public class AiReviewServiceImpl implements IAiReviewService
     /** 系统提示词：约束输出结构，两个服务端分支共用。 */
     private static final String REVIEW_SYSTEM_PROMPT =
         "你是工业安全告警复核助手。请仅输出JSON对象，不要输出Markdown代码块。"
-            + "JSON字段必须包含decision、confidence、false_positive_score、observed、pose_match、summary、reason。"
+            + "JSON字段必须包含decision、confidence、observed、pose_match、summary、reason。"
             + "decision只允许true_alarm、false_alarm、uncertain。"
             + "observed必须是你在图中真实看到的内容，不确定就写不确定，禁止编造画面里没有的物体或场景。";
 
@@ -460,6 +462,24 @@ public class AiReviewServiceImpl implements IAiReviewService
         {
             return payload;
         }
+
+        String publicPath = extractPublicMediaPath(source);
+        if (StringUtils.isNotEmpty(publicPath))
+        {
+            Exception last = null;
+            for (String base : new String[] {"http://127.0.0.1", "http://127.0.0.1:8080"})
+            {
+                try
+                {
+                    return downloadImagePayload(base + publicPath, timeoutMs);
+                }
+                catch (Exception ex)
+                {
+                    last = ex;
+                }
+            }
+            throw new IllegalStateException("failed to load AI review image: " + source, last);
+        }
         throw new IllegalStateException("failed to load AI review image: " + source);
     }
 
@@ -530,8 +550,68 @@ public class AiReviewServiceImpl implements IAiReviewService
             {
                 addProfileCandidate(candidates, pathPart.substring(1));
             }
+            addDemoUploadCandidates(candidates, pathPart);
         }
+        addDemoUploadCandidates(candidates, source);
         return candidates;
+    }
+
+    /**
+     * 库里的封面图是 Nginx 路径 {@code /alarm/...}，不是若依 {@code /profile/...}。
+     * 演示机文件在 {@code /var/www/SVA-web/upload/alarm/}。
+     */
+    private void addDemoUploadCandidates(List<Path> candidates, String source)
+    {
+        String publicPath = extractPublicMediaPath(source);
+        if (StringUtils.isEmpty(publicPath))
+        {
+            return;
+        }
+        addLocalImageCandidate(candidates, DEMO_UPLOAD_DIR + publicPath);
+        String profile = StringUtils.trimToEmpty(RuoYiConfig.getProfile());
+        if (StringUtils.isNotEmpty(profile) && !DEMO_UPLOAD_DIR.equals(profile.replace('\\', '/').replaceAll("/+$", "")))
+        {
+            addLocalImageCandidate(candidates, Paths.get(profile, publicPath.substring(1)).toString());
+        }
+    }
+
+    private String extractPublicMediaPath(String source)
+    {
+        String normalized = StringUtils.trimToEmpty(source).replace('\\', '/');
+        if (StringUtils.isEmpty(normalized))
+        {
+            return null;
+        }
+        if (isHttpUrl(normalized))
+        {
+            try
+            {
+                normalized = StringUtils.trimToEmpty(URI.create(normalized).getPath());
+            }
+            catch (Exception ignored)
+            {
+                return null;
+            }
+        }
+        int alarm = normalized.indexOf("/alarm/");
+        if (alarm >= 0)
+        {
+            return normalized.substring(alarm);
+        }
+        if (normalized.startsWith("alarm/"))
+        {
+            return "/" + normalized;
+        }
+        int zlm = normalized.indexOf("/zlm/");
+        if (zlm >= 0)
+        {
+            return normalized.substring(zlm);
+        }
+        if (normalized.startsWith("zlm/"))
+        {
+            return "/" + normalized;
+        }
+        return null;
     }
 
     private void addLocalImageCandidate(List<Path> candidates, String value)
@@ -661,7 +741,6 @@ public class AiReviewServiceImpl implements IAiReviewService
         builder.append("\n【输出JSON字段】\n");
         builder.append("decision：true_alarm / false_alarm / uncertain\n");
         builder.append("confidence：0~1 的把握度\n");
-        builder.append("false_positive_score：0~1 的误报可能性\n");
         builder.append("observed：你在图中实际看到的内容，一句话，不要编造\n");
         builder.append("pose_match：boolean，图中人的姿态是否与算法判定一致\n");
         builder.append("summary：一句话结论\n");
