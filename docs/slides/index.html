@@ -1443,10 +1443,10 @@
   </div>
   <div class="cover-body">
     <h1 class="display" data-anim="fade-up" data-delay="1" style="max-width: 95%; line-height: 1.02">睡岗检测<br />与国标接入</h1>
-    <p class="lead" data-anim="fade-up" data-delay="2" style="opacity: 0.75; max-width: 70%">
+    <p class="lead" data-anim="fade-up" data-delay="2" style="opacity: 0.75; max-width: none; font-size: 33.79px">
       AI 视频安全生产分析系统 · 基于开源 easySVA 的二次开发<br />
       P1 原系统跑通 → P2 睡岗检测 → P3 GB28181 国标接入 → P4 双源联调<br />
-      张柏烁（演示机 · 流媒体 · 国标）　邹子轶（睡岗算法 · 分析器）　吴佳锴（前后端 · 仓库 · 文档）
+      张柏烁（演示机 · 流媒体 · 国标）　吴佳锴（睡岗算法 · 分析器）　邹子轶（前后端 · 仓库 · 文档）
     </p>
   </div>
   <div class="cover-meta" data-anim="fade-in" data-delay="3">
@@ -1468,28 +1468,28 @@
       <div class="flow-step">
         <div class="flow-num">P1</div>
         <div class="flow-title">原系统跑通</div>
-        <div class="flow-desc">09-01 · 直连摄像头 → ZLM → 网页预览 → YOLO 布控 → 告警截图。作为基线。</div>
+        <div class="flow-desc" style="font-size: 25.34px">09-01 · 直连摄像头 → ZLM → 网页预览 → YOLO 布控 → 告警截图。作为基线。</div>
       </div>
       <div class="flow-arrow">→</div>
       <div class="flow-step">
         <div class="flow-num">P2</div>
         <div class="flow-title">睡岗检测</div>
-        <div class="flow-desc">09-02 · YOLO-Pose 俯仰角 + 多帧时序，新算法插进原 Analyzer。</div>
+        <div class="flow-desc" style="font-size: 25.34px">09-02 · YOLO-Pose 俯仰角 + 多帧时序，新算法插进原 Analyzer。</div>
       </div>
       <div class="flow-arrow">→</div>
       <div class="flow-step">
         <div class="flow-num">P3</div>
         <div class="flow-title">国标接入</div>
-        <div class="flow-desc">09-07 · WVP 管信令、ZLM 管媒体，国标通道进同一张设备表。</div>
+        <div class="flow-desc" style="font-size: 25.34px">09-07 · WVP 管信令、ZLM 管媒体，国标通道进同一张设备表。</div>
       </div>
       <div class="flow-arrow">→</div>
       <div class="flow-step">
         <div class="flow-num">P4</div>
         <div class="flow-title">双源 × 双算法</div>
-        <div class="flow-desc">09-08 · 直连 / 国标 × YOLO / 睡岗，四条路径全部通过。</div>
+        <div class="flow-desc" style="font-size: 25.34px">09-08 · 直连 / 国标 × YOLO / 睡岗，四条路径全部通过。</div>
       </div>
     </div>
-    <p class="lead muted" data-anim="fade-up" data-delay="2" style="max-width: 80%">
+    <p class="lead muted" data-anim="fade-up" data-delay="2" style="max-width: 80%; font-size: 33.79px">
       不重写、不拆原系统：新算法和新设备源都<span class="accent">插进原有链路</span>，检测与告警的后半段一次都没改。
     </p>
   </div>
@@ -1512,34 +1512,34 @@
       <div class="flow-step">
         <div class="flow-num">01</div>
         <div class="flow-title">监控设备</div>
-        <div class="flow-desc">直连 RTSP / RTMP 摄像头<br /><span class="accent">＋ 国标 GB28181 IPC</span></div>
+        <div class="flow-desc" style="font-size: 25.34px">直连 RTSP / RTMP 摄像头<br /><span class="accent">＋ 国标 GB28181 IPC</span></div>
       </div>
       <div class="flow-arrow">→</div>
       <div class="flow-step">
         <div class="flow-num">02</div>
         <div class="flow-title">流媒体</div>
-        <div class="flow-desc">ZLMediaKit 收流、转 FLV / RTSP</div>
+        <div class="flow-desc" style="font-size: 25.34px">ZLMediaKit 收流、转 FLV / RTSP</div>
       </div>
       <div class="flow-arrow">→</div>
       <div class="flow-step">
         <div class="flow-num">03</div>
         <div class="flow-title">C++ 分析器</div>
-        <div class="flow-desc">拉流、YOLO 推理、上报告警<br /><span class="accent">＋ 睡岗检测算法</span></div>
+        <div class="flow-desc" style="font-size: 25.34px">拉流、YOLO 推理、上报告警<br /><span class="accent">＋ 睡岗检测算法</span></div>
       </div>
       <div class="flow-arrow">→</div>
       <div class="flow-step">
         <div class="flow-num">04</div>
         <div class="flow-title">后端</div>
-        <div class="flow-desc">Spring Boot :9114 · 设备、布控、告警入库</div>
+        <div class="flow-desc" style="font-size: 25.34px">Spring Boot :9114 · 设备、布控、告警入库</div>
       </div>
       <div class="flow-arrow">→</div>
       <div class="flow-step">
         <div class="flow-num">05</div>
         <div class="flow-title">前端</div>
-        <div class="flow-desc">Vue 大屏 + 后台 · Nginx :8080</div>
+        <div class="flow-desc" style="font-size: 25.34px">Vue 大屏 + 后台 · Nginx :8080</div>
       </div>
     </div>
-    <p class="lead muted" data-anim="fade-up" data-delay="2" style="max-width: 80%">
+    <p class="lead muted" data-anim="fade-up" data-delay="2" style="max-width: 80%; font-size: 33.79px">
       场景：值班室、控制室、工位要「有人在岗、没在睡觉」。课程要求在原系统上加<span class="accent">睡岗检测</span>，并让<span class="accent">国标摄像头</span>接进来。
     </p>
   </div>
@@ -1554,7 +1554,7 @@
 <section class="slide slide--chapter orange">
   <div class="broadside-num" data-anim="fade-in" data-delay="0" style="margin-bottom: var(--gap-lg)">P1 / 2026-09-01 / 验收点 1</div>
   <h2 class="h1" data-anim="fade-up" data-delay="1">先把原系统跑通</h2>
-  <p class="lead" data-anim="fade-up" data-delay="2" style="max-width: 60%; margin-top: var(--gap-md); opacity: 0.75">
+  <p class="lead" data-anim="fade-up" data-delay="2" style="max-width: 60%; margin-top: var(--gap-md); opacity: 0.75; font-size: 33.79px">
     直连摄像头 → ZLMediaKit → 网页预览 → YOLO 布控 → 告警截图。<br />这条路通了，后面两件事才有地方「插」。
   </p>
 </section>
@@ -1568,7 +1568,7 @@
   </header>
   <div class="slide-body">
     <div class="split-text">
-      <p class="kicker" data-anim="fade-in" data-delay="0">原系统长什么样</p>
+      <p class="kicker" data-anim="fade-in" data-delay="0" style="font-size: 15.2px">原系统长什么样</p>
       <div class="rule" data-anim="reveal-right" data-delay="1" style="margin: 1.5vh 0"></div>
       <h2 class="h2" data-anim="fade-up" data-delay="2">四个上游仓，<br />合成一个 GitHub 仓库</h2>
       <ul class="bullet-list" data-anim="fade-up" data-delay="3" style="--sz-lead: 1.3vw">
@@ -1600,26 +1600,26 @@
     <h2 class="h2" data-anim="fade-up" data-delay="0">两类设备源，<span class="accent">一条链路</span></h2>
     <div class="arch" data-anim="fade-up" data-delay="1">
       <!-- col 1 · 设备源 -->
-      <div class="arch-box" style="grid-area: 1 / 1"><span class="tag">直连</span><div class="arch-title">RTSP / RTMP 摄像头</div><div class="arch-desc">后端 addStreamProxy 拉，或摄像头直接推 RTMP</div></div>
-      <div class="arch-box" style="grid-area: 2 / 1 / 4 / 2"><span class="tag">国标</span><div class="arch-title">GB28181 IPC / 模拟器</div><div class="arch-desc">先向 WVP 注册（在线）<br />被点播后才推 PS over RTP（有画面）</div></div>
+      <div class="arch-box" style="grid-area: 1 / 1"><span class="tag" style="font-size: 15.2px">直连</span><div class="arch-title" style="font-size: 36.3px">RTSP / RTMP 摄像头</div><div class="arch-desc" style="font-size: 21.78px">后端 addStreamProxy 拉，或摄像头直接推 RTMP</div></div>
+      <div class="arch-box" style="grid-area: 2 / 1 / 4 / 2"><span class="tag" style="font-size: 15.2px">国标</span><div class="arch-title" style="font-size: 33px">GB28181 IPC / 模拟器</div><div class="arch-desc" style="font-size: 21.78px">先向 WVP 注册（在线）<br />被点播后才推 PS over RTP（有画面）</div></div>
       <!-- col 2 · 箭头 -->
-      <div class="arch-arrow" style="grid-area: 1 / 2"><span>→</span><span class="label">推流 / 拉流代理</span></div>
-      <div class="arch-arrow" style="grid-area: 2 / 2"><span>↗</span><span class="label">PS / RTP 媒体</span></div>
-      <div class="arch-arrow" style="grid-area: 3 / 2"><span>→</span><span class="label">SIP :5060 信令</span></div>
+      <div class="arch-arrow" style="grid-area: 1 / 2"><span>→</span><span class="label" style="font-size: 14.52px">推流 / 拉流代理</span></div>
+      <div class="arch-arrow" style="grid-area: 2 / 2"><span>↗</span><span class="label" style="font-size: 14.52px">PS / RTP 媒体</span></div>
+      <div class="arch-arrow" style="grid-area: 3 / 2"><span>→</span><span class="label" style="font-size: 14.52px">SIP :5060 信令</span></div>
       <!-- col 3 · 媒体 / 信令 -->
-      <div class="arch-box hot" style="grid-area: 1 / 3 / 3 / 4"><span class="tag">媒体 · 两类源共用</span><div class="arch-title">ZLMediaKit</div><div class="arch-desc">收流、转 WS-FLV / RTSP · 端口 9992 / 9994 / 9995<br />直连流名 <b>live/&lt;ape_id&gt;</b><br />国标流名 <b>rtp/&lt;设备_通道&gt;</b></div></div>
-      <div class="arch-box gb" style="grid-area: 3 / 3"><span class="tag">信令 · 仅国标</span><div class="arch-title">WVP-GB28181-pro</div><div class="arch-desc">REGISTER / 保活 / 目录 / INVITE；指挥 ZLM 开 RTP 收流口 ↑ · 不碰像素</div></div>
+      <div class="arch-box hot" style="grid-area: 1 / 3 / 3 / 4"><span class="tag" style="font-size: 15.2px">媒体 · 两类源共用</span><div class="arch-title" style="font-size: 33px">ZLMediaKit</div><div class="arch-desc" style="font-size: 21.78px">收流、转 WS-FLV / RTSP · 端口 9992 / 9994 / 9995<br />直连流名 <b>live/&lt;ape_id&gt;</b><br />国标流名 <b>rtp/&lt;设备_通道&gt;</b></div></div>
+      <div class="arch-box gb" style="grid-area: 3 / 3"><span class="tag" style="font-size: 15.2px">信令 · 仅国标</span><div class="arch-title" style="font-size: 33px">WVP-GB28181-pro</div><div class="arch-desc" style="font-size: 21.78px">REGISTER / 保活 / 目录 / INVITE；指挥 ZLM 开 RTP 收流口 ↑ · 不碰像素</div></div>
       <!-- col 4 · 箭头 -->
-      <div class="arch-arrow" style="grid-area: 1 / 4 / 3 / 5"><span>→</span><span class="label">WS-FLV 预览<br />RTSP 拉流</span></div>
-      <div class="arch-arrow" style="grid-area: 3 / 4"><span>→</span><span class="label">同步设备目录</span></div>
+      <div class="arch-arrow" style="grid-area: 1 / 4 / 3 / 5"><span>→</span><span class="label" style="font-size: 14.52px">WS-FLV 预览<br />RTSP 拉流</span></div>
+      <div class="arch-arrow" style="grid-area: 3 / 4"><span>→</span><span class="label" style="font-size: 14.52px">同步设备目录</span></div>
       <!-- col 5 · 业务，对两类源完全相同 -->
       <div class="arch-stack" style="grid-area: 1 / 5 / 4 / 6">
-        <div class="arch-box"><span class="tag">业务 · 不分源</span><div class="arch-title">Vue 大屏 / 后台</div><div class="arch-desc">Nginx :8080 反代，浏览器不直连 ZLM，局域网可看</div></div>
-        <div class="arch-box hot"><span class="tag">业务 · 不分源</span><div class="arch-title">Analyzer C++</div><div class="arch-desc">原 YOLO ＋ <b>睡岗检测</b>；拉 live/ 或 rtp/ 完全同一套</div></div>
-        <div class="arch-box"><span class="tag">业务 · 不分源</span><div class="arch-title">backend :9114</div><div class="arch-desc">设备、布控、告警入库 · MariaDB :3307 · Redis</div></div>
+        <div class="arch-box"><span class="tag" style="font-size: 15.2px">业务 · 不分源</span><div class="arch-title" style="font-size: 28.6px">Vue 大屏 / 后台</div><div class="arch-desc" style="font-size: 19.36px">Nginx :8080 反代，浏览器不直连 ZLM，局域网可看</div></div>
+        <div class="arch-box hot"><span class="tag" style="font-size: 15.2px">业务 · 不分源</span><div class="arch-title" style="font-size: 28.6px">Analyzer C++</div><div class="arch-desc" style="font-size: 19.36px">原 YOLO ＋ <b>睡岗检测</b>；拉 live/ 或 rtp/ 完全同一套</div></div>
+        <div class="arch-box"><span class="tag" style="font-size: 15.2px">业务 · 不分源</span><div class="arch-title" style="font-size: 28.6px">backend :9114</div><div class="arch-desc" style="font-size: 23.43px">设备、布控、告警入库 · MariaDB :3307 · Redis</div></div>
       </div>
     </div>
-    <p class="body muted" data-anim="fade-in" data-delay="2">上排直连、下排国标。进了 ZLM 之后，往右的一切完全相同 —— 这就是<span class="accent">「只换输入」</span>。</p>
+    <p class="body muted" data-anim="fade-in" data-delay="2" style="font-size: 25.34px">上排直连、下排国标。进了 ZLM 之后，往右的一切完全相同 —— 这就是<span class="accent">「只换输入」</span>。</p>
   </div>
   <footer class="slide-foot">
     <span class="label muted">easySVA 二次开发 · 睡岗检测与国标接入</span>
@@ -1667,7 +1667,7 @@
 <section class="slide slide--chapter orange">
   <div class="broadside-num" data-anim="fade-in" data-delay="0" style="margin-bottom: var(--gap-lg)">P2 / 2026-09-02 / 验收点 2</div>
   <h2 class="h1" data-anim="fade-up" data-delay="1">睡岗检测</h2>
-  <p class="lead" data-anim="fade-up" data-delay="2" style="max-width: 60%; margin-top: var(--gap-md); opacity: 0.75">
+  <p class="lead" data-anim="fade-up" data-delay="2" style="max-width: 60%; margin-top: var(--gap-md); opacity: 0.75; font-size: 33.79px">
     趴桌、长时间低头要报；低头看键盘、看手机不能报。<br />算法代号 <b>on_sleep_pose</b>，插进原 Analyzer，原 YOLO 一行不改。
   </p>
 </section>
@@ -1759,7 +1759,7 @@
         <text x="450" y="60" class="pose-title">俯仰角 = (1 − 抬升 h ÷ 尺子) × 90°</text>
         <text x="450" y="92" class="pose-sub">尺子 = max(0.42 × 躯干长, 0.5 × 肩宽) · 角度限 0–135°</text>
       </svg>
-      <p class="img-caption">● 头点 · ○ 颈点 · 躯干方向 髋→肩 · 无髋时用肩线转 90°</p>
+      <p class="img-caption" style="font-size: 20.91px">● 头点 · ○ 颈点 · 躯干方向 髋→肩 · 无髋时用肩线转 90°</p>
     </div>
   </div>
   <footer class="slide-foot">
@@ -1804,7 +1804,7 @@
 <section class="slide slide--chapter orange">
   <div class="broadside-num" data-anim="fade-in" data-delay="0" style="margin-bottom: var(--gap-lg)">P3 / 2026-09-07 / 验收点 3</div>
   <h2 class="h1" data-anim="fade-up" data-delay="1">GB28181 国标接入</h2>
-  <p class="lead" data-anim="fade-up" data-delay="2" style="max-width: 60%; margin-top: var(--gap-md); opacity: 0.75">
+  <p class="lead" data-anim="fade-up" data-delay="2" style="max-width: 60%; margin-top: var(--gap-md); opacity: 0.75; font-size: 33.79px">
     国标摄像头（或模拟器）注册进平台，<br />与直连设备同一张设备表、同一条检测与告警链路。
   </p>
 </section>
@@ -1862,35 +1862,35 @@
   </header>
   <div class="vt-hl" data-anim="fade-up" data-delay="0">在线 ≠ 有画面：从注册到出画<span class="accent">五步</span></div>
   <div class="vtimeline" data-anim="fade-up" data-delay="1">
-    <div class="vt-date">① 注册</div>
+    <div class="vt-date" style="font-size: 23.96px">① 注册</div>
     <div class="vt-spine"></div>
     <div class="vt-content">
       <div class="vt-title">IPC → WVP：REGISTER（Digest）/ 保活 / Catalog</div>
-      <div class="vt-body">此时设备列表显示「在线」—— 但还没有任何画面。</div>
+      <div class="vt-body" style="font-size: 23.1px">此时设备列表显示「在线」—— 但还没有任何画面。</div>
     </div>
-    <div class="vt-date">② 同步</div>
+    <div class="vt-date" style="font-size: 23.96px">② 同步</div>
     <div class="vt-spine"></div>
     <div class="vt-content">
       <div class="vt-title">后端「同步国标设备」读 WVP 已注册通道</div>
-      <div class="vt-body">写设备表 device_type = gb28181、play_url = /rtp/…；先探活 ZLM，过滤脏数据。</div>
+      <div class="vt-body" style="font-size: 23.1px">写设备表 device_type = gb28181、play_url = /rtp/…；先探活 ZLM，过滤脏数据。</div>
     </div>
-    <div class="vt-date">③ 点播</div>
+    <div class="vt-date" style="font-size: 23.96px">③ 点播</div>
     <div class="vt-spine"></div>
     <div class="vt-content">
       <div class="vt-title">预览 / 布控请求 rtp/… → ZLM 无流 → WVP 发 INVITE</div>
-      <div class="vt-body">hook on_stream_not_found 后台自动触发，不堵页面；Analyzer 拉流超时 25 s 就是留给点播的窗口。</div>
+      <div class="vt-body" style="font-size: 23.1px">hook on_stream_not_found 后台自动触发，不堵页面；Analyzer 拉流超时 25 s 就是留给点播的窗口。</div>
     </div>
-    <div class="vt-date">④ 出画</div>
+    <div class="vt-date" style="font-size: 23.96px">④ 出画</div>
     <div class="vt-spine"></div>
     <div class="vt-content">
       <div class="vt-title">IPC 推 PS/RTP 进 ZLM → 网页 WS-FLV、Analyzer RTSP 同时可用</div>
-      <div class="vt-body">无人观看约 60 s 自动关流，再看即重新点播。</div>
+      <div class="vt-body" style="font-size: 23.1px">无人观看约 60 s 自动关流，再看即重新点播。</div>
     </div>
-    <div class="vt-date">⑤ 离线</div>
+    <div class="vt-date" style="font-size: 23.96px">⑤ 离线</div>
     <div class="vt-spine"></div>
     <div class="vt-content">
       <div class="vt-title">REGISTER Expires = 0 → 再同步 → is_online = 0</div>
-      <div class="vt-body">在线状态跟随 SIP 注册生命周期，不靠脚本假写。</div>
+      <div class="vt-body" style="font-size: 23.1px">在线状态跟随 SIP 注册生命周期，不靠脚本假写。</div>
     </div>
   </div>
   <footer class="slide-foot">
@@ -1912,15 +1912,15 @@
       <div class="rule" data-anim="reveal-right" data-delay="1" style="margin: 1.5vh 0"></div>
       <h2 class="h2" data-anim="fade-up" data-delay="2" style="font-size: 74px">走真协议、真媒体，<br />平台看到的和真机一样</h2>
       <ul class="bullet-list" data-anim="fade-up" data-delay="3" style="--sz-lead: 1.3vw">
-        <li><span><b>真 SIP</b>：REGISTER（Digest）/ 保活 / 目录应答 / 应答 INVITE</span></li>
-        <li><span><b>真媒体</b>：ffmpeg 生成 MPEG-2 PS over RTP，画面是工位视频</span></li>
-        <li><span><b>平台侧</b>：WVP 在线 → 同步出 demo-ipc → 预览有画 → Analyzer 拉 rtp/…</span></li>
-        <li><span><b>接真机</b>只需在摄像机填：平台 ID、域、密码、服务器 = 演示机 IP:5060</span></li>
+        <li><span style="font-size: 22.65px"><b>真 SIP</b>：REGISTER（Digest）/ 保活 / 目录应答 / 应答 INVITE</span></li>
+        <li><span style="font-size: 22.65px"><b>真媒体</b>：ffmpeg 生成 MPEG-2 PS over RTP，画面是工位视频</span></li>
+        <li><span style="font-size: 22.65px"><b>平台侧</b>：WVP 在线 → 同步出 demo-ipc → 预览有画 → Analyzer 拉 rtp/…</span></li>
+        <li><span style="font-size: 22.65px"><b>接真机</b>只需在摄像机填：平台 ID、域、密码、服务器 = 演示机 IP:5060</span></li>
       </ul>
     </div>
     <div class="split-image" data-anim="reveal-right" data-delay="2">
       <img src="img/p3-国标预览-真人工位.png" alt="国标通道预览出画：真人工位" style="object-fit: contain; background: var(--c-bg-alt)" />
-      <p class="img-caption">P3 · 设备管理 → 国标 demo-ipc「预览视频」：真人工位画面经 Nginx /rtp/ 播出</p>
+      <p class="img-caption" style="font-size: 20.91px">P3 · 设备管理 → 国标 demo-ipc「预览视频」：真人工位画面经 Nginx /rtp/ 播出</p>
     </div>
   </div>
   <footer class="slide-foot">
@@ -1942,22 +1942,22 @@
       <div class="stat-card">
         <div class="stat-value" data-anim="scale-in" data-delay="1" style="font-size: 64px">直连 × YOLO</div>
         <div class="stat-label body"><b>通过</b> · 进区 / 数量阈值告警照常</div>
-        <div class="stat-note">Analyzer 拉 live/… · P1 基线回归</div>
+        <div class="stat-note" style="font-size: 19.01px">Analyzer 拉 live/… · P1 基线回归</div>
       </div>
       <div class="stat-card">
         <div class="stat-value" data-anim="scale-in" data-delay="2" style="font-size: 64px">直连 × 睡岗</div>
         <div class="stat-label body"><b>通过</b> · 真人趴桌 → BOW → SLEEP 弹告警</div>
-        <div class="stat-note">Analyzer 拉 live/… · P2 主路径</div>
+        <div class="stat-note" style="font-size: 19.01px">Analyzer 拉 live/… · P2 主路径</div>
       </div>
       <div class="stat-card">
         <div class="stat-value" data-anim="scale-in" data-delay="3" style="font-size: 64px">国标 × YOLO</div>
         <div class="stat-label body"><b>通过</b> · 国标源同样出框、告警</div>
-        <div class="stat-note">Analyzer 拉 rtp/… · P3 主路径</div>
+        <div class="stat-note" style="font-size: 19.01px">Analyzer 拉 rtp/… · P3 主路径</div>
       </div>
       <div class="stat-card">
         <div class="stat-value" data-anim="scale-in" data-delay="4" style="font-size: 64px">国标 × 睡岗</div>
         <div class="stat-label body"><b>通过</b> · 两项增量叠在一起也成立</div>
-        <div class="stat-note">Analyzer 拉 rtp/… · P4 新增</div>
+        <div class="stat-note" style="font-size: 19.01px">Analyzer 拉 rtp/… · P4 新增</div>
       </div>
     </div>
     <p class="lead" data-anim="fade-up" data-delay="3" style="color: rgba(17, 17, 17, 0.7); max-width: 85%">
@@ -2187,11 +2187,11 @@
       <div class="compare-label" data-anim="fade-in" data-delay="0">踩过的坑</div>
       <h3 class="h3" data-anim="fade-up" data-delay="1">问题大多出在<br />「以为通了」</h3>
       <ul class="bullet-list" data-anim="fade-up" data-delay="2" style="--sz-lead: 1.2vw">
-        <li><span><b>假在线</b>：列表在线、点播黑屏 → 同步只收真正注册的通道</span></li>
-        <li><span><b>在线 ≠ 有画</b>：预览转圈 → 后台自动点播，超时留 25 s</span></li>
-        <li><span><b>预览冻帧</b>：SIP 解析 + 播放器缓冲 + RTP 时间戳 + WSL 时钟，四层逐层修</span></li>
-        <li><span><b>局域网黑屏</b>：play_url 是 127.0.0.1 → 预览统一走 Nginx /rtp/</span></li>
-        <li><span><b>睡岗误报</b>：只看角度和时长 → 帧质量门 + 五道证据门</span></li>
+        <li><span style="font-size: 20.91px"><b>假在线</b>：列表在线、点播黑屏 → 同步只收真正注册的通道</span></li>
+        <li><span style="font-size: 20.91px"><b>在线 ≠ 有画</b>：预览转圈 → 后台自动点播，超时留 25 s</span></li>
+        <li><span style="font-size: 20.91px"><b>预览冻帧</b>：SIP 解析 + 播放器缓冲 + RTP 时间戳 + WSL 时钟，四层逐层修</span></li>
+        <li><span style="font-size: 20.91px"><b>局域网黑屏</b>：play_url 是 127.0.0.1 → 预览统一走 Nginx /rtp/</span></li>
+        <li><span style="font-size: 20.91px"><b>睡岗误报</b>：只看角度和时长 → 帧质量门 + 五道证据门</span></li>
       </ul>
     </div>
     <div class="compare-panel panel-orange">
@@ -2199,9 +2199,9 @@
       <h3 class="h3" data-anim="fade-up" data-delay="1" style="color: #111">四个验收点全部关账</h3>
       <p class="lead" data-anim="fade-up" data-delay="2" style="color: rgba(17, 17, 17, 0.7)">交付：可运行演示机、GitHub 仓库、评委使用手册、启动手册、国标说明书、算法说明。</p>
       <ul class="bullet-list" data-anim="fade-up" data-delay="3" style="--sz-lead: 1.2vw">
-        <li><span><b>协作</b>：三人三台机；phase 门禁 + PR 规范，各写各的路径不互相踩</span></li>
-        <li><span><b>不足</b>：无真国标 IPC，以模拟器主路径验收；俯仰角是 2D 近似</span></li>
-        <li><span><b>下一步</b>：接真机；多人 / 多工位并行；告警 AI 复核</span></li>
+        <li><span style="font-size: 20.91px"><b>协作</b>：三人三台机；phase 门禁 + PR 规范，各写各的路径不互相踩</span></li>
+        <li><span style="font-size: 20.91px"><b>不足</b>：无真国标 IPC，以模拟器主路径验收；俯仰角是 2D 近似</span></li>
+        <li><span style="font-size: 20.91px"><b>下一步</b>：接真机；多人 / 多工位并行；告警 AI 复核</span></li>
       </ul>
     </div>
   </div>
@@ -2218,7 +2218,7 @@
     <span class="broadside-num" data-anim="fade-in" data-delay="0">24</span>
     <span class="corner-label" data-anim="fade-in" data-delay="0">谢谢 · 现场演示</span>
   </div>
-  <h1 class="display" data-anim="fade-up" data-delay="1" style="color: #111; max-width: 90%; line-height: 1.02; letter-spacing: -0.04em; margin-bottom: 24px">谢谢<br />下面现场演示</h1>
+  <h1 class="display" data-anim="fade-up" data-delay="1" style="color: #111; max-width: 90%; line-height: 1.02; letter-spacing: -0.04em; margin-bottom: 24px">谢谢<br />下面视频演示</h1>
   <div style="display: flex; flex-direction: column; gap: var(--gap-sm)" data-anim="fade-up" data-delay="2">
     <p class="lead" style="color: rgba(17, 17, 17, 0.7); max-width: 75%">
       大屏 → 设备管理（直连行 + 国标 demo-ipc 行）→ 同步国标设备 → demo-ipc「预览视频」→ 布控「睡岗检测」→ 真人趴桌：SLEEP? → SLEEP → SLEEP! → 报警详情：档位、质量分、三连图、证据视频
