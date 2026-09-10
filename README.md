@@ -24,6 +24,7 @@
 | [docs/启动手册.md](docs/启动手册.md) | **同学 A**：一键/分项启动、网页地址、国标模拟器；**B/C 看 §1.1** |
 | [docs/国标功能使用说明书.md](docs/国标功能使用说明书.md) | 国标预览 / 布控 / 模拟器 / 真机 / 故障（phase 3） |
 | [docs/architecture.md](docs/architecture.md) | 架构总图 + 直连流媒体实测（C 合稿，A 并入） |
+| [docs/答辩PPT要点-优化与创新.md](docs/答辩PPT要点-优化与创新.md) | **同学 C 做 PPT**：创新点 / 优化点 / 不要写的话 / 建议页序 |
 | [docs/分工.md](docs/分工.md) | 三人分工总览 |
 | [docs/PR规范.md](docs/PR规范.md) | 分支、commit、PR 要求 |
 | [docs/deploy-notes.md](docs/deploy-notes.md) | 演示机部署细节与排障 |
