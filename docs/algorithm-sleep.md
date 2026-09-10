@@ -252,6 +252,8 @@ B 能改的已经在本仓库：公式、时序、ONNX 接入、告警 JSON 字�
 
 开机与保栈仍按 [启动手册.md](./启动手册.md) §1.0.0（A 的 `start_demo.ps1 -WithGbSim` + `--dual-sleep`）。原 YOLO 步骤见 [fixtures/gb28181-yolo-verify.md](./fixtures/gb28181-yolo-verify.md)。不要选启发式「睡觉」。录像引擎用算法服务器。
 
+同学 B 创新点的展开说明（数据落点、实现、上下游）见 [algorithm-innovations.md](./algorithm-innovations.md)。阈值仍以本文 + `SleepPose.h` 为准。
+
 ### 交给 C 进 PPT
 
 1. 睡岗判定：俯仰角 ≥ **32°**（无髋 38°），连续低头分三档——**2 秒疑似、5 秒确认、15 秒严重**；三档共用占空比 / 峰值 45° / 头点静止；正脸看镜头封顶 18° 不报。  
