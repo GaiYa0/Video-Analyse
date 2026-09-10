@@ -2044,36 +2044,39 @@
     <span class="label muted">创新 · 告警链</span>
     <span class="label muted">19</span>
   </header>
-  <div class="slide-body">
-    <h2 class="h2" data-anim="fade-up" data-delay="0" style="">一条告警，<span class="accent">看得懂、查得清、送得到</span></h2>
-    <div class="flow" data-anim="fade-up" data-delay="1" style="">
-      <div class="flow-step">
-        <div class="flow-num">01</div>
-        <div class="flow-title">关键帧三连图</div>
-        <div class="flow-desc" style="font-size: 25.34px;">起始 / 峰值（头最低）/ 结束三帧横拼成 <b>keyframes.jpg</b>，一眼看到「怎么趴下去的」，不必先播完整 MP4。</div>
+  <div class="slide-body" style="display: grid; grid-template-columns: 1fr 340px; gap: 56px; align-items: center">
+    <div style="display: flex; flex-direction: column; gap: var(--gap-md); min-width: 0">
+      <h2 class="h2" data-anim="fade-up" data-delay="0" style="">一条告警，<br><span class="accent">看得懂、查得清、送得到</span></h2>
+      <div class="flow" data-anim="fade-up" data-delay="1" style="display: grid; grid-template-columns: 1fr 1fr; gap: 28px 40px">
+        <div class="flow-step" style="padding-right: 0">
+          <div class="flow-num" style="font-size: 64px">01</div>
+          <div class="flow-title">关键帧三连图</div>
+          <div class="flow-desc" style="font-size: 25.34px;">起始 / 峰值（头最低）/ 结束三帧横拼成 <b>keyframes.jpg</b>，一眼看到「怎么趴下去的」，不必先播完整 MP4。</div>
+        </div>
+        <div class="flow-step" style="padding-right: 0">
+          <div class="flow-num" style="font-size: 64px">02</div>
+          <div class="flow-title">质量分排序</div>
+          <div class="flow-desc" style="font-size: 25.34px;">列表一列、详情 <b>xx / 100</b>。是证据硬度，不是误报分数；分低照样报，只是排后面。</div>
+        </div>
+        <div class="flow-step" style="padding-right: 0">
+          <div class="flow-num" style="font-size: 64px">03</div>
+          <div class="flow-title">AI 复核吃证据</div>
+          <div class="flow-desc" style="font-size: 25.34px;">提示词带<b>俯仰角、时长、档位、质量分</b>，多模态模型不再凭图编故事；只输出 JSON，结论进详情。</div>
+        </div>
+        <div class="flow-step" style="padding-right: 0">
+          <div class="flow-num" style="font-size: 64px">04</div>
+          <div class="flow-title">严重档通知</div>
+          <div class="flow-desc" style="font-size: 25.34px;"><b>首次升到严重</b>才发一次：企业微信机器人 + HTML 邮件（内嵌三连图）。默认关，密钥不进 Git。</div>
+        </div>
       </div>
-      <div class="flow-arrow">→</div>
-      <div class="flow-step">
-        <div class="flow-num">02</div>
-        <div class="flow-title">质量分排序</div>
-        <div class="flow-desc" style="font-size: 25.34px;">列表一列、详情 <b>xx / 100</b>。是证据硬度，不是误报分数；分低照样报，只是排后面。</div>
-      </div>
-      <div class="flow-arrow">→</div>
-      <div class="flow-step">
-        <div class="flow-num">03</div>
-        <div class="flow-title">AI 复核吃证据</div>
-        <div class="flow-desc" style="font-size: 25.34px;">提示词带<b>俯仰角、时长、档位、质量分</b>，多模态模型不再凭图编故事；只输出 JSON，结论进详情。</div>
-      </div>
-      <div class="flow-arrow">→</div>
-      <div class="flow-step">
-        <div class="flow-num">04</div>
-        <div class="flow-title">严重档通知</div>
-        <div class="flow-desc" style="font-size: 25.34px; box-sizing: border-box; max-width: none; flex: 0 0 auto; place-self: flex-start start; vertical-align: top; position: relative; width: 359px; min-width: 359px; min-height: 90.4px; height: auto; left: 0px; top: 0px;"><b>首次升到严重</b>才发一次：企业微信机器人 + HTML 邮件（内嵌三连图）。默认关，密钥不进 Git。</div>
-      </div>
+      <p class="lead muted" data-anim="fade-up" data-delay="2" style="max-width: none;">
+        全部叠在原来的 h_waring 表和告警目录上：三连图落磁盘经 Nginx /alarm/ 读、AI 结论进独立表、通知本身不落库。
+      </p>
     </div>
-    <p class="lead muted" data-anim="fade-up" data-delay="2" style="max-width: none; box-sizing: border-box; flex: 0 0 auto; place-self: flex-start start; vertical-align: top; position: relative; width: 1570.6px; min-width: 1570.6px; min-height: 24px; height: auto; left: 0px; top: 0px;">
-      全部叠在原来的 h_waring 表和告警目录上：三连图落磁盘经 Nginx /alarm/ 读、AI 结论进独立表、通知本身不落库。
-    </p>
+    <div class="split-image" data-anim="reveal-right" data-delay="2" style="">
+      <img src="photo/email.jpg" alt="手机实际收到的严重睡岗邮件" style="height: 740px; object-fit: contain; background: var(--c-bg-alt); border: 1px solid var(--c-border)">
+      <p class="img-caption" style="font-size: 18px">手机实收 · 严重档邮件（三连图 · 质量分 80/100）</p>
+    </div>
   </div>
   <footer class="slide-foot">
     <span class="label muted">easySVA 二次开发 · 睡岗检测与国标接入</span>
@@ -2209,11 +2212,41 @@
   </footer>
 </section>
 
-<!-- ═══ 24 · 结束 ═══
-备注：四个验收点都已关账。感谢老师，下面现场演示。演示前 15 分钟由 A 跑 start_demo.ps1 -WithGbSim 并自检。国标设备一定点"预览视频"，不要只点"启动监控"。 -->
+<!-- ═══ 24 · 协作 · GitHub ═══
+备注：三个人三台不同系统的机器，代码只以 GitHub 为准。一个月 73 个 PR 合并、93 次提交进 main；每个 PR 只做一件事、跨角色会签、冲突作者自己 rebase；phase 门禁写在 docs/当前阶段.md，过验收才放开下一阶段。 -->
+<section class="slide slide--split dark">
+  <header class="slide-chrome">
+    <span class="label muted">协作 · 代码只以 GitHub 为准</span>
+    <span class="label muted">24</span>
+  </header>
+  <div class="slide-body" style="grid-template-columns: 0.8fr 1.2fr">
+    <div class="split-text">
+      <p class="kicker" data-anim="fade-in" data-delay="0" style="font-size: 15.2px;">github.com/GaiYa0/Video-Analyse · 2026-08-09 → 09-09</p>
+      <div class="rule" data-anim="reveal-right" data-delay="1" style="margin: 1.5vh 0px;"></div>
+      <h2 class="h2" data-anim="fade-up" data-delay="2" style="">三人三台机，<br>一个月 <span class="accent">73 个 PR</span></h2>
+      <ul class="bullet-list" data-anim="fade-up" data-delay="3" style="--sz-lead: 1.3vw;">
+        <li><span style="font-size: 22.65px;"><b>一个仓</b>：四个上游仓合成 monorepo，Ubuntu / Windows / Mac 三台机只认 GitHub</span></li>
+        <li><span style="font-size: 22.65px;"><b>73 merged · 93 commits 进 main</b>：一个分支只做一件事，睡岗和国标不进同一个 PR</span></li>
+        <li><span style="font-size: 22.65px;"><b>PR 规范</b>：feat/phaseN-… 命名、跨角色会签、冲突作者自己 rebase，不 force push</span></li>
+        <li><span style="font-size: 22.65px;"><b>phase 门禁</b>：当前阶段.md 定能改什么；过验收才放开下一阶段，各写各的路径不互踩</span></li>
+      </ul>
+    </div>
+    <div class="split-image" data-anim="reveal-right" data-delay="2" style="">
+      <img src="photo/github.png" alt="GitHub Insights · Pulse" style="object-fit: contain; background: var(--c-bg-alt); height: auto; max-height: 594px; border: 1px solid var(--c-border)">
+      <p class="img-caption" style="font-size: 20.91px">GitHub Insights · Pulse（近 1 个月）：75 active PR · 73 merged · 4 位作者 93 次提交进 main</p>
+    </div>
+  </div>
+  <footer class="slide-foot">
+    <span class="label muted">easySVA 二次开发 · 睡岗检测与国标接入</span>
+    <span class="label muted">张柏烁 · 邹子轶 · 吴佳锴</span>
+  </footer>
+</section>
+
+<!-- ═══ 25 · 结束 ═══
+备注：四个验收点都已关账。感谢老师，下面视频演示。演示前 15 分钟由 A 跑 start_demo.ps1 -WithGbSim 并自检。国标设备一定点"预览视频"，不要只点"启动监控"。 -->
 <section class="slide slide--end orange">
   <div class="broadside-top-chrome">
-    <span class="broadside-num" data-anim="fade-in" data-delay="0" style="">24</span>
+    <span class="broadside-num" data-anim="fade-in" data-delay="0" style="">25</span>
     <span class="corner-label" data-anim="fade-in" data-delay="0" style="display: inline-block; box-sizing: border-box; max-width: none; flex: 0 0 auto; place-self: flex-start start; vertical-align: top; position: relative; width: 40px; min-width: 40px; min-height: 24px; height: auto; left: 0px; top: 0px; font-size: 47.7px;">♡</span>
   </div>
   <h1 class="display" data-anim="fade-up" data-delay="1" style="color: rgb(17, 17, 17); max-width: 90%; line-height: 1.02; letter-spacing: -0.04em; margin-bottom: 24px;">感谢聆听</h1>
@@ -2233,7 +2266,7 @@
     <!-- /#stage -->
 
     <nav id="nav-dots" aria-label="Slide navigation"></nav>
-    <div id="slide-counter">01 / 24</div>
+    <div id="slide-counter">01 / 25</div>
 
     <script>
       (function () {
