@@ -1695,8 +1695,8 @@
       <h3 class="h3" data-anim="fade-up" data-delay="1" style="color: #111">趴桌、长时间低头不动</h3>
       <p class="lead" data-anim="fade-up" data-delay="2" style="color: rgba(17, 17, 17, 0.7)">我们判的是<b>姿态 + 时间</b>，两个都满足才报。正拍、侧拍都要能用。</p>
       <ul class="bullet-list" data-anim="fade-up" data-delay="3" style="--sz-lead: 1.25vw">
-        <li><span>头部俯仰角持续 ≥ 32°</span></li>
-        <li><span>连续 5 秒以上（页面默认 2.5 s，分析器兜底 5 s）</span></li>
+        <li><span>头部俯仰角持续 ≥ 32°（看不见髋 38°）</span></li>
+        <li><span>连续低头分三档：2 s 疑似 · 5 s 确认 · 15 s 严重，只升不降</span></li>
         <li><span>头基本不动，低头时间占比 ≥ 80%</span></li>
       </ul>
     </div>
@@ -1777,15 +1777,15 @@
   </header>
   <div class="slide-body">
     <div class="split-text">
-      <p class="kicker" data-anim="fade-in" data-delay="0">5 秒 + 五道证据门</p>
+      <p class="kicker" data-anim="fade-in" data-delay="0">时长分档 + 五道证据门</p>
       <div class="rule" data-anim="reveal-right" data-delay="1" style="margin: 1.5vh 0"></div>
-      <h2 class="h2" data-anim="fade-up" data-delay="2">低头 5 秒<br />只是必要条件</h2>
-      <p class="lead muted" data-anim="fade-up" data-delay="3">低头 ≥ 32° 进入、抬头 &lt; 22° 恢复（滞回防抖）；计时够 5 秒后，还要下面几道门全过才报。</p>
+      <h2 class="h2" data-anim="fade-up" data-delay="2">低头够久<br />只是必要条件</h2>
+      <p class="lead muted" data-anim="fade-up" data-delay="3">低头 ≥ 32° 进入、抬头 &lt; 22° 恢复（滞回防抖）；时长只决定档位（2 s / 5 s / 15 s），报不报还要五道门全过。</p>
       <ul class="bullet-list" data-anim="fade-up" data-delay="4" style="--sz-lead: 1.25vw">
         <li><span>低头占空比 ≥ 80% —— 挡住打字、翻资料的反复出入</span></li>
         <li><span>峰值到过 45°、头点位移 ≤ 0.45 尺 —— 挡住看手机、写字</span></li>
-        <li><span>有效帧 ≥ 3、丢帧 ≤ 35% —— 挡住遮挡、走开、低帧率凑时长</span></li>
-        <li><span>告警走原入口，叠加 <b>alarmType = SLEEP_ON_DUTY</b>、时长、俯仰角</span></li>
+        <li><span>有效帧 ≥ 3、丢帧 ≤ 50% —— 挡住遮挡、走开、低帧率凑时长</span></li>
+        <li><span>告警走原入口，类型 <b>SLEEP_ON_DUTY</b>，叠加时长、俯仰角、档位</span></li>
       </ul>
     </div>
     <div class="split-image" data-anim="reveal-right" data-delay="2">
@@ -1919,8 +1919,8 @@
       </ul>
     </div>
     <div class="split-image" data-anim="reveal-right" data-delay="2">
-      <img src="img/p3-国标同步预览视频.png" alt="国标通道预览出画" style="object-fit: contain; background: var(--c-bg-alt)" />
-      <p class="img-caption">P3 · 国标通道 demo-ipc 同步进设备表并预览出画（经 Nginx /rtp/）</p>
+      <img src="img/p3-国标预览-真人工位.png" alt="国标通道预览出画：真人工位" style="object-fit: contain; background: var(--c-bg-alt)" />
+      <p class="img-caption">P3 · 设备管理 → 国标 demo-ipc「预览视频」：真人工位画面经 Nginx /rtp/ 播出</p>
     </div>
   </div>
   <footer class="slide-foot">
@@ -1970,12 +1970,217 @@
   </footer>
 </section>
 
-<!-- ═══ 17 · 坑 · 成果 · 展望 ═══
+<!-- ═══ 17 · 章节 · 创新与优化 ═══
+备注：前面按验收点讲了"做了什么"，接下来集中讲"哪些地方和别人不一样"。四个创新点里前两个（国标三拆、真 SIP 模拟器）刚才 P3 已经讲过，后面重点讲睡岗三档与质量分、告警链、以及三个工程优化。 -->
+<section class="slide slide--chapter orange">
+  <div class="broadside-num" data-anim="fade-in" data-delay="0" style="margin-bottom: var(--gap-lg)">创新与优化 / 叠在 P2–P4 上</div>
+  <h2 class="h1" data-anim="fade-up" data-delay="1">哪些地方<br />和别人不一样</h2>
+  <p class="lead" data-anim="fade-up" data-delay="2" style="max-width: 70%; margin-top: var(--gap-md); opacity: 0.75">
+    <b>创新</b>：不自研 SIP 的国标三拆 · 真 SIP 模拟器 · 几何俯仰角 + 三档时序 + 质量分 · 双源同一套公式<br />
+    <b>优化</b>：预览可看可局域网 · 告警可讲可复核 · 验证与演示可复现
+  </p>
+</section>
+
+<!-- ═══ 18 · 创新 · 三档 + 质量分 ═══
+备注（B）：原先只有"满 5 秒报、否则不报"，刚趴下和已经趴死在列表里看不出差别。现在连续低头时长分三档，同一条告警只升不降；证据门不因为计到 15 秒而放松。另外每条睡岗告警带一个 0–100 的质量分，回答"证据有多硬"，只用来排序，不参与报不报。 -->
+<section class="slide slide--diagram dark">
+  <header class="slide-chrome">
+    <span class="label muted">创新 · 睡岗从「报 / 不报」到分档</span>
+    <span class="label muted">18</span>
+  </header>
+  <div class="slide-body" style="gap: var(--gap-md)">
+    <h2 class="h2" data-anim="fade-up" data-delay="0">同一条告警，<span class="accent">三档只升不降</span></h2>
+    <div class="flow" data-anim="fade-up" data-delay="1">
+      <div class="flow-step">
+        <div class="flow-num">2 s</div>
+        <div class="flow-title">疑似睡岗</div>
+        <div class="flow-desc">琥珀框 <b>SLEEP?</b> · 等级 3 提示。进入计时门槛写死 2 秒，页面的 2.5 s 只是显示值。</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <div class="flow-num">5 s</div>
+        <div class="flow-title">确认睡岗</div>
+        <div class="flow-desc">黄框 <b>SLEEP</b> · 等级 4 警告。同一条 h_waring 只改等级三列，不新插行。</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <div class="flow-num">15 s</div>
+        <div class="flow-title">严重睡岗</div>
+        <div class="flow-desc">红框 <b>SLEEP!</b> · 等级 5 严重 → <b>首次升到这一档才触发站外通知</b>。证据门一条不放松。</div>
+      </div>
+    </div>
+    <p class="body" data-anim="fade-in" data-delay="2" style="margin-top: var(--gap-sm); padding-top: var(--gap-sm); border-top: 1px solid var(--c-border)"><span class="accent" style="font-weight: 700">质量分 0–100</span> · 四项加权，回答「证据有多硬」—— 只用于排序，<b>不参与报不报</b></p>
+    <div class="flow" data-anim="fade-up" data-delay="3">
+      <div class="flow-step">
+        <div class="flow-num" style="font-size: 64px">30</div>
+        <div class="flow-title" style="font-size: 30px">峰值角</div>
+        <div class="flow-desc">min(1, 峰值 / 45°)</div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-num" style="font-size: 64px">25</div>
+        <div class="flow-title" style="font-size: 30px">占空比</div>
+        <div class="flow-desc">min(1, 占空比 / 0.80)</div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-num" style="font-size: 64px">25</div>
+        <div class="flow-title" style="font-size: 30px">时长</div>
+        <div class="flow-desc">min(1, 低头 ms / 15000)</div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-num" style="font-size: 64px">20</div>
+        <div class="flow-title" style="font-size: 30px">头点静止</div>
+        <div class="flow-desc">max(0, 1 − 漂移 / 0.45 尺)</div>
+      </div>
+    </div>
+  </div>
+  <footer class="slide-foot">
+    <span class="label muted">easySVA 二次开发 · 睡岗检测与国标接入</span>
+    <span class="label muted">张柏烁 · 邹子轶 · 吴佳锴</span>
+  </footer>
+</section>
+
+<!-- ═══ 19 · 创新 · 告警可讲、可复核 ═══
+备注（B）：封面只用事件开始那一帧，结束帧常是坐直，会把趴桌盖掉。所以告警线程另抽起始/峰值/结束三帧横拼成 keyframes.jpg。AI 复核原先只给"告警类型 + 设备 + 时间"，模型会凭图编场景（实测把工位说成网球场）；现在提示词带上俯仰角、时长、档位、质量分。严重档才发通知，默认关，授权码不进 Git。 -->
+<section class="slide slide--diagram dark">
+  <header class="slide-chrome">
+    <span class="label muted">创新 · 告警链</span>
+    <span class="label muted">19</span>
+  </header>
+  <div class="slide-body">
+    <h2 class="h2" data-anim="fade-up" data-delay="0">一条告警，<span class="accent">看得懂、查得清、送得到</span></h2>
+    <div class="flow" data-anim="fade-up" data-delay="1">
+      <div class="flow-step">
+        <div class="flow-num">01</div>
+        <div class="flow-title">关键帧三连图</div>
+        <div class="flow-desc">起始 / 峰值（头最低）/ 结束三帧横拼成 <b>keyframes.jpg</b>，一眼看到「怎么趴下去的」，不必先播完整 MP4。</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <div class="flow-num">02</div>
+        <div class="flow-title">质量分排序</div>
+        <div class="flow-desc">列表一列、详情 <b>xx / 100</b>。是证据硬度，不是误报分数；分低照样报，只是排后面。</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <div class="flow-num">03</div>
+        <div class="flow-title">AI 复核吃证据</div>
+        <div class="flow-desc">提示词带<b>俯仰角、时长、档位、质量分</b>，多模态模型不再凭图编故事；只输出 JSON，结论进详情。</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <div class="flow-num">04</div>
+        <div class="flow-title">严重档通知</div>
+        <div class="flow-desc"><b>首次升到严重</b>才发一次：企业微信机器人 + HTML 邮件（内嵌三连图）。默认关，密钥不进 Git。</div>
+      </div>
+    </div>
+    <p class="lead muted" data-anim="fade-up" data-delay="2" style="max-width: 88%">
+      全部叠在原来的 h_waring 表和告警目录上：三连图落磁盘经 Nginx /alarm/ 读、AI 结论进独立表、通知本身不落库。
+    </p>
+  </div>
+  <footer class="slide-foot">
+    <span class="label muted">easySVA 二次开发 · 睡岗检测与国标接入</span>
+    <span class="label muted">张柏烁 · 邹子轶 · 吴佳锴</span>
+  </footer>
+</section>
+
+<!-- ═══ 20 · 优化 · 预览可看、可局域网 ═══
+备注（A）：这一页是一串"现象 → 处理"。最重要的一条是最后一条：国标设备点"启动监控"只改状态，看画面必须点"预览视频"，因为 warmRtp 才会触发 INVITE。 -->
+<section class="slide slide--list dark">
+  <header class="slide-chrome">
+    <span class="label muted">优化 · HTTP-FLV + Hook</span>
+    <span class="label muted">20</span>
+  </header>
+  <div class="slide-body">
+    <div class="list-head">
+      <p class="kicker" data-anim="fade-in" data-delay="0">预览：从「本机能看」到「谁都能看」</p>
+      <h2 class="h2" data-anim="fade-up" data-delay="1">五个现象，<br />五处改动</h2>
+      <p class="body muted" data-anim="fade-up" data-delay="2">代码：web/src/utils/flvPlayer.js · scripts/start_wvp.sh（HOOK_WVP）· HDeviceServiceImpl.previewMonitor</p>
+    </div>
+    <ul class="bullet-list" data-anim="fade-up" data-delay="2" style="--sz-lead: 1.4vw">
+      <li><span><b>Windows 8080→80 升不了 WebSocket，画面转圈</b> → 业务页统一 HTTP-FLV，Nginx /live/ /rtp/ 反代 ZLM，局域网同学也能看</span></li>
+      <li><span><b>国标流名是 8 位 SSRC 十六进制</b> → ZLM on_publish 指回 WVP，流名改写为 设备_通道</span></li>
+      <li><span><b>工位 RTMP 被播放鉴权 401</b> → 清空 on_play、push-authority=false（不清 on_publish）</span></li>
+      <li><span><b>预览冻帧</b> → SIP Via / rport、100 Trying 不加 To-tag、RTP 用单调时钟、flv.js stall 自愈，四层逐层修</span></li>
+      <li><span><b>点了「启动监控」没画面</b> → 国标启动监控只改状态；看画面点「预览视频」，warmRtp 才发 INVITE</span></li>
+    </ul>
+  </div>
+  <footer class="slide-foot">
+    <span class="label muted">easySVA 二次开发 · 睡岗检测与国标接入</span>
+    <span class="label muted">张柏烁 · 邹子轶 · 吴佳锴</span>
+  </footer>
+</section>
+
+<!-- ═══ 21 · 优化 · 可验证、可复现 ═══
+备注：验收常问"算法准不准"。我们把值班员的人工结论和质量分对上账，而不是口头说测过了：只统计已处理告警，避免新告警把误报率稀释成 0。设备健康度由后端现探 Analyzer，不改 C++、不新开上报通道。前端还没有独立的图表页和健康度页，这两个接口目前是 JSON。 -->
+<section class="slide slide--list dark">
+  <header class="slide-chrome">
+    <span class="label muted">优化 · 验证与运维</span>
+    <span class="label muted">21</span>
+  </header>
+  <div class="slide-body">
+    <div class="list-head">
+      <p class="kicker" data-anim="fade-in" data-delay="0">把「我们测过了」变成数</p>
+      <h2 class="h2" data-anim="fade-up" data-delay="1">能算、能探、<br />能一键</h2>
+      <p class="body muted" data-anim="fade-up" data-delay="2">统计与健康度接口现算不落库；前端暂无独立图表页，答辩用接口 JSON 演示。</p>
+    </div>
+    <ul class="bullet-list" data-anim="fade-up" data-delay="2" style="--sz-lead: 1.4vw">
+      <li><span><b>误报率闭环</b>：值班员在详情选「确认 / 误报」，按告警类型统计误报率，只算已处理告警</span></li>
+      <li><span><b>质量分分桶</b>：按 0 / 20 / 40 / 60 / 80 分桶看各桶误报率，让分数和人工结论对账</span></li>
+      <li><span><b>设备健康度</b>：后端现探 Analyzer /api/health 与运行中布控，打 0–100 分（不可达 0、未监控扣 30、熔断扣 20…）</span></li>
+      <li><span><b>一键栈 + 自检</b>：start_demo.ps1 -WithGbSim 拉齐业务栈、WVP、模拟器；check_demo_stack.sh 查进程、Hook、命名 rtp 流</span></li>
+      <li><span><b>C++ / Python parity</b>：算法孪生原型，test_cpp_parity.py 对齐常量，改一边忘一边会红</span></li>
+    </ul>
+  </div>
+  <footer class="slide-foot">
+    <span class="label muted">easySVA 二次开发 · 睡岗检测与国标接入</span>
+    <span class="label muted">张柏烁 · 邹子轶 · 吴佳锴</span>
+  </footer>
+</section>
+
+<!-- ═══ 22 · 追问 · 谁在解码、谁在转码 ═══
+备注：老师追问"解码转码"时先把三个词分开。不要说"ZLM 转码成 FLV"——getMediaList 里视频编码仍是 H.264，ZLM 源码里的 decoder 是 PS 解复用器，不是解成 RGB。 -->
+<section class="slide slide--diagram dark">
+  <header class="slide-chrome">
+    <span class="label muted">常见追问 · 三个词分开</span>
+    <span class="label muted">22</span>
+  </header>
+  <div class="slide-body">
+    <h2 class="h2" data-anim="fade-up" data-delay="0">谁在编码、谁在转封装、<span class="accent">谁在解码？</span></h2>
+    <div class="flow" data-anim="fade-up" data-delay="1">
+      <div class="flow-step">
+        <div class="flow-num">01</div>
+        <div class="flow-title">编码 · 一次</div>
+        <div class="flow-desc">模拟器 ffmpeg 把测试片压成 H.264 再打进 PS；真机则是摄像头自己编码。<b>预览前唯一一次编码。</b></div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <div class="flow-num">02</div>
+        <div class="flow-title">转封装 · ZLM</div>
+        <div class="flow-desc">解复用：拆 PS，把<b>同一份 H.264</b> 装进 FLV 或 RTSP。不重编码 —— 所以不是「转码」，视频编码仍是 H.264。</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <div class="flow-num">03</div>
+        <div class="flow-title">解码成画面 · 两端</div>
+        <div class="flow-desc">Analyzer（FFmpeg 解码 → 检测）和浏览器 flv.js（预览）各自解码；<b>ZLM 从不解成像素。</b></div>
+      </div>
+    </div>
+    <p class="lead muted" data-anim="fade-up" data-delay="2" style="max-width: 90%">
+      顺带三句要分开说：注册成功 ≠ 业务页有设备（还没同步）；有设备 ≠ 有画面（还没点播）；WVP 网页能播 ≠ 业务页能播（两条播放器不是一条路）。
+    </p>
+  </div>
+  <footer class="slide-foot">
+    <span class="label muted">easySVA 二次开发 · 睡岗检测与国标接入</span>
+    <span class="label muted">张柏烁 · 邹子轶 · 吴佳锴</span>
+  </footer>
+</section>
+
+<!-- ═══ 23 · 坑 · 成果 · 展望 ═══
 备注：坑大多出在「信令以为通了、媒体其实没通」和「本机通了、别人黑屏」，每个坑都写进了手册。三个人三台不同的机器，靠 phase 门禁和 PR 规范避免互相踩；代码只以 GitHub 为准。 -->
 <section class="slide slide--compare dark">
   <header class="slide-chrome">
     <span class="label muted">踩过的坑 · 成果 · 下一步</span>
-    <span class="label muted">17</span>
+    <span class="label muted">23</span>
   </header>
   <div class="slide-body">
     <div class="compare-panel left">
@@ -2006,17 +2211,17 @@
   </footer>
 </section>
 
-<!-- ═══ 18 · 结束 ═══
-备注：四个验收点都已关账。感谢老师，下面现场演示。演示前 15 分钟由 A 跑 start_demo.ps1 -WithGbSim 并自检。 -->
+<!-- ═══ 24 · 结束 ═══
+备注：四个验收点都已关账。感谢老师，下面现场演示。演示前 15 分钟由 A 跑 start_demo.ps1 -WithGbSim 并自检。国标设备一定点"预览视频"，不要只点"启动监控"。 -->
 <section class="slide slide--end orange">
   <div class="broadside-top-chrome">
-    <span class="broadside-num" data-anim="fade-in" data-delay="0">18</span>
+    <span class="broadside-num" data-anim="fade-in" data-delay="0">24</span>
     <span class="corner-label" data-anim="fade-in" data-delay="0">谢谢 · 现场演示</span>
   </div>
   <h1 class="display" data-anim="fade-up" data-delay="1" style="color: #111; max-width: 90%; line-height: 1.02; letter-spacing: -0.04em; margin-bottom: 24px">谢谢<br />下面现场演示</h1>
   <div style="display: flex; flex-direction: column; gap: var(--gap-sm)" data-anim="fade-up" data-delay="2">
     <p class="lead" style="color: rgba(17, 17, 17, 0.7); max-width: 75%">
-      大屏 → 设备管理（直连行 + 国标 demo-ipc 行）→ 同步国标设备 / 预览 → 布控「睡岗检测」→ 真人趴桌告警 → 报警详情播放证据
+      大屏 → 设备管理（直连行 + 国标 demo-ipc 行）→ 同步国标设备 → demo-ipc「预览视频」→ 布控「睡岗检测」→ 真人趴桌：SLEEP? → SLEEP → SLEEP! → 报警详情：档位、质量分、三连图、证据视频
     </p>
   </div>
   <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: auto; padding-top: var(--gap-sm); border-top: 1px solid rgba(17, 17, 17, 0.15)">
