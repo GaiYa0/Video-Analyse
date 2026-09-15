@@ -47,6 +47,11 @@ scripts/wsl-*.sh
 *.engine
 *.trt
 *.pt
+# 答辩讲稿 / 大纲 / 逐页稿仅本机，不入库
+docs/答辩演讲稿-10分钟.md
+docs/答辩PPT大纲.md
+docs/答辩PPT稿子.md
+
 docs/fixtures/*.mp4
 docs/fixtures/*.mkv
 docs/fixtures/*.avi

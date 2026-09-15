@@ -1,6 +1,6 @@
 # 系统架构分析
 
-小组一份架构文：总图与表由同学 C 整理，直连流媒体实测由张柏烁并入。启动步骤只看 [deploy-notes.md](./deploy-notes.md)。阶段禁令看 [当前阶段.md](./当前阶段.md)。
+小组一份架构文：总图与表由同学 C 整理，直连流媒体实测由张柏烁并入。开机步骤看 [启动手册.md](./启动手册.md)，部署深水区看 [deploy-notes.md](./deploy-notes.md)。阶段禁令看 [当前阶段.md](./当前阶段.md)。给评委的操作说明见 [使用手册.md](./使用手册.md)。
 
 五层与课件一致：**监控设备 → ZLMediaKit → SVA-server（C++）→ SVA-backend → Vue**。紫色为原系统（P1 已跑通），蓝色为学生增量（按 phase 点亮）。
 
@@ -61,9 +61,10 @@ flowchart TB
 | --- | --- |
 | P1 已完成 | RTSP/直连 → ZLM 拉流 → WS-FLV 预览；Analyzer 原 YOLO；backend 告警入库；Vue 原页面 |
 | P2 已完成 | Pose 睡岗 + 时序防误报；布控增加睡岗类型；告警页展示睡岗 |
-| P3 当前 | SIP 5060（外挂 WVP）；国标 IPC；backend 从 WVP 目录 + ZLM listRtpServer 同步设备；列表区分 RTSP/国标；Analyzer 向 ZLM 取播放 URL |
+| P3 已完成 | SIP 5060（外挂 WVP）；国标 IPC / 模拟器；backend 从 WVP 目录 + ZLM listRtpServer 同步设备；列表区分 RTSP/国标；Analyzer 向 ZLM 取 `rtp/` 播放 URL |
+| P4 当前 | 两类源 × 两类算法联调（2026-09-08 通过）、回归、交付材料 |
 
-P2 已过，正在做国标。睡岗与原 YOLO 保留。布控详情 `POST /deployments/{id}/live-output` 已补，返回已有 `algorithmStreamUrl`；同学访问演示机用 `http://<IP>:8080/`（先关 Clash/VPN）。
+睡岗与原 YOLO 保留。布控详情 `POST /deployments/{id}/live-output` 已补，返回已有 `algorithmStreamUrl`；同学访问演示机用 `http://<IP>:8080/`（先关 Clash/VPN）。
 
 ## 和课件图的差别
 
@@ -226,3 +227,16 @@ A 执行 `ALTER` 后需重启 `backend.jar`。列已存在时跳过。B 未合�
 
 - 睡岗：B 改 `server/`（Pose + 时序）；C 已改告警类型映射、布控选项默认值、`live-output`。
 - 国标：A 改 SIP 与 `IGb28181DeviceSyncService` 拉数；C 已冻 `device_type` 三字段、列表与同步按钮；B 让 Analyzer 取国标播放 URL。
+
+## 上游仓库
+
+本 monorepo 从 Gitee 浅克隆导入，日常只在 GitHub 开发。
+
+| 目录 | 上游 | 说明 |
+| --- | --- | --- |
+| `backend/` | https://gitee.com/andersonwu/SVA-backend | 若依 / Spring Boot，端口 9114 |
+| `web/` | https://gitee.com/andersonwu/SVA-web | Vue 管理端 |
+| `server/` | https://gitee.com/andersonwu/SVA-server | C++ Analyzer |
+| `mediaServer/` | https://gitee.com/andersonwu/SVA-mediaServer | ZLMediaKit |
+
+安装脚本仍在 https://gitee.com/andersonwu/easySVA ，不要把该仓当开发目录。课件验收若检查 Star：请在 Gitee 给以上仓库及 easySVA 点 Star。国标信令用的开源 WVP 不在本仓库内嵌：https://github.com/648540858/wvp-GB28181-pro 。
